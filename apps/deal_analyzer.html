@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Real Living — Deal Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#B8972A;--gl:#FBF6E0;--gd:#7A6010;--black:#0E0E0E;--white:#fff;--off:#F9F7F2;--lg:#F2F1EE;--bd:rgba(0,0,0,.08);--green:#1A6B2A;--greenl:#EAF3DE;--red:#B82020;--redl:#FDECEA;--blue:#1848A0;--bluel:#E6EDF8;--gray:#888;--r:8px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--black);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.bar{background:var(--black);padding:0 18px;height:50px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--gold);position:sticky;top:0;z-index:100}
+.brand{font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:#fff;font-weight:400}
+.brand em{color:var(--gold);font-style:normal}
+.bar-tag{font-size:.6rem;color:rgba(255,255,255,.28);margin-left:8px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:6px;font-size:.76rem;font-weight:500;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;transition:all .14s;white-space:nowrap}
+.btn-gold{background:var(--gold);color:#fff}.btn-gold:hover{background:var(--gd)}
+.btn-ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.15)}.btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
+.btn-green{background:var(--green);color:#fff}
+.btn-white{background:#fff;color:var(--black);border:1px solid var(--bd)}.btn-white:hover{border-color:var(--gold);color:var(--gold)}
+.btn-lg{padding:9px 18px;font-size:.82rem;font-weight:600}
+.btn-sm{padding:4px 9px;font-size:.71rem}
+.btn-danger{background:var(--redl);color:var(--red);border:none}
+.btn-info{background:var(--bluel);color:var(--blue);border:none}
+.wrap{max-width:980px;margin:0 auto;padding:18px 14px 80px}
+.card{background:#fff;border:1px solid var(--bd);border-radius:var(--r);padding:15px;margin-bottom:10px}
+.ct{font-size:.62rem;font-weight:500;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:11px;padding-bottom:.3rem;border-bottom:1px solid var(--gl)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:9px}
+.ig{display:flex;flex-direction:column;gap:3px}
+.ig label{font-size:.63rem;color:var(--gray);display:flex;justify-content:space-between;align-items:center}
+.ig label .at{font-size:.58rem;color:var(--gold);font-weight:500}
+.ig input,.ig select{border:1px solid var(--bd);border-radius:5px;padding:6px 9px;font-size:.83rem;font-weight:500;font-family:'DM Sans',sans-serif;background:var(--lg);color:var(--black);width:100%;transition:all .13s}
+.ig input:focus,.ig select:focus{outline:none;border-color:var(--gold);background:#fff}
+.ig input.auto{background:var(--gl);border-color:rgba(184,151,42,.22);color:var(--gd);cursor:default}
+.ig input.editable{background:var(--greenl);border-color:rgba(26,107,42,.25);color:var(--green)}
+.ig .note{font-size:.6rem;color:var(--gd);margin-top:2px}
+.dvd{font-size:.6rem;font-weight:500;color:var(--gray);text-transform:uppercase;letter-spacing:.09em;margin:11px 0 7px;padding-bottom:.25rem;border-bottom:1px dashed var(--bd)}
+/* SECTION SWITCHER */
+.sec-sw{display:flex;background:#fff;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.sw-btn{flex:1;padding:10px;text-align:center;font-size:.82rem;font-weight:500;cursor:pointer;color:var(--gray);border:none;font-family:'DM Sans',sans-serif;background:transparent;transition:all .13s}
+.sw-btn.act{background:var(--black);color:var(--gold)}
+/* ANALYSIS TABS */
+.tabs{display:flex;background:#fff;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:10px}
+.tab{flex:1;padding:9px;text-align:center;font-size:.8rem;font-weight:500;cursor:pointer;color:var(--gray);border:none;font-family:'DM Sans',sans-serif;background:transparent}
+.tab.act{background:var(--black);color:var(--gold)}
+/* HOLD TABS */
+.htabs{display:flex;gap:5px;margin-bottom:9px}
+.ht{flex:1;padding:6px;text-align:center;font-size:.76rem;font-weight:500;border:1px solid var(--bd);border-radius:5px;cursor:pointer;background:var(--lg);color:var(--gray);font-family:'DM Sans',sans-serif}
+.ht.act{background:var(--black);color:var(--gold);border-color:var(--black)}
+/* SCENARIOS */
+.sc3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:9px}
+.sc{border-radius:var(--r);overflow:hidden}
+.sc-hdr{padding:8px 12px;font-size:.73rem;font-weight:600;display:flex;justify-content:space-between}
+.sc-body{padding:10px 12px;background:#fff}
+.sr{display:flex;justify-content:space-between;font-size:.72rem;padding:3.5px 0;border-bottom:1px solid var(--bd)}
+.sr:last-child{border-bottom:none}
+.sr.sep{border-top:2px solid;padding-top:5px!important;font-weight:600;font-size:.78rem!important}
+.sr.pft{font-weight:700!important;font-size:.88rem!important;padding:5px 0 2px!important}
+.sl{color:var(--gray)}.sv{font-weight:500;color:var(--black)}
+.sv.p{color:var(--green)}.sv.n{color:var(--red)}
+/* FEE TABLE */
+.fee-sec{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:8px}
+.fee-hdr{background:var(--lg);padding:6px 12px;font-size:.62rem;font-weight:500;color:var(--gray);text-transform:uppercase;letter-spacing:.07em}
+.fr{display:flex;justify-content:space-between;padding:5px 12px;font-size:.77rem;border-bottom:1px solid var(--bd)}
+.fr:last-child{border-bottom:none;font-weight:600;font-size:.8rem;background:var(--lg)}
+.fl{color:var(--gray)}.fv{color:var(--red);font-weight:500}.fvg{color:var(--gd);font-weight:700}
+/* CTC */
+.ctc{background:var(--gl);border:1px solid rgba(184,151,42,.3);border-radius:var(--r);padding:12px 14px;margin-bottom:9px}
+.ctc-t{font-size:.61rem;font-weight:600;color:var(--gd);text-transform:uppercase;letter-spacing:.09em;margin-bottom:7px}
+.cr{display:flex;justify-content:space-between;font-size:.79rem;padding:3.5px 0;border-bottom:1px solid rgba(184,151,42,.12)}
+.cr:last-child{border-bottom:none;font-weight:700;font-size:.94rem;padding-top:6px}
+.cl{color:var(--gd)}.cv{color:var(--black)}
+/* CHECKBOX */
+.chk{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;padding:4px 0}
+.chk-box{width:15px;height:15px;border:1.5px solid var(--bd);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#fff;transition:all .12s}
+.chk-box.on{background:var(--gold);border-color:var(--gold)}
+/* SCOPE TABLE */
+.sow-tbl{width:100%;border-collapse:collapse}
+.sow-tbl th{font-size:.61rem;font-weight:500;color:var(--gray);text-transform:uppercase;letter-spacing:.07em;padding:5px 7px;border-bottom:1px solid var(--bd);text-align:left}
+.sow-tbl td{padding:4px 5px;border-bottom:1px solid var(--bd);vertical-align:middle}
+.sow-tbl tr:last-child td{border-bottom:none}
+.sow-tbl input,.sow-tbl select{border:1px solid var(--bd);border-radius:4px;padding:4px 6px;font-size:.77rem;font-family:'DM Sans',sans-serif;background:var(--lg);color:var(--black);width:100%}
+.sow-tbl input:focus,.sow-tbl select:focus{outline:none;border-color:var(--gold)}
+.sow-tbl .tot{background:var(--lg);font-size:.77rem;font-weight:500;text-align:right;padding:4px 7px}
+/* SUMMARY BAR */
+.sum-bar{background:var(--black);border-radius:var(--r);padding:14px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.sb-l{font-size:.61rem;color:rgba(255,255,255,.4);margin-bottom:3px}
+.sb-v{font-size:1rem;font-weight:500;color:#fff}
+.sb-v.gld{color:var(--gold)}.sb-v.grn{color:#6ddb8a}.sb-v.red{color:#ff8080}
+/* MODALS */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.ov.open{display:flex}
+.modal{background:#fff;border-radius:10px;padding:20px;max-width:460px;width:92%;box-shadow:0 24px 64px rgba(0,0,0,.25)}
+.modal h3{font-family:'Cormorant Garamond',serif;font-size:1.2rem;margin-bottom:.3rem}
+.modal p{font-size:.76rem;color:var(--gray);margin-bottom:.9rem;line-height:1.6}
+.modal-row{display:flex;gap:7px}
+.modal-row .btn{flex:1;justify-content:center;padding:10px}
+.url-box{background:var(--lg);border:1px solid var(--bd);border-radius:5px;padding:7px 10px;font-size:.68rem;word-break:break-all;margin:7px 0;font-family:monospace;max-height:60px;overflow-y:auto;color:var(--gray)}
+.mx{float:right;background:none;border:none;cursor:pointer;color:var(--gray);font-size:1rem;line-height:1}
+/* SAVED LIST */
+.si{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border:1px solid var(--bd);border-radius:6px;cursor:pointer;transition:border-color .12s;margin-bottom:6px}
+.si:hover{border-color:var(--gold)}
+.si-acts{display:flex;gap:4px}
+/* TOAST */
+.toast{position:fixed;bottom:16px;right:16px;background:var(--black);color:#fff;padding:8px 14px;border-radius:6px;font-size:.75rem;font-weight:500;z-index:300;transform:translateY(36px);opacity:0;transition:all .22s;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}.toast.ok{background:var(--green)}
+/* LOGIN */
+#loginView{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--off)}
+/* CLIENT SHEET */
+#clientSheet{display:none;max-width:820px;margin:0 auto;padding:0 0 60px}
+.ts-hdr{background:var(--black);padding:30px 34px 26px;border-bottom:3px solid var(--gold)}
+.ts-ey{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;font-weight:500}
+.ts-addr{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:400;color:#fff;line-height:1.05;margin-bottom:4px}
+.ts-city{font-size:.82rem;color:rgba(255,255,255,.4);margin-bottom:16px}
+.ts-chips{display:flex;gap:7px;flex-wrap:wrap}
+.ts-chip{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:4px 11px;font-size:.71rem;color:rgba(255,255,255,.6)}
+.ts-chip strong{color:var(--gold)}
+.ts-body{padding:22px 34px}
+.ts-sec{font-size:.61rem;font-weight:500;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin:0 0 9px;padding-bottom:.28rem;border-bottom:1px solid var(--gl)}
+.ts-card{background:#fff;border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.ts-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}
+.ts-tile{border-radius:var(--r);padding:13px 15px;text-align:center}
+.ts-tile.a{background:var(--lg);border:1px solid var(--bd)}
+.ts-tile.b{background:var(--greenl);border:1px solid rgba(26,107,42,.2)}
+.ts-tile.c{background:var(--gl);border:1px solid rgba(184,151,42,.25)}
+.tt-l{font-size:.65rem;margin-bottom:4px}.ts-tile.a .tt-l{color:var(--gray)}.ts-tile.b .tt-l{color:var(--green)}.ts-tile.c .tt-l{color:var(--gd)}
+.tt-v{font-size:1.3rem;font-weight:600}.ts-tile.a .tt-v{color:var(--black)}.ts-tile.b .tt-v{color:var(--green)}.ts-tile.c .tt-v{color:var(--gold)}
+.tt-s{font-size:.63rem;margin-top:2px}.ts-tile.a .tt-s{color:var(--gray)}.ts-tile.b .tt-s{color:rgba(26,107,42,.6)}.ts-tile.c .tt-s{color:var(--gd);opacity:.7}
+.tr{display:flex;justify-content:space-between;font-size:.79rem;padding:4.5px 0;border-bottom:1px solid var(--bd)}
+.tr:last-child{border-bottom:none}.tr.tot{font-weight:700;font-size:.84rem;padding-top:6px;border-top:2px solid var(--bd)}
+.tl{color:var(--gray)}.tv{font-weight:500;color:var(--black)}.tv.r{color:var(--red)}.tv.g{color:var(--gold);font-size:.92rem}
+.ts-ctc{background:var(--gl);border:1px solid rgba(184,151,42,.3);border-radius:var(--r);padding:13px 15px;margin-bottom:12px}
+.ts-sc3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}
+.tsc{border-radius:var(--r);overflow:hidden}
+.tsc-hdr{padding:9px 12px;font-size:.74rem;font-weight:600;display:flex;justify-content:space-between}
+.tsc-body{padding:11px 12px;background:#fff}
+.tsr{display:flex;justify-content:space-between;font-size:.74rem;padding:3.5px 0;border-bottom:1px solid var(--bd)}
+.tsr:last-child{border-bottom:none;font-weight:700;font-size:.9rem;padding-top:5px}
+.tsrl{color:var(--gray)}.tsrv{font-weight:500;color:var(--black)}
+.ts-foot{background:var(--black);padding:15px 34px;display:flex;align-items:center;justify-content:space-between}
+.ts-brand{font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:#fff}
+.ts-brand em{color:var(--gold);font-style:normal}
+.ts-disc{font-size:.62rem;color:rgba(255,255,255,.3);max-width:460px;line-height:1.5}
+/* SCOPE */
+.cat-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.sow-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-top:12px}
+.sow-tile{border:1px solid var(--bd);border-radius:var(--r);padding:8px 11px}
+.sow-tile .cat-name{font-size:.69rem;color:var(--gray);margin-bottom:2px}
+.sow-tile .cat-amt{font-size:.88rem;font-weight:500}
+.sow-tile .cat-pct{font-size:.63rem;color:var(--gray)}
+/* PRINT */
+@media print{
+  #loginView,#adminView{display:none!important}
+  #clientSheet{display:block!important;max-width:100%;padding:0}
+  .ts-hdr,.ts-body,.ts-foot{padding-left:20px;padding-right:20px}
+  .ts-card,.ts-sc3,.ts-ctc,.ts-tiles{break-inside:avoid}
+  body{background:#fff}
+}
+@media(max-width:640px){.g2,.g3,.g4,.sc3,.ts-sc3,.ts-tiles,.sum-bar{grid-template-columns:1fr}.bar{height:auto;padding:8px 12px;flex-wrap:wrap;gap:6px}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginView">
+  <div class="card" style="width:320px;padding:24px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div class="brand" style="font-size:1.5rem">Real <em>Living</em></div>
+      <div style="font-size:.75rem;color:var(--gray);margin-top:5px">Deal Analyzer — Agent Login</div>
+    </div>
+    <div class="ig" style="margin-bottom:8px"><label>Agent name</label><input type="text" id="loginName" placeholder="Your name"></div>
+    <div class="ig" style="margin-bottom:14px"><label>PIN</label><input type="password" id="loginPin" placeholder="••••" maxlength="8"></div>
+    <div id="loginErr" style="color:var(--red);font-size:.72rem;margin-bottom:8px;text-align:center;display:none"></div>
+    <button class="btn btn-gold btn-lg" style="width:100%;justify-content:center" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ADMIN VIEW -->
+<div id="adminView" style="display:none">
+  <!-- TOP BAR -->
+  <div class="bar">
+    <div class="brand">Real <em>Living</em><span class="bar-tag" id="barTag">Deal Analyzer</span></div>
+    <div style="display:flex;gap:6px;align-items:center" id="barActions"></div>
+  </div>
+  <!-- MAIN BODY -->
+  <div id="mainBody"></div>
+</div>
+
+<!-- CLIENT SHEET -->
+<div id="clientSheet">
+  <div class="ts-hdr">
+    <div class="ts-ey">Real Living Companies — Investment Term Sheet</div>
+    <div class="ts-addr" id="ts-addr"></div>
+    <div class="ts-city" id="ts-city"></div>
+    <div class="ts-chips" id="ts-chips"></div>
+  </div>
+  <div class="ts-body">
+    <p class="ts-sec">Investment overview</p>
+    <div class="ts-tiles">
+      <div class="ts-tile a"><div class="tt-l">Cash to Close</div><div class="tt-v" id="ts-ctc">—</div><div class="tt-s">out of pocket at closing</div></div>
+      <div class="ts-tile b"><div class="tt-l">Mid-Case Net Profit</div><div class="tt-v" id="ts-mpft">—</div><div class="tt-s">after all costs & fees</div></div>
+      <div class="ts-tile c"><div class="tt-l">Hold Period</div><div class="tt-v" id="ts-hold">—</div><div class="tt-s">estimated timeline</div></div>
+    </div>
+    <p class="ts-sec">Loan terms</p>
+    <div class="ts-card">
+      <div class="tr"><span class="tl">Purchase price</span><span class="tv" id="ts-pp">—</span></div>
+      <div class="tr"><span class="tl">After Repair Value (ARV)</span><span class="tv" id="ts-arv">—</span></div>
+      <div class="tr"><span class="tl">Loan amount (<span id="ts-ltv"></span>% of ARV)</span><span class="tv" id="ts-loan">—</span></div>
+      <div class="tr"><span class="tl">Rehab holdback (loan − purchase)</span><span class="tv" id="ts-rh">—</span></div>
+      <div class="tr"><span class="tl">Interest rate</span><span class="tv" id="ts-rate">—</span></div>
+      <div class="tr"><span class="tl">Monthly interest payment</span><span class="tv" id="ts-mi">—</span></div>
+    </div>
+    <p class="ts-sec">Complete fee schedule</p>
+    <div class="ts-card">
+      <div class="tr"><span class="tl">Admin fee — at closing</span><span class="tv r" id="ts-ac">—</span></div>
+      <div class="tr"><span class="tl">Admin fee — at payoff</span><span class="tv r" id="ts-ap">—</span></div>
+      <div class="tr"><span class="tl">Title / closing costs</span><span class="tv r" id="ts-ti">—</span></div>
+      <div class="tr"><span class="tl">Broker fee</span><span class="tv r" id="ts-brk">—</span></div>
+      <div class="tr"><span class="tl">Monthly insurance</span><span class="tv r" id="ts-ins">—</span></div>
+      <div class="tr"><span class="tl">Monthly property taxes</span><span class="tv r" id="ts-tax">—</span></div>
+      <div class="tr"><span class="tl">TC fee</span><span class="tv" id="ts-tc">—</span></div>
+      <div class="tr"><span class="tl">RL commission</span><span class="tv" id="ts-rl">—</span></div>
+      <div class="tr"><span class="tl">Commission at sale (<span id="ts-com"></span>%)</span><span class="tv r" id="ts-real">—</span></div>
+      <div class="tr" id="ts-sell-row" style="display:none"><span class="tl" style="color:var(--red)">Seller payoff at sale</span><span class="tv r" id="ts-sell">—</span></div>
+      <div class="tr tot"><span class="tl">Total all-in costs (mid case)</span><span class="tv g" id="ts-ftot">—</span></div>
+    </div>
+    <div class="ts-ctc">
+      <p class="ctc-t">Cash to close — required at initial closing</p>
+      <div class="cr"><span class="cl">Purchase price</span><span class="cv" id="ts-c-pp">—</span></div>
+      <div class="cr"><span class="cl">Loan covers at closing</span><span class="cv" id="ts-c-ln">—</span></div>
+      <div class="cr" id="ts-gap-row" style="display:none"><span class="cl">Purchase gap</span><span class="cv" style="color:var(--red)" id="ts-c-gap">—</span></div>
+      <div class="cr"><span class="cl">Cash down</span><span class="cv" id="ts-c-dn">—</span></div>
+      <div class="cr"><span class="cl">Admin + title + broker</span><span class="cv" id="ts-c-fees">—</span></div>
+      <div class="cr"><span class="cl">Total cash to close</span><span class="cv" style="color:var(--gold)" id="ts-c-tot">—</span></div>
+    </div>
+    <p class="ts-sec">Sale profit scenarios</p>
+    <div class="ts-sc3" id="ts-sc3"></div>
+    <div id="ts-sow-sec" style="display:none">
+      <p class="ts-sec">Scope of work — rehab budget</p>
+      <div class="ts-card" id="ts-sow-body"></div>
+    </div>
+    <div style="background:var(--lg);border:1px solid var(--bd);border-radius:var(--r);padding:10px 13px;font-size:.7rem;color:var(--gray);line-height:1.7">This term sheet is prepared by Real Living Companies based on current market data and estimated project costs. Actual results may vary. All figures are estimates unless stated as fixed. This document does not constitute a loan commitment or guarantee of profit.</div>
+  </div>
+  <div class="ts-foot">
+    <div class="ts-brand">Real <em>Living</em> Companies</div>
+    <div class="ts-disc" id="ts-foot-addr"></div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="ov" id="shareModal">
+  <div class="modal">
+    <button class="mx" onclick="closeM('shareModal')">✕</button>
+    <h3 id="sh-title">Save & Share</h3>
+    <p id="sh-sub">Name this deal to save it to your organization's database.</p>
+    <div id="sh-step1">
+      <div class="ig" style="margin-bottom:10px"><label>Deal name</label><input type="text" id="dealNameInp" placeholder="e.g. 36th St — 4BR/2.5BA"></div>
+      <button class="btn btn-gold btn-lg" style="width:100%;justify-content:center" onclick="confirmSave()">Save & Continue →</button>
+    </div>
+    <div id="sh-step2" style="display:none">
+      <div class="modal-row" style="margin-bottom:8px">
+        <button class="btn btn-gold" onclick="downloadPDF()">⬇ Download PDF</button>
+        <button class="btn" style="background:var(--bluel);color:var(--blue);border:1px solid rgba(24,72,160,.2)" onclick="copyClientLink()">📧 Copy Client Link</button>
+      </div>
+      <div id="url-display" style="display:none">
+        <div class="url-box" id="shareUrlBox"></div>
+        <button class="btn btn-white btn-sm" onclick="doCopy()" style="margin-top:4px">Copy Link</button>
+      </div>
+      <button class="btn btn-white" style="width:100%;justify-content:center;margin-top:8px" onclick="closeM('shareModal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVED DEALS MODAL -->
+<div class="ov" id="savedModal">
+  <div class="modal">
+    <button class="mx" onclick="closeM('savedModal')">✕</button>
+    <h3>Saved Deals</h3>
+    <p>All deals saved by your organization. Click to load and edit.</p>
+    <div id="savedList" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
+    <button class="btn btn-white" style="width:100%;justify-content:center" onclick="closeM('savedModal')">Close</button>
+  </div>
+</div>
+
+<!-- USERS MODAL -->
+<div class="ov" id="usersModal">
+  <div class="modal">
+    <button class="mx" onclick="closeM('usersModal')">✕</button>
+    <h3>Manage Users</h3>
+    <p>Add agents or admins. Admins can see all deals and manage users. You cannot remove yourself.</p>
+    <div id="userList" style="margin-bottom:12px"></div>
+    <div class="dvd">Add new user</div>
+    <div class="g2" style="margin-bottom:8px">
+      <div class="ig"><label>Name</label><input type="text" id="newUserName" placeholder="Full name"></div>
+      <div class="ig"><label>PIN</label><input type="text" id="newUserPin" placeholder="e.g. 5678"></div>
+    </div>
+    <div class="ig" style="margin-bottom:10px">
+      <label>Role</label>
+      <select id="newUserRole" style="border:1px solid var(--bd);border-radius:5px;padding:6px 9px;font-size:.83rem;font-family:'DM Sans',sans-serif;background:var(--lg);color:var(--black);width:100%">
+        <option value="agent">Agent — sees own deals only</option>
+        <option value="admin">Admin — sees all deals, manages users</option>
+      </select>
+    </div>
+    <button class="btn btn-green" style="width:100%;justify-content:center" onclick="addUser()">Add User</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── GLOBALS ────────────────────────────────────────────────────────
+const e=id=>document.getElementById(id);
+const fmt=n=>(n<0?'− ':'')+'$'+Math.abs(Math.round(n)).toLocaleString();
+const pmt=(P,ar,y)=>{if(!P||!ar)return 0;const r=ar/100/12,n=y*12;return P*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);};
+const tx=(id,v)=>e(id)&&(e(id).textContent=v);
+const CAT_COLORS={Labor:'#fde68a',Demo:'#dbeafe','Foundation/Structure':'#dcfce7',Framing:'#fef9c3',Roofing:'#fee2e2',Electrical:'#ede9fe',Plumbing:'#cffafe',HVAC:'#d1fae5',Insulation:'#fef3c7',Drywall:'#e0f2fe',Flooring:'#fce7f3','Kitchen/Cabinets':'#ffedd5',Bathrooms:'#f0fdf4','Windows/Doors':'#eff6ff',Paint:'#fff7ed',Appliances:'#fdf4ff',Landscaping:'#ecfdf5',Other:'#f3f4f6'};
+const CATS=Object.keys(CAT_COLORS);
+const DEF_USERS=[{id:'admin',name:'Admin',pin:'1234',role:'admin'},{id:'agent',name:'Agent',pin:'0000',role:'agent'}];
+const DEFS={addr1:'',addr2:'Kansas City, MO',beds:'',borrower:'H2M Group LLC',purchase:105000,arv:225000,ltv:65,intRate:18,adminC:750,adminP:750,titleF:4050,brkPts:0,ins:150,tax:150,commPct:6,sellerPayOn:false,sellerPay:0,tcFee:0,rlComm:0,otherFees:0,cashDown:5000,rehabAct:41250,rehabExt:0,holdMo:6,arvB:225000,arvM:202500,arvW:191250,cB:3000,cM:6000,cW:10000,refiRate:7.5,refiLtv:65,refiAmort:30,refiCost:6500,apprB:235000,apprM:230000,apprW:225000,cfdPrice:225000,cfdDown:25000,cfdRate:9.9,cfdClose:2500};
+const DEF_SCOPE=[{id:1,cat:'Demo',desc:'Demo & haul-off',qty:1,unit:'LS',cost:1500,type:'material'},{id:2,cat:'Drywall',desc:'Drywall repair & texture',qty:1,unit:'LS',cost:3200,type:'material'},{id:3,cat:'Flooring',desc:'LVP flooring',qty:900,unit:'SF',cost:2.5,type:'material'},{id:4,cat:'Paint',desc:'Interior paint',qty:1,unit:'LS',cost:3500,type:'material'},{id:5,cat:'Kitchen/Cabinets',desc:'Kitchen cabinets & counters',qty:1,unit:'LS',cost:6000,type:'material'},{id:6,cat:'Bathrooms',desc:'Primary bath remodel',qty:1,unit:'LS',cost:4200,type:'material'},{id:7,cat:'Electrical',desc:'Electrical panel & updates',qty:1,unit:'LS',cost:3800,type:'material'},{id:8,cat:'Plumbing',desc:'Plumbing updates',qty:1,unit:'LS',cost:2800,type:'material'},{id:9,cat:'HVAC',desc:'HVAC service',qty:1,unit:'LS',cost:3500,type:'material'},{id:10,cat:'Roofing',desc:'Roof repair',qty:1,unit:'LS',cost:2500,type:'material'},{id:11,cat:'Windows/Doors',desc:'Exterior doors',qty:2,unit:'EA',cost:600,type:'material'},{id:12,cat:'Landscaping',desc:'Curb appeal',qty:1,unit:'LS',cost:1800,type:'material'},{id:13,cat:'Labor',desc:'General labor crew',qty:80,unit:'HR',cost:35,type:'labor'},{id:14,cat:'Labor',desc:'Skilled trades labor',qty:1,unit:'LS',cost:4000,type:'labor'},{id:15,cat:'Other',desc:'Contingency',qty:1,unit:'LS',cost:3650,type:'material'}];
+
+let currentUser=null, users=[...DEF_USERS], deals=[], currentDeal={...DEFS}, scope=DEF_SCOPE.map(x=>({...x})), currentId=null, analysisTab='sell', section='deal', holdMo=6, arvLocked={B:false,M:false,W:false}, cfdOpen=false, shareUrl='';
+
+// ── STORAGE ────────────────────────────────────────────────────────
+const db={};
+function loadLS(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
+function saveLS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){db[k]=v;}}
+function initStorage(){
+  users=loadLS('rl_users',DEF_USERS);
+  deals=loadLS('rl_deals',[]);
+  // Restore an active session if one exists, so a page reload doesn't kick the user out.
+  const savedSession=loadLS('rl_session',null);
+  if(savedSession&&savedSession.id){
+    const u=users.find(x=>x.id===savedSession.id);
+    if(u){
+      try{
+        currentUser=u;
+        e('loginView').style.display='none';
+        e('adminView').style.display='block';
+        renderBar(); renderDashboard();
+      }catch(sessErr){
+        // If restoring the session view fails, fall back to a clean login instead of a broken screen.
+        console.error('Session restore failed, showing login:',sessErr);
+        currentUser=null;
+        try{localStorage.removeItem('rl_session');}catch(x){}
+        e('loginView').style.display='flex';
+        e('adminView').style.display='none';
+      }
+    }
+  }
+}
+
+// ── AUTH ───────────────────────────────────────────────────────────
+function doLogin(){
+  const name=e('loginName').value.trim(),pin=e('loginPin').value.trim();
+  const u=users.find(u=>u.name.toLowerCase()===name.toLowerCase()&&u.pin===pin);
+  if(!u){e('loginErr').textContent='Invalid name or PIN.';e('loginErr').style.display='block';return;}
+  e('loginErr').style.display='none';
+  currentUser=u; saveLS('rl_session',{id:u.id}); e('loginView').style.display='none'; e('adminView').style.display='block';
+  loadFromURL(); renderBar(); renderDashboard();
+}
+e('loginPin').onkeydown=ev=>{if(ev.key==='Enter')doLogin();};
+function doLogout(){currentUser=null;try{localStorage.removeItem('rl_session');}catch(e){}e('loginView').style.display='flex';e('adminView').style.display='none';}
+
+// ── TOP BAR ────────────────────────────────────────────────────────
+function renderBar(inEditor){
+  const acts=e('barActions'); acts.innerHTML='';
+  const tag=e('barTag');
+  if(inEditor){
+    tag.textContent='Deal Analysis';
+    btn('← Deals',()=>{renderDashboard();tag.textContent='Deal Analyzer';},'ghost',acts);
+    btn('💾 Save & Share',openSaveModal,'gold',acts,true);
+  } else {
+    tag.textContent='Deal Analyzer';
+    btn('+ New Deal',newDeal,'gold',acts,true);
+  }
+  const un=document.createElement('span');un.style.cssText='font-size:.7rem;color:rgba(255,255,255,.4);padding:0 4px';un.textContent=currentUser?.name;acts.appendChild(un);
+  if(currentUser?.role==='admin') btn('⚙ Agents',openUsers,'ghost',acts);
+  btn('Sign Out',doLogout,'ghost',acts);
+}
+function btn(txt,fn,style,parent,lg){
+  const b=document.createElement('button');
+  b.className='btn btn-'+style+(lg?' btn-lg':'');
+  b.textContent=txt; b.onclick=fn;
+  parent.appendChild(b); return b;
+}
+
+// ── CALC ───────────────────────────────────────────────────────────
+function calcDeal(d,h){
+  // Coerce every field to a safe number so a malformed saved deal can't crash calculations.
+  const n=v=>{const x=parseFloat(v);return isFinite(x)?x:0;};
+  d={...d,arv:n(d.arv),ltv:n(d.ltv),purchase:n(d.purchase),intRate:n(d.intRate),brkPts:n(d.brkPts),ins:n(d.ins),tax:n(d.tax),adminC:n(d.adminC),adminP:n(d.adminP),titleF:n(d.titleF),tcFee:n(d.tcFee),rlComm:n(d.rlComm),otherFees:n(d.otherFees),commPct:n(d.commPct),sellerPay:n(d.sellerPay),cashDown:n(d.cashDown),rehabAct:n(d.rehabAct),rehabExt:n(d.rehabExt),arvB:n(d.arvB),arvM:n(d.arvM),arvW:n(d.arvW),cB:n(d.cB),cM:n(d.cM),cW:n(d.cW)};
+  const hm=n(h)||n(d.holdMo)||6;
+  const loan=d.arv*(d.ltv/100), rh=Math.max(0,loan-d.purchase);
+  const mi=loan*(d.intRate/100)/12, bF=loan*(d.brkPts/100);
+  const tI=mi*hm, tIns=d.ins*hm, tTax=d.tax*hm;
+  const actualRehab=(d.rehabAct||0);
+  // Remaining balance between lender holdback and actual rehab cost (scope).
+  // Positive = holdback exceeds actual cost (under budget → adds to profit).
+  // Negative = actual cost exceeds holdback (over budget → subtracts from profit).
+  const rehabRemaining=rh-actualRehab;
+  // Overage kept only for display of the "over" portion; rehabExt = extra out-of-pocket outside holdback.
+  const ov=Math.max(0,actualRehab-rh);
+  const extraOOP=(d.rehabExt||0);
+  const gap=Math.max(0,d.purchase-loan);
+  const ctc=d.cashDown+gap+d.adminC+bF+d.titleF;
+  const sp=d.sellerPayOn?d.sellerPay:0;
+  const allF=bF+d.tcFee+d.rlComm+tIns+tTax+d.titleF+(d.otherFees||0);
+  // Net = sale − commission − loan payoff − payoff admin − all fees − seller payoff − scenario contingency
+  //       − extra out-of-pocket + rehab remaining balance (adds if under budget, subtracts if over).
+  const sc=(av,c)=>{const real=av*d.commPct/100;const n=av-real-loan-d.adminP-tI-allF-sp-extraOOP-c+rehabRemaining;return{net:n,pft:n-ctc,real};};
+  return{loan,rh,mi,bF,tI,tIns,tTax,ov,extraOOP,gap,ctc,sp,allF,actualRehab,rehabRemaining,sc:{B:sc(d.arvB,d.cB),M:sc(d.arvM,d.cM),W:sc(d.arvW,d.cW)}};
+}
+
+// ── SCOPE TOTAL ────────────────────────────────────────────────────
+function scopeTotal(){return scope.reduce((s,r)=>s+(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0),0);}
+function laborTotal(){return scope.reduce((s,r)=>s+(r.type==='labor'?(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0):0),0);}
+function materialTotal(){return scope.reduce((s,r)=>s+(r.type!=='labor'?(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0):0),0);}
+function syncScope(){currentDeal.rehabAct=Math.round(scopeTotal());renderEditor();}
+// Live update while typing in qty/cost — updates totals in place WITHOUT rebuilding the table (preserves focus)
+function syncScopeLive(idx){
+  currentDeal.rehabAct=Math.round(scopeTotal());
+  // Update this row's line total
+  if(idx!=null){
+    const r=scope[idx];
+    const ltEl=e('lt-'+idx);
+    if(ltEl&&r){const lt=(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0);ltEl.textContent='$'+Math.round(lt).toLocaleString();}
+  }
+  const sowTot=scopeTotal();
+  const rh=Math.max(0,currentDeal.arv*(currentDeal.ltv/100)-currentDeal.purchase);
+  const over=sowTot-rh;
+  // Scope total + holdback badge
+  const totEl=e('sow-total');if(totEl)totEl.textContent=fmt(sowTot);
+  const hbEl=e('sow-hb');if(hbEl)hbEl.textContent=fmt(rh);
+  const badge=e('sow-badge');
+  if(badge){
+    badge.textContent=over>0?fmt(over)+' over holdback':'Within holdback';
+    badge.style.background=over>0?'var(--redl)':'var(--greenl)';
+    badge.style.color=over>0?'var(--red)':'var(--green)';
+  }
+  // Materials vs labor split
+  const splitEl=e('sow-split');
+  if(splitEl){
+    const matT=materialTotal(),labT=laborTotal(),tot=matT+labT;
+    const mkTile=(lbl,val,bg,fg,pct)=>`<div style="background:${bg};border-radius:7px;padding:10px 12px"><div style="font-size:.64rem;color:${fg};text-transform:uppercase;letter-spacing:.05em;font-weight:600">${lbl}</div><div style="font-size:1.25rem;font-weight:600;color:${fg};margin-top:2px">${fmt(val)}</div>${pct!=null?`<div style="font-size:.64rem;color:${fg};opacity:.75;margin-top:1px">${pct}% of scope</div>`:''}</div>`;
+    splitEl.innerHTML=mkTile('Materials',matT,'#eef4ff','#1848A0',tot?Math.round(matT/tot*100):0)+mkTile('Labor',labT,'#fff7e0','#9a7500',tot?Math.round(labT/tot*100):0)+mkTile('Total scope',tot,'#f3f4f6','#333',null);
+  }
+}
+
+// ── DASHBOARD ──────────────────────────────────────────────────────
+function renderDashboard(){
+  renderBar(false);
+  const mb=e('mainBody'); mb.innerHTML='';
+  const wrap=document.createElement('div'); wrap.className='wrap';
+  // Search
+  const sh=document.createElement('div'); sh.style.cssText='display:flex;gap:8px;margin-bottom:12px;align-items:center';
+  const si=document.createElement('input'); si.className='ig'; si.style.cssText='flex:1;border:1px solid var(--bd);border-radius:5px;padding:6px 10px;font-size:.83rem;background:var(--lg);color:var(--black);font-family:\'DM Sans\',sans-serif';
+  si.placeholder='Search deals by address, city, agent...';
+  si.oninput=()=>renderDealList(wrap,si.value);
+  const sameUser=(a,b)=>(a||'').trim().toLowerCase()===(b||'').trim().toLowerCase();
+  const visCount=currentUser?.role==='admin'?deals.length:deals.filter(d=>!d.savedBy||sameUser(d.savedBy,currentUser?.name)).length;
+  const cnt=document.createElement('span'); cnt.style.cssText='font-size:.72rem;color:var(--gray)'; cnt.textContent=visCount+' deal'+(visCount!==1?'s':'')+(currentUser?.role==='admin'?' (all agents)':' (yours)');
+  sh.appendChild(si); sh.appendChild(cnt); wrap.appendChild(sh);
+  renderDealList(wrap,''); mb.appendChild(wrap);
+}
+
+function renderDealList(wrap,q){
+  let list=wrap.querySelector('#deal-list');
+  if(list) list.remove();
+  list=document.createElement('div'); list.id='deal-list';
+  // Agents see only their own deals; admins see all
+  const visibleDeals=currentUser?.role==='admin'?deals:deals.filter(d=>!d.savedBy||sameUser(d.savedBy,currentUser?.name));
+  const filtered=visibleDeals.filter(d=>!q||((d.name||'')+(d.addr1||'')+(d.addr2||'')+(d.savedBy||'')).toLowerCase().includes(q.toLowerCase()));
+  if(!filtered.length){
+    const em=document.createElement('div'); em.className='card'; em.style.cssText='text-align:center;padding:40px;color:var(--gray)';
+    em.innerHTML=deals.length?'<div>No results.</div>':'<div style="font-size:1rem;font-weight:500;margin-bottom:6px">No deals yet</div><div style="font-size:.8rem">Click "+ New Deal" to get started.</div>';
+    list.appendChild(em);
+  } else {
+    filtered.forEach(d=>{
+      let C; try{ C=calcDeal(d); }catch(err){ C=null; }
+      const row=document.createElement('div'); row.className='card'; row.style.cssText='display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:8px;transition:border-color .12s';
+      row.onmouseover=()=>row.style.borderColor='var(--gold)'; row.onmouseout=()=>row.style.borderColor='';
+      const pft = C ? fmt(C.sc.M.pft) : '—';
+      row.innerHTML=`<div style="flex:1;min-width:0">
+        <div style="font-size:.88rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name||d.addr1||'Unnamed'}</div>
+        <div style="font-size:.72rem;color:var(--gray);margin-top:1px">${[d.addr1,d.addr2].filter(Boolean).join(', ')}${d.beds?' · '+d.beds:''}</div>
+        <div style="font-size:.68rem;color:var(--gray)">By ${d.savedBy||'—'} · ${d.savedAt||''}</div>
+      </div>
+      <div style="display:flex;gap:14px;text-align:right;flex-shrink:0;margin:0 12px">
+        <div><div style="font-size:.63rem;color:var(--gray)">Purchase</div><div style="font-size:.8rem;font-weight:500">$${Math.round(d.purchase||0).toLocaleString()}</div></div>
+        <div><div style="font-size:.63rem;color:var(--gray)">ARV</div><div style="font-size:.8rem;font-weight:500">$${Math.round(d.arv||0).toLocaleString()}</div></div>
+        <div><div style="font-size:.63rem;color:var(--gray)">Mid profit</div><div style="font-size:.8rem;font-weight:500;color:${C&&C.sc.M.pft>=0?'var(--green)':'var(--red)'}">${pft}</div></div>
+      </div>`;
+      const acts=document.createElement('div'); acts.style.cssText='display:flex;gap:4px'; acts.onclick=ev=>ev.stopPropagation();
+      const eb=document.createElement('button'); eb.className='btn btn-info btn-sm'; eb.textContent='Edit'; eb.onclick=()=>loadDeal(d.id);
+      const sb=document.createElement('button'); sb.className='btn btn-white btn-sm'; sb.textContent='Share'; sb.onclick=()=>openShareFor(d.id);
+      const db2=document.createElement('button'); db2.className='btn btn-danger btn-sm'; db2.textContent='Del'; db2.onclick=()=>{deals=deals.filter(x=>x.id!==d.id);saveLS('rl_deals',deals);showToast('Deleted');renderDashboard();};
+      acts.appendChild(eb); acts.appendChild(sb); acts.appendChild(db2); row.appendChild(acts);
+      row.onclick=()=>loadDeal(d.id); list.appendChild(row);
+    });
+  }
+  wrap.appendChild(list);
+}
+
+function loadDeal(id){const d=deals.find(x=>x.id===id);if(!d)return;currentDeal={...DEFS,...d};scope=d.scope?d.scope.map(x=>({...x})):DEF_SCOPE.map(x=>({...x}));currentId=id;holdMo=d.holdMo||6;arvLocked={B:true,M:true,W:true};cfdOpen=false;section='deal';analysisTab='sell';renderEditor();}
+function newDeal(){currentDeal={...DEFS,addr1:'',addr2:'',beds:'',borrower:'',purchase:0,arv:0,cashDown:0,rehabAct:0,rehabExt:0,arvB:0,arvM:0,arvW:0,sellerPay:0,sellerPayOn:false,tcFee:0,rlComm:0,otherFees:0,brkPts:0};scope=[];currentId=null;holdMo=6;arvLocked={B:false,M:false,W:false};cfdOpen=false;section='deal';analysisTab='sell';renderEditor();}
+function openShareFor(id){const d=deals.find(x=>x.id===id);if(!d)return;buildShareURL(d);const sb=document.createElement('div');sb.innerHTML=`<div style="font-size:.75rem;color:var(--gray);margin-bottom:6px">Client link for "${d.name||id}":</div><div class="url-box">${shareUrl}</div>`;const m=e('shareModal');m.querySelector('#sh-title').textContent='Share Deal';m.querySelector('#sh-sub').textContent='Copy this link and send to your client.';e('sh-step1').style.display='none';e('sh-step2').style.display='block';e('url-display').style.display='block';e('shareUrlBox').textContent=shareUrl;m.classList.add('open');}
+
+// ── EDITOR ─────────────────────────────────────────────────────────
+function renderEditor(){
+  renderBar(true);
+  const mb=e('mainBody'); mb.innerHTML='';
+  const wrap=document.createElement('div'); wrap.className='wrap';
+  // Section switcher
+  const sw=document.createElement('div'); sw.className='sec-sw';
+  [['deal','📊 Deal Analysis'],['scope','🔨 Scope of Work']].forEach(([k,l])=>{
+    const b=document.createElement('button'); b.className='sw-btn'+(section===k?' act':''); b.textContent=l;
+    b.onclick=()=>{section=k;renderEditor();}; sw.appendChild(b);
+  });
+  wrap.appendChild(sw);
+  if(section==='scope'){renderScopeSection(wrap);}
+  else{renderDealForm(wrap);}
+  mb.appendChild(wrap);
+  wireInputs(wrap);
+}
+
+function renderDealForm(wrap){
+  const d=currentDeal; const C=calcDeal(d,holdMo);
+  const sowTot=scopeTotal(); const sowLinked=sowTot>0;
+
+  // PROPERTY INFO
+  appendCard(wrap,'Property information',`
+    <div class="g4">
+      <div class="ig"><label>Street address</label><input data-k="addr1" value="${d.addr1}" placeholder="e.g. 36th St"></div>
+      <div class="ig"><label>City, State</label><input data-k="addr2" value="${d.addr2}"></div>
+      <div class="ig"><label>Beds / Baths</label><input data-k="beds" value="${d.beds}" placeholder="4 BD / 2.5 BA"></div>
+      <div class="ig"><label>Borrower / Entity</label><input data-k="borrower" value="${d.borrower}"></div>
+    </div>`);
+
+  // LOAN TERMS
+  appendCard(wrap,'Hard money loan terms',`
+    <div class="g4" style="margin-bottom:9px">
+      <div class="ig"><label>Purchase price ($)</label><input data-k="purchase" type="number" value="${d.purchase}" step="1000"></div>
+      <div class="ig"><label>ARV ($)</label><input data-k="arv" type="number" value="${d.arv}" step="1000"><span class="note">Scenarios auto-scale from this</span></div>
+      <div class="ig"><label>LTV (%)</label><input data-k="ltv" type="number" value="${d.ltv}" step="1"></div>
+      <div class="ig"><label><span>Loan amount</span><span class="at">AUTO</span></label><input id="auto-loan" class="auto" readonly value="${fmt(C.loan)}"><span class="note" id="auto-loan-note">${d.ltv}% × ${fmt(d.arv)}</span></div>
+    </div>
+    <div class="g4">
+      <div class="ig"><label><span>Rehab holdback</span><span class="at">AUTO</span></label><input id="auto-rh" class="auto" readonly value="${fmt(C.rh)}"><span class="note" id="auto-rh-note">${fmt(C.loan)} − ${fmt(d.purchase)}</span></div>
+      <div class="ig"><label>Interest rate (%)</label><input data-k="intRate" type="number" value="${d.intRate}" step="0.25"></div>
+      <div class="ig"><label><span>Monthly interest</span><span class="at">AUTO</span></label><input id="auto-mi" class="auto" readonly value="${fmt(C.mi)}/mo"></div>
+      <div class="ig"><label>Cash down to closing ($)</label><input data-k="cashDown" type="number" value="${d.cashDown}" step="500"></div>
+    </div>`);
+
+  // FEES
+  const feesCard=appendCard(wrap,'Fees, costs & commissions',`
+    <div class="g4" style="margin-bottom:9px">
+      <div class="ig"><label>Admin — closing ($)</label><input data-k="adminC" type="number" value="${d.adminC}" step="50"></div>
+      <div class="ig"><label>Admin — payoff ($)</label><input data-k="adminP" type="number" value="${d.adminP}" step="50"></div>
+      <div class="ig"><label>Title / closing ($)</label><input data-k="titleF" type="number" value="${d.titleF}" step="50"></div>
+      <div class="ig"><label>Broker fee (points)</label><input data-k="brkPts" type="number" value="${d.brkPts}" step="0.5" min="0"></div>
+    </div>
+    <div class="g4" style="margin-bottom:9px">
+      <div class="ig"><label>Monthly insurance ($)</label><input data-k="ins" type="number" value="${d.ins}" step="10"></div>
+      <div class="ig"><label>Monthly prop taxes ($)</label><input data-k="tax" type="number" value="${d.tax}" step="10"></div>
+      <div class="ig"><label>Commission (%)</label><input data-k="commPct" type="number" value="${d.commPct}" step="0.5"><span class="note">% of sale price</span></div>
+      <div class="ig"><label><span>Commission ($)</span><span class="at">AUTO</span></label><input id="auto-comm" class="auto" readonly value="${fmt(d.arvM*d.commPct/100)}"><span class="note">${d.commPct}% × mid ARV</span></div>
+    </div>
+    <div class="g3" style="margin-bottom:9px">
+      <div class="ig"><label>TC fee ($)</label><input data-k="tcFee" type="number" value="${d.tcFee}" step="50"></div>
+      <div class="ig"><label>RL commission ($)</label><input data-k="rlComm" type="number" value="${d.rlComm}" step="100"></div>
+      <div class="ig"><label>Other fees ($)</label><input data-k="otherFees" type="number" value="${d.otherFees||0}" step="100"></div>
+    </div>
+    <div id="seller-chk-wrap"></div>`);
+  // Seller payoff checkbox
+  buildSellerChk(feesCard.querySelector('#seller-chk-wrap'));
+
+  // REHAB
+  const remPos=C.rehabRemaining>=0;
+  appendCard(wrap,`Rehab budget${sowLinked?` <span style="font-size:.58rem;color:var(--green);text-transform:none;letter-spacing:0;font-weight:400">● Linked from Scope of Work</span>`:''}`,`
+    <div class="g3" style="margin-bottom:9px">
+      <div class="ig"><label><span>Actual rehab cost ($)</span>${sowLinked?'<span class="at" style="color:var(--green)">FROM SCOPE</span>':''}</label><input ${sowLinked?'class="auto" readonly':'data-k="rehabAct" class="editable"'} type="number" value="${d.rehabAct}" step="500"><span class="note">${sowLinked?'Auto from Scope of Work (materials + labor)':'Client / borrower can adjust — or build in Scope of Work'}</span></div>
+      <div class="ig"><label><span>Lender holdback ($)</span><span class="at">AUTO</span></label><input id="auto-rh2" class="auto" readonly value="${fmt(C.rh)}"><span class="note">65% ARV loan − purchase price</span></div>
+      <div class="ig"><label><span>Additional out of pocket ($)</span></label><input data-k="rehabExt" class="editable" type="number" value="${d.rehabExt}" step="500"><span class="note">Anything outside the holdback</span></div>
+    </div>
+    <div id="rehab-balance-box" style="border-radius:8px;padding:12px 15px;margin:4px 0 2px;background:${remPos?'var(--greenl)':'var(--redl)'};border:1px solid ${remPos?'var(--green)':'var(--red)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+          <div id="rehab-bal-label" style="font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:${remPos?'var(--green)':'var(--red)'}">${remPos?'Remaining holdback balance' : 'Rehab shortfall — over holdback'}</div>
+          <div id="rehab-bal-sub" style="font-size:.7rem;color:var(--gray);margin-top:2px">${fmt(C.rh)} holdback ${remPos?'−':'−'} ${fmt(C.actualRehab)} actual rehab</div>
+        </div>
+        <div id="rehab-bal-amt" style="font-size:1.5rem;font-weight:700;color:${remPos?'var(--green)':'var(--red)'}">${remPos?'+':'−'}${fmt(Math.abs(C.rehabRemaining))}</div>
+      </div>
+      <div id="rehab-bal-note" style="font-size:.68rem;color:var(--gray);margin-top:7px;line-height:1.5">${remPos?'The lender holdback covers the full rehab with this amount left over. No additional borrower funds needed for rehab.':'The rehab cost exceeds the lender holdback. The borrower must cover this shortfall out of pocket.'}</div>
+    </div>
+    <div class="dvd">Holding period</div>
+    <div class="htabs">
+      ${[1,2,3,6].map(m=>`<div class="ht${holdMo===m?' act':''}" onclick="setHold(${m})">${m} Month${m>1?'s':''}</div>`).join('')}
+    </div>`);
+
+  // ARV SCENARIOS
+  appendCard(wrap,'ARV scenarios — auto-populates · override any value',`
+    <div class="g3" style="margin-bottom:9px">
+      <div class="ig"><label><span>Best ARV — 100%</span><span class="at" id="lbl-B">${arvLocked.B?'LOCKED':'AUTO'}</span></label><input id="arvB" type="number" value="${d.arvB}" step="1000"></div>
+      <div class="ig"><label><span>Mid ARV — 90%</span><span class="at" id="lbl-M">${arvLocked.M?'LOCKED':'AUTO'}</span></label><input id="arvM" type="number" value="${d.arvM}" step="1000"></div>
+      <div class="ig"><label><span>Worst ARV — 85%</span><span class="at" id="lbl-W">${arvLocked.W?'LOCKED':'AUTO'}</span></label><input id="arvW" type="number" value="${d.arvW}" step="1000"></div>
+    </div>
+    <div class="g3">
+      <div class="ig"><label>Best contingency ($)</label><input data-k="cB" type="number" value="${d.cB}" step="500"></div>
+      <div class="ig"><label>Mid contingency ($)</label><input data-k="cM" type="number" value="${d.cM}" step="500"></div>
+      <div class="ig"><label>Worst contingency ($)</label><input data-k="cW" type="number" value="${d.cW}" step="500"></div>
+    </div>`);
+
+  // ANALYSIS TABS
+  const tabs=document.createElement('div'); tabs.className='tabs';
+  [{k:'sell',l:'🏷 Sell Property'},{k:'refi',l:'🔄 Refi (DSCR)'},{k:'compare',l:'⚖ Compare Both'}].forEach(({k,l})=>{
+    const tb=document.createElement('button'); tb.className='tab'+(analysisTab===k?' act':''); tb.textContent=l;
+    tb.onclick=()=>{analysisTab=k;renderEditor();}; tabs.appendChild(tb);
+  });
+  wrap.appendChild(tabs);
+
+  // Analysis output wrapped in a container we can refresh in place
+  const analysisWrap=document.createElement('div'); analysisWrap.id='analysis-output';
+  wrap.appendChild(analysisWrap);
+  const C2=calcDeal(currentDeal,holdMo);
+  if(analysisTab==='sell') renderSell(analysisWrap,C2);
+  else if(analysisTab==='refi') renderRefi(analysisWrap,C2);
+  else renderCompare(analysisWrap,C2);
+  renderBreakdown(analysisWrap,C2);
+}
+
+function buildSellerChk(container){
+  const d=currentDeal;
+  const wrap=document.createElement('div'); wrap.style.cssText='margin-top:4px';
+  const chk=document.createElement('div'); chk.className='chk';
+  const box=document.createElement('div'); box.className='chk-box'+(d.sellerPayOn?' on':'');
+  box.innerHTML=d.sellerPayOn?'<svg width="9" height="9"><polyline points="1.5,4.5 3.5,7 7.5,2" fill="none" stroke="white" stroke-width="1.8"/></svg>':'';
+  const lbl=document.createElement('span'); lbl.style.cssText='font-size:.78rem;font-weight:500';lbl.textContent='Seller payoff at sale';
+  const sub=document.createElement('span'); sub.style.cssText='font-size:.7rem;color:var(--gray)';sub.textContent=' — check if original seller is owed money from proceeds';
+  chk.appendChild(box);chk.appendChild(lbl);chk.appendChild(sub);
+  chk.onclick=()=>{currentDeal.sellerPayOn=!currentDeal.sellerPayOn;renderEditor();};
+  wrap.appendChild(chk);
+  if(d.sellerPayOn){
+    const row=document.createElement('div'); row.className='ig'; row.style.cssText='margin-top:8px;max-width:200px';
+    row.innerHTML='<label>Seller payoff amount ($)</label><input type="number" data-k="sellerPay" value="'+d.sellerPay+'" step="1000">';
+    wrap.appendChild(row);
+  }
+  container.appendChild(wrap);
+}
+
+// ── SELL TAB ───────────────────────────────────────────────────────
+function renderSell(wrap,C){
+  const d=currentDeal; const loan=d.arv*(d.ltv/100);
+  const tI=C.mi*holdMo;
+  const sc=document.createElement('div'); sc.className='sc3';
+  [{k:'B',lbl:'▲ Best',arv:d.arvB,c:d.cB,col:GC('green')},{k:'M',lbl:'► Mid',arv:d.arvM,c:d.cM,col:GC('gold')},{k:'W',lbl:'▼ Worst',arv:d.arvW,c:d.cW,col:GC('red')}].forEach(({k,lbl,arv,c,col})=>{
+    const s=C.sc[k],real=arv*d.commPct/100;
+    const card=document.createElement('div'); card.className='sc'; card.style.cssText='border:1.5px solid '+col;
+    card.innerHTML=`<div class="sc-hdr" style="background:${col};color:#fff"><span>${lbl}</span><span>$${Math.round(arv/1000)}K ARV</span></div>
+    <div class="sc-body">
+      <div class="sr"><span class="sl">Sale price</span><span class="sv">$${Math.round(arv).toLocaleString()}</span></div>
+      <div class="sr"><span class="sl">Commission (${d.commPct}%)</span><span class="sv">−$${Math.round(real).toLocaleString()}</span></div>
+      <div class="sr"><span class="sl">Loan payoff</span><span class="sv">−$${Math.round(loan).toLocaleString()}</span></div>
+      <div class="sr"><span class="sl">Financing (${holdMo} mo)</span><span class="sv">−$${Math.round(tI+d.adminC+d.adminP).toLocaleString()}</span></div>
+      <div class="sr"><span class="sl">Hold (ins + tax)</span><span class="sv">−$${Math.round(C.tIns+C.tTax).toLocaleString()}</span></div>
+      <div class="sr"><span class="sl">Fees + title</span><span class="sv">−$${Math.round(C.bF+d.tcFee+d.rlComm+d.titleF+(d.otherFees||0)).toLocaleString()}</span></div>
+      ${C.sp>0?`<div class="sr"><span class="sl" style="color:var(--red)">Seller payoff</span><span class="sv n">−$${Math.round(C.sp).toLocaleString()}</span></div>`:''}
+      ${C.extraOOP>0?`<div class="sr"><span class="sl">Extra out-of-pocket</span><span class="sv n">−$${Math.round(C.extraOOP).toLocaleString()}</span></div>`:''}
+      ${C.rehabRemaining!==0?`<div class="sr"><span class="sl">${C.rehabRemaining>=0?'Unused holdback':'Rehab shortfall'}</span><span class="sv ${C.rehabRemaining>=0?'p':'n'}">${C.rehabRemaining>=0?'+':'−'}$${Math.round(Math.abs(C.rehabRemaining)).toLocaleString()}</span></div>`:''}
+      <div class="sr"><span class="sl">Contingency</span><span class="sv">−$${Math.round(c).toLocaleString()}</span></div>
+      <div class="sr sep" style="border-color:${col}"><span class="sl">Net proceeds</span><span class="sv ${s.net>=0?'p':'n'}">$${Math.round(Math.abs(s.net)).toLocaleString()}</span></div>
+      <div class="sr" style="color:var(--gray)"><span class="sl">Cash invested</span><span class="sv">−$${Math.round(C.ctc).toLocaleString()}</span></div>
+      <div class="sr pft"><span class="sl">Net profit</span><span class="sv ${s.pft>=0?'p':'n'}">$${fmt(Math.abs(s.pft))}${s.pft<0?' (loss)':''}</span></div>
+    </div>`;
+    sc.appendChild(card);
+  });
+  wrap.appendChild(sc);
+}
+
+function GC(n){return n==='green'?'var(--green)':n==='gold'?'var(--gold)':'var(--red)';}
+
+// ── REFI TAB ───────────────────────────────────────────────────────
+function renderRefi(wrap,C){
+  const d=currentDeal; const loan=d.arv*(d.ltv/100);
+  appendCard(wrap,'DSCR refinance',`
+    <div class="g4" style="margin-bottom:9px">
+      <div class="ig"><label>DSCR rate (%)</label><input data-k="refiRate" type="number" value="${d.refiRate}" step="0.25"></div>
+      <div class="ig"><label>DSCR LTV (%)</label><input data-k="refiLtv" type="number" value="${d.refiLtv}" step="1"></div>
+      <div class="ig"><label>Amortization (yrs)</label><input data-k="refiAmort" type="number" value="${d.refiAmort}" step="5"></div>
+      <div class="ig"><label>DSCR closing cost ($)</label><input data-k="refiCost" type="number" value="${d.refiCost}" step="500"></div>
+    </div>
+    <div class="g3">
+      <div class="ig"><label>Best appraisal ($)</label><input data-k="apprB" type="number" value="${d.apprB}" step="1000"></div>
+      <div class="ig"><label>Mid appraisal ($)</label><input data-k="apprM" type="number" value="${d.apprM}" step="1000"></div>
+      <div class="ig"><label>Worst appraisal ($)</label><input data-k="apprW" type="number" value="${d.apprW}" step="1000"></div>
+    </div>`);
+  const sc=document.createElement('div'); sc.className='sc3';
+  [{appr:d.apprB,lbl:'▲ Best',col:GC('green')},{appr:d.apprM,lbl:'► Mid',col:GC('gold')},{appr:d.apprW,lbl:'▼ Worst',col:GC('red')}].forEach(({appr,lbl,col})=>{
+    const rl=appr*(d.refiLtv/100),co=rl-loan-C.sp-d.refiCost,pi=pmt(rl,d.refiRate,d.refiAmort)+d.ins+d.tax,np=co-C.ctc;
+    const card=document.createElement('div'); card.className='sc'; card.style.cssText='border:1.5px solid '+col;
+    card.innerHTML=`<div class="sc-hdr" style="background:${col};color:#fff"><span>${lbl}</span><span>$${Math.round(appr/1000)}K appr</span></div>
+    <div class="sc-body">
+      <div class="sr"><span class="sl">Refi loan (${d.refiLtv}%)</span><span class="sv">$${Math.round(rl).toLocaleString()}</span></div>
+      <div class="sr"><span class="sl">Pay off HM</span><span class="sv n">−$${Math.round(loan).toLocaleString()}</span></div>
+      ${C.sp>0?`<div class="sr"><span class="sl" style="color:var(--red)">Seller payoff</span><span class="sv n">−$${Math.round(C.sp).toLocaleString()}</span></div>`:''}
+      <div class="sr"><span class="sl">DSCR closing cost</span><span class="sv n">−$${Math.round(d.refiCost).toLocaleString()}</span></div>
+      <div class="sr sep" style="border-color:${col}"><span class="sl">Net cash out</span><span class="sv ${co>=0?'p':'n'}">${co>=0?'$'+Math.round(co).toLocaleString():'−$'+Math.abs(Math.round(co)).toLocaleString()+' ⚠'}</span></div>
+      <div class="sr" style="color:var(--gray)"><span class="sl">Cash invested</span><span class="sv">−$${Math.round(C.ctc).toLocaleString()}</span></div>
+      <div class="sr pft"><span class="sl">Net position</span><span class="sv ${np>=0?'p':'n'}">$${Math.round(Math.abs(np)).toLocaleString()}</span></div>
+      <div class="sr" style="border-top:1px solid var(--bd);padding-top:5px;margin-top:3px"><span class="sl">New PITI/mo</span><span class="sv" style="color:var(--blue)">$${Math.round(pi).toLocaleString()}</span></div>
+    </div>`;
+    sc.appendChild(card);
+  });
+  wrap.appendChild(sc);
+  // CFD toggle
+  const cftog=document.createElement('div');
+  cftog.style.cssText='background:var(--gl);border:1px solid rgba(184,151,42,.3);border-radius:var(--r);padding:10px 13px;cursor:pointer;display:flex;align-items:center;gap:9px;margin-bottom:9px';
+  const cbox=document.createElement('div'); cbox.className='chk-box'+(cfdOpen?' on':''); cbox.innerHTML=cfdOpen?'<svg width="9" height="9"><polyline points="1.5,4.5 3.5,7 7.5,2" fill="none" stroke="white" stroke-width="1.8"/></svg>':'';
+  const ctxt=document.createElement('div'); ctxt.innerHTML='<div style="font-size:.78rem;font-weight:500;color:var(--gd)">Contract for Deed (CFD) after Refi</div><div style="font-size:.7rem;color:var(--gray)">Toggle to see both closings + monthly cash flow</div>';
+  cftog.appendChild(cbox); cftog.appendChild(ctxt); cftog.onclick=()=>{cfdOpen=!cfdOpen;renderEditor();};
+  wrap.appendChild(cftog);
+  if(cfdOpen){
+    const mid=d.apprM*(d.refiLtv/100),co1=mid-loan-C.sp-d.refiCost;
+    const fin=d.cfdPrice-d.cfdDown,bp=pmt(fin,d.cfdRate,30);
+    const piti=pmt(mid,d.refiRate,d.refiAmort)+d.ins+d.tax,cf=bp-piti,ci2=d.cfdDown+d.cfdClose,np=(co1+ci2)-C.ctc;
+    appendCard(wrap,'CFD terms',`
+      <div class="g4" style="margin-bottom:9px">
+        <div class="ig"><label>CFD sale price ($)</label><input data-k="cfdPrice" type="number" value="${d.cfdPrice}" step="1000"></div>
+        <div class="ig"><label>Down from buyer ($)</label><input data-k="cfdDown" type="number" value="${d.cfdDown}" step="500"></div>
+        <div class="ig"><label>CFD interest rate (%)</label><input data-k="cfdRate" type="number" value="${d.cfdRate}" step="0.1"></div>
+        <div class="ig"><label>Closing from buyer ($)</label><input data-k="cfdClose" type="number" value="${d.cfdClose}" step="500"></div>
+      </div>
+      <div class="g4" style="margin-bottom:12px">
+        <div class="ig"><label><span>Buyer finances</span><span class="at">AUTO</span></label><input class="auto" readonly value="${fmt(fin)}"></div>
+        <div class="ig"><label><span>Buyer pmt/mo</span><span class="at">AUTO</span></label><input class="auto" readonly value="${fmt(bp)}/mo" style="color:var(--green)"></div>
+        <div class="ig"><label><span>Your PITI/mo</span><span class="at">AUTO</span></label><input class="auto" readonly value="${fmt(piti)}/mo" style="color:var(--red)"></div>
+        <div class="ig"><label><span>Cash flow/mo</span><span class="at">AUTO</span></label><input class="auto" readonly value="${(cf>=0?'+':'−')+fmt(Math.abs(cf))}/mo" style="color:${cf>=0?'var(--green)':'var(--red)'}"></div>
+      </div>
+      <div class="g2" style="margin-bottom:12px">
+        <div style="background:var(--bluel);border:1px solid rgba(24,72,160,.2);border-radius:var(--r);padding:12px">
+          <div class="dvd" style="margin-top:0;color:var(--blue)">Closing 1 — DSCR</div>
+          <div class="fr"><span class="fl" style="color:var(--blue)">Refi loan</span><span>$${Math.round(mid).toLocaleString()}</span></div>
+          <div class="fr"><span class="fl" style="color:var(--blue)">Pay off HM</span><span style="color:var(--red)">−$${Math.round(loan).toLocaleString()}</span></div>
+          <div class="fr"><span style="color:var(--blue);font-weight:600">Cash out</span><span style="color:${co1>=0?'var(--blue)':'var(--red)'};font-weight:700">${co1>=0?'$'+Math.round(co1).toLocaleString():'−$'+Math.abs(Math.round(co1)).toLocaleString()}</span></div>
+        </div>
+        <div style="background:var(--greenl);border:1px solid rgba(26,107,42,.2);border-radius:var(--r);padding:12px">
+          <div class="dvd" style="margin-top:0;color:var(--green)">Closing 2 — CFD</div>
+          <div class="fr"><span class="fl" style="color:var(--green)">Down + closing</span><span style="color:var(--green)">$${Math.round(ci2).toLocaleString()}</span></div>
+          <div class="fr"><span style="color:var(--green);font-weight:600">Cash in</span><span style="color:var(--green);font-weight:700">$${Math.round(ci2).toLocaleString()}</span></div>
+        </div>
+      </div>
+      <div class="sum-bar">
+        <div><div class="sb-l">Both closings cash</div><div class="sb-v">${fmt(co1+ci2)}</div></div>
+        <div><div class="sb-l">Monthly cash flow</div><div class="sb-v ${cf>=0?'grn':'red'}">${cf>=0?'+':'−'}${fmt(Math.abs(cf))}/mo</div></div>
+        <div><div class="sb-l">Net profit (both closings − invested)</div><div class="sb-v gld">${np>=0?fmt(np):'−'+fmt(Math.abs(np))}</div></div>
+      </div>`);
+  }
+}
+
+// ── COMPARE TAB ────────────────────────────────────────────────────
+function renderCompare(wrap,C){
+  const d=currentDeal; const loan=d.arv*(d.ltv/100);
+  const mReal=d.arvM*d.commPct/100;
+  const mNet=C.sc.M.net,mPft=C.sc.M.pft;
+  const midR=d.apprM*(d.refiLtv/100),mCO=midR-loan-C.sp-d.refiCost;
+  const mPITI=pmt(midR,d.refiRate,d.refiAmort)+d.ins+d.tax,mRP=mCO-C.ctc;
+  const cmp=document.createElement('div'); cmp.className='g2';
+  [{hdr:'🏷 Sell — Mid ARV $'+Math.round(d.arvM/1000)+'K',col:GC('green'),rows:[['Cash to close',fmt(C.ctc)],['Commission',fmt(mReal)],['Net proceeds',fmt(Math.abs(mNet))],['Net profit',fmt(Math.abs(mPft)),mPft>=0?GC('green'):GC('red')],['Keep property?','No — sold','var(--red)']].filter(Boolean)},
+  {hdr:'🔄 Refi — Mid Appraisal $'+Math.round(d.apprM/1000)+'K',col:GC('gold'),rows:[['Cash to close',fmt(C.ctc)],['Net cash out',mCO>=0?fmt(mCO):'−'+fmt(Math.abs(mCO))+' ⚠',mCO>=0?'var(--blue)':'var(--red)'],['PITI/mo',fmt(mPITI)+'/mo'],['Net position',fmt(Math.abs(mRP)),mRP>=0?'var(--blue)':'var(--red)'],['Keep property?','Yes — you own it','var(--green)']]}].forEach(({hdr,col,rows})=>{
+    const c=document.createElement('div'); c.style.cssText='border:1.5px solid '+col+';border-radius:var(--r);overflow:hidden';
+    c.innerHTML='<div style="background:'+col+';color:#fff;padding:9px 12px;font-size:.73rem;font-weight:600">'+hdr+'</div>';
+    const bd=document.createElement('div'); bd.style.cssText='padding:10px 12px';
+    rows.forEach(([l,v,vc])=>{const r=document.createElement('div');r.className='sr';r.innerHTML=`<span class="sl">${l}</span><span style="font-weight:500;color:${vc||'var(--black)'}">${v}</span>`;bd.appendChild(r);});
+    c.appendChild(bd);cmp.appendChild(c);
+  });
+  const cmpCard=document.createElement('div'); cmpCard.className='card'; cmpCard.innerHTML='<div class="ct">Side-by-side — mid case</div>';
+  cmpCard.appendChild(cmp); wrap.appendChild(cmpCard);
+}
+
+// ── BREAKDOWN ──────────────────────────────────────────────────────
+function renderBreakdown(wrap,C){
+  const d=currentDeal;const mReal=d.arvM*d.commPct/100;
+  const loan=d.arv*(d.ltv/100);
+  const card=document.createElement('div');card.className='card';
+  card.innerHTML=`<div class="ct">Full cost breakdown & cash to close</div>
+  <div class="fee-sec">
+    <div class="fee-hdr">Financing & hold costs</div>
+    <div class="fr"><span class="fl">Interest — ${holdMo} mo @ ${d.intRate}%</span><span class="fv">−${fmt(C.tI)}</span></div>
+    <div class="fr"><span class="fl">Insurance — ${holdMo} mo @ $${d.ins}/mo</span><span class="fv">−${fmt(C.tIns)}</span></div>
+    <div class="fr"><span class="fl">Property taxes — ${holdMo} mo @ $${d.tax}/mo</span><span class="fv">−${fmt(C.tTax)}</span></div>
+    <div class="fr"><span class="fl">Admin fee at closing</span><span class="fv">−${fmt(d.adminC)}</span></div>
+    <div class="fr"><span class="fl">Admin fee at payoff</span><span class="fv">−${fmt(d.adminP)}</span></div>
+  </div>
+  <div class="fee-sec" style="margin-top:7px">
+    <div class="fee-hdr">Closing & sale fees</div>
+    <div class="fr"><span class="fl">Title / closing costs</span><span class="fv">−${fmt(d.titleF)}</span></div>
+    <div class="fr"><span class="fl">Broker fee (${d.brkPts} points)</span><span class="fv">${C.bF>0?'−'+fmt(C.bF):'$0'}</span></div>
+    <div class="fr"><span class="fl">TC fee</span><span class="fv">${d.tcFee>0?'−'+fmt(d.tcFee):'$0'}</span></div>
+    <div class="fr"><span class="fl">RL commission</span><span class="fv">${d.rlComm>0?'−'+fmt(d.rlComm):'$0'}</span></div>
+    <div class="fr"><span class="fl">Other fees</span><span class="fv">${(d.otherFees||0)>0?'−'+fmt(d.otherFees||0):'$0'}</span></div>
+    <div class="fr"><span class="fl">Commission at sale (${d.commPct}% of mid ARV)</span><span class="fv">−${fmt(mReal)}</span></div>
+    ${C.sp>0?`<div class="fr"><span class="fl" style="color:var(--red)">Seller payoff at sale</span><span class="fv">−${fmt(C.sp)}</span></div>`:''}
+    ${C.extraOOP>0?`<div class="fr"><span class="fl">Extra out-of-pocket rehab</span><span class="fv">−${fmt(C.extraOOP)}</span></div>`:''}
+    ${C.rehabRemaining!==0?`<div class="fr"><span class="fl" style="color:${C.rehabRemaining>=0?'var(--green)':'var(--red)'}">${C.rehabRemaining>=0?'Unused holdback (credited to profit)':'Rehab shortfall (over holdback)'}</span><span class="fv" style="color:${C.rehabRemaining>=0?'var(--green)':'var(--red)'}">${C.rehabRemaining>=0?'+':'−'}${fmt(Math.abs(C.rehabRemaining))}</span></div>`:''}
+    <div class="fr"><span class="fl">Total all-in costs (mid ARV scenario)</span><span class="fvg">${fmt(C.tI+C.tIns+C.tTax+d.adminC+d.adminP+d.titleF+C.bF+(d.tcFee||0)+(d.rlComm||0)+(d.otherFees||0)+mReal+C.sp+C.extraOOP)}</span></div>
+  </div>
+  <div class="ctc">
+    <div class="ctc-t">Cash to Close — your out-of-pocket at initial closing</div>
+    <div class="cr"><span class="cl">Purchase price</span><span class="cv">${fmt(d.purchase)}</span></div>
+    <div class="cr"><span class="cl">Loan covers at closing</span><span class="cv">−${fmt(Math.min(d.purchase,loan))}</span></div>
+    ${C.gap>0?`<div class="cr"><span class="cl">Purchase gap (out of pocket)</span><span class="cv" style="color:var(--red)">${fmt(C.gap)}</span></div>`:''}
+    <div class="cr"><span class="cl">Cash down payment</span><span class="cv">${fmt(d.cashDown)}</span></div>
+    <div class="cr"><span class="cl">Admin fee + title + broker fee</span><span class="cv">${fmt(d.adminC+d.titleF+C.bF)}</span></div>
+    <div class="cr"><span class="cl">Total cash to close</span><span class="cv" style="color:var(--gold)">${fmt(C.ctc)}</span></div>
+  </div>
+  <div class="sum-bar" style="margin-top:9px">
+    <div><div class="sb-l">Cash to close</div><div class="sb-v">${fmt(C.ctc)}</div></div>
+    <div><div class="sb-l">Mid-case net profit</div><div class="sb-v ${C.sc.M.pft>=0?'grn':'red'}">${C.sc.M.pft>=0?'':'−'}${fmt(Math.abs(C.sc.M.pft))}</div></div>
+    <div><div class="sb-l">Monthly hold cost</div><div class="sb-v gld">${fmt(C.mi+d.ins+d.tax)}/mo</div></div>
+  </div>`;
+  wrap.appendChild(card);
+}
+
+// ── SCOPE OF WORK ──────────────────────────────────────────────────
+function renderScopeSection(wrap){
+  const sowTot=scopeTotal();const rh=Math.max(0,currentDeal.arv*(currentDeal.ltv/100)-currentDeal.purchase);
+  const over=sowTot-rh;
+  const card=document.createElement('div');card.className='card';
+  const hdr=document.createElement('div');hdr.style.cssText='display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px';
+  hdr.innerHTML=`<div><div class="ct" style="margin-bottom:2px;border:none;padding:0">Scope of Work — Rehab Budget Builder</div><div style="font-size:.72rem;color:var(--gray)">Line item totals auto-populate the rehab budget. Holdback: <span id="sow-hb">${fmt(rh)}</span></div></div><div style="text-align:right"><div style="font-size:.62rem;color:var(--gray)">Scope total</div><div id="sow-total" style="font-size:1.4rem;font-weight:500;color:var(--gold)">${fmt(sowTot)}</div><div id="sow-badge" style="font-size:.7rem;padding:2px 8px;border-radius:4px;display:inline-block;margin-top:2px;background:${over>0?'var(--redl)':'var(--greenl)'};color:${over>0?'var(--red)':'var(--green)'}">${over>0?fmt(over)+' over holdback':'Within holdback'}</div></div>`;
+  card.appendChild(hdr);
+  // Table
+  const tbl=document.createElement('table');tbl.className='sow-tbl';tbl.style.cssText='margin-bottom:8px';
+  tbl.innerHTML='<thead><tr><th style="width:120px">Category</th><th style="width:88px">Type</th><th>Description</th><th style="width:50px">Qty</th><th style="width:50px">Unit</th><th style="width:80px">Cost</th><th style="width:78px">Line total</th><th style="width:28px"></th></tr></thead>';
+  const tbody=document.createElement('tbody');
+  scope.forEach((row,idx)=>{
+    const tr=document.createElement('tr');
+    // Category
+    const catTd=document.createElement('td');const catSel=document.createElement('select');
+    CATS.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;if(c===row.cat)o.selected=true;catSel.appendChild(o);});
+    catSel.onchange=ev=>{scope[idx].cat=ev.target.value;if(ev.target.value==='Labor'){scope[idx].type='labor';}renderEditor();};catTd.appendChild(catSel);tr.appendChild(catTd);
+    // Type (material / labor)
+    const tyTd=document.createElement('td');const tySel=document.createElement('select');
+    [['material','Material'],['labor','Labor']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;if((row.type||'material')===v)o.selected=true;tySel.appendChild(o);});
+    tySel.onchange=ev=>{scope[idx].type=ev.target.value;renderEditor();};tyTd.appendChild(tySel);tr.appendChild(tyTd);
+    // Desc
+    const dTd=document.createElement('td');const dInp=document.createElement('input');dInp.value=row.desc;dInp.placeholder='Description';dInp.oninput=ev=>scope[idx].desc=ev.target.value;dTd.appendChild(dInp);tr.appendChild(dTd);
+    // Qty
+    const qTd=document.createElement('td');const qInp=document.createElement('input');qInp.type='text';qInp.inputMode='decimal';qInp.value=(row.qty===0||row.qty==null||row.qty==='')?'':row.qty;qInp.placeholder='0';qInp.style.textAlign='right';qInp.oninput=ev=>{const raw=ev.target.value.replace(/[^0-9.]/g,'');scope[idx].qty=raw===''?0:parseFloat(raw)||0;syncScopeLive(idx);};qTd.appendChild(qInp);tr.appendChild(qTd);
+    // Unit
+    const uTd=document.createElement('td');const uSel=document.createElement('select');['LS','SF','LF','EA','HR'].forEach(u=>{const o=document.createElement('option');o.value=u;o.textContent=u;if(u===row.unit)o.selected=true;uSel.appendChild(o);});uSel.onchange=ev=>scope[idx].unit=ev.target.value;uTd.appendChild(uSel);tr.appendChild(uTd);
+    // Cost
+    const cTd=document.createElement('td');const cInp=document.createElement('input');cInp.type='text';cInp.inputMode='decimal';cInp.value=(row.cost===0||row.cost==null||row.cost==='')?'':row.cost;cInp.placeholder='0';cInp.style.textAlign='right';cInp.oninput=ev=>{const raw=ev.target.value.replace(/[^0-9.]/g,'');scope[idx].cost=raw===''?0:parseFloat(raw)||0;syncScopeLive(idx);};cTd.appendChild(cInp);tr.appendChild(cTd);
+    // Line total
+    const ltTd=document.createElement('td');const lt=(parseFloat(row.qty)||0)*(parseFloat(row.cost)||0);ltTd.innerHTML='<div id="lt-'+idx+'" style="background:var(--gl);border-radius:4px;padding:4px 7px;font-size:.77rem;font-weight:500;text-align:right;color:var(--gd)">$'+Math.round(lt).toLocaleString()+'</div>';tr.appendChild(ltTd);
+    // Delete
+    const delTd=document.createElement('td');const delBtn=document.createElement('button');delBtn.textContent='×';delBtn.style.cssText='background:var(--redl);color:var(--red);border:none;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:.9rem;font-family:\'DM Sans\',sans-serif';delBtn.onclick=()=>{scope.splice(idx,1);syncScope();};delTd.appendChild(delBtn);tr.appendChild(delTd);
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);card.appendChild(tbl);
+  if(scope.length===0){
+    const empty=document.createElement('div');empty.style.cssText='text-align:center;padding:18px 12px;color:var(--gray);font-size:.8rem;background:var(--lg);border-radius:8px;margin-bottom:8px';
+    empty.innerHTML='No line items yet. Add materials and labor below to build this deal\'s rehab budget.';
+    card.appendChild(empty);
+  }
+  // Add row buttons (material line + dedicated labor line)
+  const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px';
+  const addBtn=document.createElement('button');addBtn.className='btn btn-white';addBtn.style.cssText='flex:1;justify-content:center;border-style:dashed';addBtn.textContent='+ Add Material Line';addBtn.onclick=()=>{scope.push({id:Date.now(),cat:'Other',desc:'',qty:1,unit:'LS',cost:0,type:'material'});renderEditor();};btnRow.appendChild(addBtn);
+  const addLabBtn=document.createElement('button');addLabBtn.className='btn btn-white';addLabBtn.style.cssText='flex:1;justify-content:center;border-style:dashed;border-color:#d9a300;color:#9a7500';addLabBtn.textContent='+ Add Labor Line';addLabBtn.onclick=()=>{scope.push({id:Date.now(),cat:'Labor',desc:'',qty:1,unit:'HR',cost:0,type:'labor'});renderEditor();};btnRow.appendChild(addLabBtn);
+  card.appendChild(btnRow);
+  // Materials vs Labor split
+  const matT=materialTotal(),labT=laborTotal();
+  if(scope.length>0){
+    const splitHdr=document.createElement('div');splitHdr.className='dvd';splitHdr.textContent='Materials vs. labor';splitHdr.style.marginTop='14px';card.appendChild(splitHdr);
+    const split=document.createElement('div');split.id='sow-split';split.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:4px';
+    const mkTile=(lbl,val,bg,fg,pct)=>`<div style="background:${bg};border-radius:7px;padding:10px 12px"><div style="font-size:.64rem;color:${fg};text-transform:uppercase;letter-spacing:.05em;font-weight:600">${lbl}</div><div style="font-size:1.25rem;font-weight:600;color:${fg};margin-top:2px">${fmt(val)}</div>${pct!=null?`<div style="font-size:.64rem;color:${fg};opacity:.75;margin-top:1px">${pct}% of scope</div>`:''}</div>`;
+    const tot=matT+labT;
+    split.innerHTML=mkTile('Materials',matT,'#eef4ff','#1848A0',tot?Math.round(matT/tot*100):0)+mkTile('Labor',labT,'#fff7e0','#9a7500',tot?Math.round(labT/tot*100):0)+mkTile('Total scope',tot,'#f3f4f6','#333',null);
+    card.appendChild(split);
+  }
+  // Category summary
+  if(scope.length>0){
+    const cats={};scope.forEach(r=>{const t=(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0);if(t>0)cats[r.cat]=(cats[r.cat]||0)+t;});
+    const keys=Object.keys(cats).filter(k=>cats[k]>0);
+    if(keys.length>1){
+      const sumHdr=document.createElement('div');sumHdr.className='dvd';sumHdr.textContent='Breakdown by category';sumHdr.style.marginTop='14px';card.appendChild(sumHdr);
+      const grid=document.createElement('div');grid.className='sow-summary';
+      keys.sort((a,b)=>cats[b]-cats[a]).forEach(k=>{
+        const tile=document.createElement('div');tile.className='sow-tile';tile.style.background=CAT_COLORS[k]||'#f9f7f2';
+        tile.innerHTML=`<div class="cat-name">${k}</div><div class="cat-amt">$${Math.round(cats[k]).toLocaleString()}</div><div class="cat-pct">${Math.round(cats[k]/sowTot*100)}% of budget</div>`;
+        grid.appendChild(tile);
+      });
+      card.appendChild(grid);
+    }
+  }
+  wrap.appendChild(card);
+}
+
+// ── CLIENT TERM SHEET ──────────────────────────────────────────────
+function buildClientSheet(d){
+  const C=calcDeal(d,d.holdMo||6);const loan=d.arv*(d.ltv/100);
+  tx('ts-addr',d.addr1||'Property Address');tx('ts-city',d.addr2||'');
+  const chips=[d.beds?`<div class="ts-chip">${d.beds}</div>`:'',`<div class="ts-chip">Purchase: <strong>$${Math.round(d.purchase).toLocaleString()}</strong></div>`,`<div class="ts-chip">ARV: <strong>$${Math.round(d.arv).toLocaleString()}</strong></div>`,d.borrower?`<div class="ts-chip">Borrower: <strong>${d.borrower}</strong></div>`:'' ].join('');
+  e('ts-chips').innerHTML=chips;
+  tx('ts-ctc','$'+Math.round(C.ctc).toLocaleString());
+  const mp=e('ts-mpft');mp.textContent=(C.sc.M.pft>=0?'':'−')+'$'+Math.abs(Math.round(C.sc.M.pft)).toLocaleString();mp.style.color=C.sc.M.pft>=0?'var(--green)':'var(--red)';
+  tx('ts-hold',(d.holdMo||6)+' months');
+  tx('ts-pp','$'+Math.round(d.purchase).toLocaleString());tx('ts-arv','$'+Math.round(d.arv).toLocaleString());
+  tx('ts-ltv',d.ltv);tx('ts-loan','$'+Math.round(loan).toLocaleString());tx('ts-rh','$'+Math.round(C.rh).toLocaleString());tx('ts-rate',d.intRate+'%');tx('ts-mi','$'+Math.round(C.mi).toLocaleString()+'/mo');
+  tx('ts-ac','$'+Math.round(d.adminC).toLocaleString());tx('ts-ap','$'+Math.round(d.adminP).toLocaleString());tx('ts-ti','$'+Math.round(d.titleF).toLocaleString());tx('ts-brk',C.bF>0?'$'+Math.round(C.bF).toLocaleString():'$0 (no points)');tx('ts-ins','$'+d.ins+'/mo');tx('ts-tax','$'+d.tax+'/mo');tx('ts-tc',d.tcFee>0?'$'+Math.round(d.tcFee).toLocaleString():'$0');tx('ts-rl',d.rlComm>0?'$'+Math.round(d.rlComm).toLocaleString():'$0');
+  tx('ts-com',d.commPct);tx('ts-real','$'+Math.round(d.arvM*d.commPct/100).toLocaleString()+' (mid ARV)');
+  if(C.sp>0){tx('ts-sell','$'+Math.round(C.sp).toLocaleString());e('ts-sell-row').style.display='flex';}else{e('ts-sell-row').style.display='none';}
+  const mReal=d.arvM*d.commPct/100;
+  tx('ts-ftot','$'+Math.round(C.tI+C.tIns+C.tTax+d.adminC+d.adminP+d.titleF+C.bF+(d.tcFee||0)+(d.rlComm||0)+(d.otherFees||0)+mReal+C.sp+C.extraOOP).toLocaleString());
+  tx('ts-c-pp','$'+Math.round(d.purchase).toLocaleString());tx('ts-c-ln','−$'+Math.round(Math.min(d.purchase,loan)).toLocaleString());
+  if(C.gap>0){tx('ts-c-gap','$'+Math.round(C.gap).toLocaleString());e('ts-gap-row').style.display='flex';}else{e('ts-gap-row').style.display='none';}
+  tx('ts-c-dn','$'+Math.round(d.cashDown).toLocaleString());tx('ts-c-fees','$'+Math.round(d.adminC+d.titleF+C.bF).toLocaleString());tx('ts-c-tot','$'+Math.round(C.ctc).toLocaleString());
+  // Scenarios
+  e('ts-sc3').innerHTML=[{av:d.arvB,c:d.cB,p:C.sc.B.pft,n:C.sc.B.net,cls:'best',lbl:'▲ Best Case',col:'var(--green)'},{av:d.arvM,c:d.cM,p:C.sc.M.pft,n:C.sc.M.net,cls:'mid',lbl:'► Mid Case',col:'var(--gold)'},{av:d.arvW,c:d.cW,p:C.sc.W.pft,n:C.sc.W.net,cls:'worst',lbl:'▼ Worst Case',col:'var(--red)'}].map(({av,c,p,n,lbl,col})=>{
+    const r=av*d.commPct/100;
+    return`<div class="tsc" style="border:2px solid ${col}">
+      <div class="tsc-hdr" style="background:${col};color:#fff"><span>${lbl}</span><span>$${Math.round(av/1000)}K</span></div>
+      <div class="tsc-body">
+        <div class="tsr"><span class="tsrl">Sale price</span><span class="tsrv">$${Math.round(av).toLocaleString()}</span></div>
+        <div class="tsr"><span class="tsrl">Commission (${d.commPct}%)</span><span class="tsrv">−$${Math.round(r).toLocaleString()}</span></div>
+        <div class="tsr"><span class="tsrl">Loan payoff</span><span class="tsrv">−$${Math.round(loan).toLocaleString()}</span></div>
+        <div class="tsr"><span class="tsrl">All financing & fees</span><span class="tsrv">−$${Math.round(C.tI+d.adminC+d.adminP+C.tIns+C.tTax+C.bF+(d.tcFee||0)+(d.rlComm||0)+d.titleF+(d.otherFees||0)+C.sp+C.extraOOP).toLocaleString()}</span></div>
+        ${C.rehabRemaining!==0?`<div class="tsr"><span class="tsrl">${C.rehabRemaining>=0?'Unused holdback':'Rehab shortfall'}</span><span class="tsrv" style="color:${C.rehabRemaining>=0?'var(--green)':'var(--red)'}">${C.rehabRemaining>=0?'+':'−'}$${Math.round(Math.abs(C.rehabRemaining)).toLocaleString()}</span></div>`:''}
+        <div class="tsr"><span class="tsrl">Contingency</span><span class="tsrv">−$${Math.round(c).toLocaleString()}</span></div>
+        <div class="tsr" style="border-top:2px solid ${col};padding-top:5px;font-weight:600"><span class="tsrl">Net proceeds</span><span class="tsrv" style="color:${n>=0?'var(--green)':'var(--red)'}">$${Math.round(Math.abs(n)).toLocaleString()}</span></div>
+        <div class="tsr" style="color:var(--gray)"><span class="tsrl">Cash invested</span><span class="tsrv">−$${Math.round(C.ctc).toLocaleString()}</span></div>
+        <div class="tsr"><span class="tsrl">Net profit</span><span class="tsrv" style="color:${p>=0?'var(--green)':'var(--red)'}">${p>=0?'$':'−$'}${Math.abs(Math.round(p)).toLocaleString()}</span></div>
+      </div></div>`;
+  }).join('');
+  // Scope section
+  if(d.scope&&d.scope.length>0){
+    const stot=d.scope.reduce((s,r)=>s+(r.qty||0)*(r.cost||0),0);
+    e('ts-sow-sec').style.display='block';
+    const sb=e('ts-sow-body');sb.innerHTML='';
+    const cats={};d.scope.forEach(r=>{const t=(r.qty||0)*(r.cost||0);if(t>0)cats[r.cat]=(cats[r.cat]||0)+t;});
+    Object.keys(cats).sort((a,b)=>cats[b]-cats[a]).forEach(k=>{
+      const r=document.createElement('div');r.className='tr';r.innerHTML=`<span class="tl">${k}</span><span class="tv">$${Math.round(cats[k]).toLocaleString()} <span style="font-size:.65rem;color:var(--gray)">(${Math.round(cats[k]/stot*100)}%)</span></span>`;sb.appendChild(r);
+    });
+    const tot=document.createElement('div');tot.className='tr tot';tot.innerHTML=`<span class="tl">Total rehab budget</span><span class="tv g">$${Math.round(stot).toLocaleString()}</span>`;sb.appendChild(tot);
+  } else {e('ts-sow-sec').style.display='none';}
+  tx('ts-foot-addr',(d.addr1?d.addr1+', ':'')+d.addr2+' · Prepared by Real Living Companies · '+new Date().toLocaleDateString());
+}
+
+// ── SAVE MODAL ─────────────────────────────────────────────────────
+function openSaveModal(){
+  e('dealNameInp').value=currentDeal.addr1||currentDeal.name||'New Deal';
+  e('sh-title').textContent='Save & Share';e('sh-sub').textContent='Name this deal to save it to your organization\'s shared database.';
+  e('sh-step1').style.display='block';e('sh-step2').style.display='none';e('url-display').style.display='none';
+  e('shareModal').classList.add('open');
+}
+
+function confirmSave(){
+  const nm=(e('dealNameInp').value||currentDeal.addr1||'New Deal').trim();
+  const id=currentId||('d'+Date.now());
+  const deal={...currentDeal,scope:[...scope.map(x=>({...x}))],id,name:nm,savedBy:currentUser?.name,savedAt:new Date().toLocaleDateString()};
+  const idx=deals.findIndex(d=>d.id===id);if(idx>=0)deals[idx]=deal;else deals.unshift(deal);
+  saveLS('rl_deals',deals);currentId=id;
+  e('sh-title').textContent='"'+nm+'" Saved';e('sh-sub').textContent='Share with your client.';
+  e('sh-step1').style.display='none';e('sh-step2').style.display='block';
+  showToast('Saved: '+nm);
+}
+
+function buildShareURL(d){const p=new URLSearchParams();Object.entries(d).forEach(([k,v])=>{if(typeof v!=='object')p.set(k,String(v));});p.set('view','client');shareUrl=(window.location.origin+window.location.pathname+'?'+p.toString());}
+
+function copyClientLink(){
+  buildShareURL({...currentDeal,scope:undefined,id:currentId||'',name:currentDeal.addr1||'Deal'});
+  e('url-display').style.display='block';e('shareUrlBox').textContent=shareUrl;
+  try{navigator.clipboard.writeText(shareUrl).then(()=>showToast('Link copied!'));}catch(err){showToast('Link ready — copy below');}
+}
+
+function doCopy(){try{navigator.clipboard.writeText(shareUrl).then(()=>showToast('Copied!'));}catch(e){showToast('Copy the link above');}}
+
+function downloadPDF(){
+  const d={...currentDeal,scope:[...scope]};
+  buildClientSheet(d);e('clientSheet').style.display='block';e('adminView').style.display='none';
+  closeM('shareModal');
+  setTimeout(()=>{window.print();e('clientSheet').style.display='none';e('adminView').style.display='block';},300);
+}
+
+// ── USERS MODAL ────────────────────────────────────────────────────
+function openUsers(){
+  const list=e('userList');list.innerHTML='';
+  users.forEach(u=>{
+    const row=document.createElement('div');row.className='si';row.style.cursor='default';
+    const isSelf=u.id===currentUser?.id;
+    const roleBadge=u.role==='admin'?`<span style="background:var(--gold);color:#fff;font-size:.6rem;padding:1px 6px;border-radius:3px;margin-left:5px">ADMIN</span>`:`<span style="background:var(--lg);color:var(--gray);font-size:.6rem;padding:1px 6px;border-radius:3px;margin-left:5px">AGENT</span>`;
+    row.innerHTML=`<div><div style="font-size:.82rem;font-weight:500">${u.name}${roleBadge}${isSelf?'<span style="font-size:.65rem;color:var(--gold);margin-left:5px">(you)</span>':''}</div><div style="font-size:.7rem;color:var(--gray)">PIN: ${u.pin}</div></div>`;
+    if(!isSelf){
+      const d=document.createElement('button');d.className='btn btn-danger btn-sm';d.textContent='Remove';
+      d.onclick=()=>{users=users.filter(x=>x.id!==u.id);saveLS('rl_users',users);openUsers();showToast('Removed: '+u.name);};
+      row.appendChild(d);
+    }
+    list.appendChild(row);
+  });
+  e('usersModal').classList.add('open');
+}
+function addUser(){
+  const nm=e('newUserName').value.trim(),pn=e('newUserPin').value.trim(),rl=e('newUserRole').value;
+  if(!nm||!pn){showToast('Name and PIN required');return;}
+  users.push({id:'u'+Date.now(),name:nm,pin:pn,role:rl});
+  saveLS('rl_users',users);
+  e('newUserName').value='';e('newUserPin').value='';
+  openUsers();showToast('Added: '+nm+' ('+rl+')');
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────
+function appendCard(wrap,title,html){const c=document.createElement('div');c.className='card';c.innerHTML=`<div class="ct">${title}</div>${html}`;wrap.appendChild(c);return c;}
+function closeM(id){e(id).classList.remove('open');}
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',ev=>{if(ev.target===o)o.classList.remove('open');}));
+function showToast(msg){const t=e('toast');t.textContent=msg;t.className='toast show';clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500);}
+function setHold(m){holdMo=m;currentDeal.holdMo=m;renderEditor();}
+
+function refreshAutoFields(){
+  // Update only the AUTO (readonly) display fields + analysis output, never the inputs being typed in.
+  const d=currentDeal, C=calcDeal(d,holdMo);
+  const set=(id,val)=>{const el=e(id);if(el)el.value=val;};
+  const setTxt=(id,val)=>{const el=e(id);if(el)el.textContent=val;};
+  set('auto-loan',fmt(C.loan));
+  setTxt('auto-loan-note',d.ltv+'% × '+fmt(d.arv));
+  set('auto-rh',fmt(C.rh));
+  set('auto-rh2',fmt(C.rh));
+  setTxt('auto-rh-note',fmt(C.loan)+' − '+fmt(d.purchase));
+  set('auto-mi',fmt(C.mi)+'/mo');
+  set('auto-comm',fmt((d.arvM||0)*d.commPct/100));
+  const commNote=document.querySelector('#auto-comm');if(commNote&&commNote.parentElement){const nn=commNote.parentElement.querySelector('.note');if(nn)nn.textContent=d.commPct+'% × mid ARV';}
+  const ovEl=e('auto-ov');if(ovEl)ovEl.value=C.ov>0?fmt(C.ov)+' over holdback':'$0 — within holdback';
+  // Rehab remaining-balance box (holdback vs actual rehab cost)
+  const remPos=C.rehabRemaining>=0;
+  const box=e('rehab-balance-box');
+  if(box){
+    box.style.background=remPos?'var(--greenl)':'var(--redl)';
+    box.style.border='1px solid '+(remPos?'var(--green)':'var(--red)');
+    const lab=e('rehab-bal-label');if(lab){lab.textContent=remPos?'Remaining holdback balance':'Rehab shortfall — over holdback';lab.style.color=remPos?'var(--green)':'var(--red)';}
+    const sub=e('rehab-bal-sub');if(sub)sub.textContent=fmt(C.rh)+' holdback − '+fmt(C.actualRehab)+' actual rehab';
+    const amt=e('rehab-bal-amt');if(amt){amt.textContent=(remPos?'+':'−')+fmt(Math.abs(C.rehabRemaining));amt.style.color=remPos?'var(--green)':'var(--red)';}
+    const note=e('rehab-bal-note');if(note)note.textContent=remPos?'The lender holdback covers the full rehab with this amount left over. No additional borrower funds needed for rehab.':'The rehab cost exceeds the lender holdback. The borrower must cover this shortfall out of pocket.';
+  }
+  // Refresh the analysis output section in place (doesn't touch the form inputs above it)
+  const ao=e('analysis-output');
+  if(ao){
+    ao.innerHTML='';
+    if(analysisTab==='sell') renderSell(ao,C);
+    else if(analysisTab==='refi') renderRefi(ao,C);
+    else renderCompare(ao,C);
+    renderBreakdown(ao,C);
+  }
+}
+
+function wireInputs(container){
+  container.querySelectorAll('input[data-k],select[data-k]').forEach(inp=>{
+    const k=inp.dataset.k;
+    const textKeys=['addr1','addr2','beds','borrower'];
+    if(inp.tagName==='SELECT'){
+      inp.onchange=ev=>{currentDeal[k]=ev.target.value;refreshAutoFields();};
+      return;
+    }
+    inp.oninput=ev=>{
+      const v=ev.target.value;
+      currentDeal[k]=textKeys.includes(k)?v:(parseFloat(v)||0);
+      // If ARV changed, recompute the auto-scaled scenario ARVs (unless locked) and patch those fields in place.
+      if(k==='arv'){
+        if(!arvLocked.B){currentDeal.arvB=Math.round(currentDeal.arv);const b=e('arvB');if(b)b.value=currentDeal.arvB;}
+        if(!arvLocked.M){currentDeal.arvM=Math.round(currentDeal.arv*0.9);const m=e('arvM');if(m)m.value=currentDeal.arvM;}
+        if(!arvLocked.W){currentDeal.arvW=Math.round(currentDeal.arv*0.85);const w=e('arvW');if(w)w.value=currentDeal.arvW;}
+      }
+      // Text fields don't affect calculations — skip the refresh entirely so typing stays smooth.
+      if(textKeys.includes(k)) return;
+      refreshAutoFields();
+    };
+  });
+  // ARV scenario overrides: lock the field on edit, update value, refresh outputs in place.
+  const arvBInp=container.querySelector('#arvB'),arvMInp=container.querySelector('#arvM'),arvWInp=container.querySelector('#arvW');
+  if(arvBInp){arvBInp.onfocus=()=>arvLocked.B=true;arvBInp.oninput=ev=>{arvLocked.B=true;currentDeal.arvB=parseFloat(ev.target.value)||0;refreshAutoFields();};}
+  if(arvMInp){arvMInp.onfocus=()=>arvLocked.M=true;arvMInp.oninput=ev=>{arvLocked.M=true;currentDeal.arvM=parseFloat(ev.target.value)||0;refreshAutoFields();};}
+  if(arvWInp){arvWInp.onfocus=()=>arvLocked.W=true;arvWInp.oninput=ev=>{arvLocked.W=true;currentDeal.arvW=parseFloat(ev.target.value)||0;refreshAutoFields();};}
+  // Rehab fields: update data and refresh outputs (these DO affect overage/analysis).
+  container.querySelectorAll('input[data-k="rehabAct"],input[data-k="rehabExt"]').forEach(inp=>{
+    inp.oninput=ev=>{currentDeal[ev.target.dataset.k]=parseFloat(ev.target.value)||0;refreshAutoFields();};
+  });
+}
+
+// ── URL LOAD (client view) ─────────────────────────────────────────
+function loadFromURL(){
+  const p=new URLSearchParams(window.location.search);if(!p.toString())return;
+  if(p.get('view')==='client'){
+    const d={...DEFS};
+    p.forEach((v,k)=>{if(k!=='view'&&k!=='scope'){const n=parseFloat(v);d[k]=isNaN(n)||['addr1','addr2','beds','borrower'].includes(k)?v:n;}});
+    d.sellerPayOn=p.get('sellerPayOn')==='true';
+    e('loginView').style.display='none';e('adminView').style.display='none';
+    buildClientSheet(d);e('clientSheet').style.display='block';
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────────────
+try {
+  initStorage();
+  loadFromURL();
+} catch(err) {
+  // If anything goes wrong on load (e.g. a corrupted saved deal), recover gracefully
+  // instead of white-screening. Show the login and log the issue for debugging.
+  console.error('Deal Analyzer init error:', err);
+  try {
+    // Attempt to salvage: if a stored deal is corrupt, clear only the deals cache and retry once.
+    deals=[];
+    if(typeof e==='function'){
+      if(e('loginView')) e('loginView').style.display='flex';
+      if(e('adminView')) e('adminView').style.display='none';
+    }
+  } catch(e2){}
+}
+</script>
+</body>
+</html>

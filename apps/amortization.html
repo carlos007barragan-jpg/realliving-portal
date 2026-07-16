@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Real Living — Amortization Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#B8972A;--gl:#FBF6E0;--gd:#7A6010;--black:#0E0E0E;--off:#F9F7F2;--lg:#F2F1EE;--bd:rgba(0,0,0,.08);--green:#1A6B2A;--greenl:#EAF3DE;--red:#B82020;--redl:#FDECEA;--blue:#1848A0;--bluel:#E6EDF8;--gray:#888;--r:8px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--black);min-height:100vh}
+
+/* BAR */
+.bar{background:var(--black);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--gold)}
+.brand{font-family:'Cormorant Garamond',serif;font-size:1.25rem;color:#fff;font-weight:400}
+.brand em{color:var(--gold);font-style:normal}
+.bar-sub{font-size:.68rem;color:rgba(255,255,255,.35);margin-left:10px;letter-spacing:.04em}
+
+/* LAYOUT */
+.wrap{max-width:1020px;margin:0 auto;padding:24px 16px 60px}
+.layout{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+
+/* CARD */
+.card{background:#fff;border:1px solid var(--bd);border-radius:var(--r);padding:18px}
+.ct{font-size:.62rem;font-weight:500;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;padding-bottom:.35rem;border-bottom:1px solid var(--gl)}
+
+/* INPUTS */
+.ig{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.ig label{font-size:.68rem;color:var(--gray);font-weight:400}
+.inp-wrap{position:relative}
+.inp-wrap .pre{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:.85rem;font-weight:500;color:var(--gray);pointer-events:none}
+.inp-wrap .suf{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:.82rem;color:var(--gray);pointer-events:none}
+.ig input,.ig select{border:1px solid var(--bd);border-radius:6px;padding:9px 11px;font-size:.9rem;font-weight:500;font-family:'DM Sans',sans-serif;background:var(--lg);color:var(--black);width:100%;transition:all .13s}
+.ig input.has-pre{padding-left:22px}
+.ig input.has-suf{padding-right:32px}
+.ig input:focus,.ig select:focus{outline:none;border-color:var(--gold);background:#fff}
+
+/* TERM BUTTONS */
+.term-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:16px}
+.tb{padding:7px 4px;text-align:center;font-size:.78rem;font-weight:500;border:1px solid var(--bd);border-radius:5px;cursor:pointer;background:var(--lg);color:var(--gray);font-family:'DM Sans',sans-serif;transition:all .12s}
+.tb.act{background:var(--black);color:var(--gold);border-color:var(--black)}
+
+/* CALC BUTTON */
+.calc-btn{width:100%;padding:12px;background:var(--gold);color:#fff;border:none;border-radius:6px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:.02em;margin-bottom:14px;transition:all .14s}
+.calc-btn:hover{background:var(--gd)}
+
+/* RESULT TILES */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0}
+.tile{border-radius:6px;padding:12px 14px}
+.tile.a{background:var(--black)}
+.tile.b{background:var(--gl);border:1px solid rgba(184,151,42,.2)}
+.tile.c{background:var(--greenl);border:1px solid rgba(26,107,42,.15)}
+.tile.d{background:var(--redl);border:1px solid rgba(184,32,32,.15)}
+.tile .t-lbl{font-size:.62rem;margin-bottom:4px;font-weight:400}
+.tile.a .t-lbl{color:rgba(255,255,255,.45)}
+.tile.b .t-lbl{color:var(--gd)}
+.tile.c .t-lbl{color:var(--green)}
+.tile.d .t-lbl{color:var(--red)}
+.tile .t-val{font-size:1.25rem;font-weight:600}
+.tile.a .t-val{color:var(--gold)}
+.tile.b .t-val{color:var(--black)}
+.tile.c .t-val{color:var(--green)}
+.tile.d .t-val{color:var(--red)}
+.tile .t-sub{font-size:.63rem;margin-top:2px}
+.tile.a .t-sub{color:rgba(255,255,255,.3)}
+.tile.b .t-sub{color:var(--gd)}
+.tile.c .t-sub{color:rgba(26,107,42,.6)}
+.tile.d .t-sub{color:rgba(184,32,32,.6)}
+
+
+
+/* SCHEDULE TABLE */
+.sched-wrap{overflow:hidden}
+.sched-controls{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.sched-controls .view-btns{display:flex;gap:5px}
+.vb{padding:5px 12px;font-size:.75rem;font-weight:500;border:1px solid var(--bd);border-radius:5px;cursor:pointer;background:var(--lg);color:var(--gray);font-family:'DM Sans',sans-serif}
+.vb.act{background:var(--black);color:var(--gold);border-color:var(--black)}
+.yr-filter{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.yr-btn{padding:4px 9px;font-size:.72rem;font-weight:500;border:1px solid var(--bd);border-radius:4px;cursor:pointer;background:var(--lg);color:var(--gray);font-family:'DM Sans',sans-serif;transition:all .12s}
+.yr-btn.act{background:var(--gold);color:#fff;border-color:var(--gold)}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:.77rem}
+.tbl th{font-size:.62rem;font-weight:500;color:var(--gray);text-transform:uppercase;letter-spacing:.07em;padding:7px 10px;border-bottom:1px solid var(--bd);text-align:right;background:var(--lg);white-space:nowrap}
+.tbl th:first-child{text-align:left}
+.tbl td{padding:7px 10px;border-bottom:0.5px solid var(--bd);text-align:right;white-space:nowrap}
+.tbl td:first-child{text-align:left;color:var(--gray)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--off)}
+.tbl tr.yr-hdr td{background:var(--black);color:var(--gold);font-weight:500;font-size:.72rem;padding:5px 10px}
+.tbl tr.yr-hdr td:first-child{color:var(--gold)}
+.tbl tr.yr-tot td{background:var(--gl);font-weight:600;font-size:.78rem;color:var(--gd)}
+.tbl tr.yr-tot td:first-child{color:var(--gd)}
+.amt-p{color:var(--green);font-weight:500}
+.amt-i{color:var(--red)}
+.amt-b{color:var(--black);font-weight:500}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:50px 20px;color:var(--gray)}
+.empty .e-icon{font-size:2.5rem;margin-bottom:12px;opacity:.3}
+.empty .e-title{font-size:.95rem;font-weight:500;color:var(--black);margin-bottom:5px}
+.empty .e-sub{font-size:.78rem}
+
+/* SCROLL */
+.tbl-scroll{max-height:620px;overflow-y:auto;border-radius:0 0 var(--r) var(--r)}
+.tbl-scroll::-webkit-scrollbar{width:5px}
+.tbl-scroll::-webkit-scrollbar-track{background:var(--lg)}
+.tbl-scroll::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+
+@media(max-width:700px){.layout{grid-template-columns:1fr}.tiles{grid-template-columns:1fr 1fr}}
+@media print{.bar{position:relative}.tbl-scroll{max-height:none;overflow:visible}}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div>
+    <span class="brand">Real <em>Living</em></span>
+    <span class="bar-sub">Amortization Calculator</span>
+  </div>
+  <button onclick="window.print()" style="background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:5px 12px;font-size:.75rem;cursor:pointer;font-family:'DM Sans',sans-serif">🖨 Print</button>
+</div>
+
+<div class="wrap">
+  <div class="layout">
+
+    <!-- LEFT: INPUTS -->
+    <div>
+      <div class="card">
+        <div class="ct">Loan details</div>
+
+        <div class="ig">
+          <label>Purchase price <span style="color:var(--gold);font-size:.6rem">optional</span></label>
+          <div class="inp-wrap">
+            <span class="pre">$</span>
+            <input id="purchasePrice" type="number" class="has-pre" placeholder="0" min="0" step="1000" oninput="onPurchaseInput()">
+          </div>
+        </div>
+
+        <div class="ig">
+          <label>Down payment</label>
+          <div class="inp-wrap">
+            <span class="pre">$</span>
+            <input id="downPayment" type="number" class="has-pre" placeholder="0" min="0" step="500" oninput="onPurchaseInput()">
+          </div>
+        </div>
+
+        <div class="ig">
+          <label>Loan amount <span style="color:var(--gold);font-size:.6rem" id="loan-auto-tag">auto from above</span></label>
+          <div class="inp-wrap">
+            <span class="pre">$</span>
+            <input id="principal" type="number" class="has-pre" placeholder="0" min="0" step="1000" oninput="onInput()">
+          </div>
+        </div>
+
+        <div class="ig">
+          <label>Annual interest rate</label>
+          <div class="inp-wrap">
+            <input id="rate" type="number" class="has-suf" placeholder="0.00" min="0" max="100" step="0.25" oninput="onInput()">
+            <span class="suf">%</span>
+          </div>
+        </div>
+
+        <div class="ig">
+          <label>Loan term</label>
+          <div class="inp-wrap">
+            <input id="termYrs" type="number" class="has-suf" placeholder="0" min="1" max="50" step="1" oninput="onInput()">
+            <span class="suf">yrs</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <div style="font-size:.65rem;color:var(--gray);margin-bottom:6px">Quick select term</div>
+          <div class="term-btns" id="termBtns">
+            <div class="tb" data-yr="1">1 yr</div>
+            <div class="tb" data-yr="5">5 yr</div>
+            <div class="tb" data-yr="10">10 yr</div>
+            <div class="tb" data-yr="15">15 yr</div>
+            <div class="tb" data-yr="20">20 yr</div>
+            <div class="tb" data-yr="25">25 yr</div>
+            <div class="tb" data-yr="30">30 yr</div>
+            <div class="tb" data-yr="40">40 yr</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div class="ig" style="margin-bottom:0">
+            <label>Monthly taxes ($)</label>
+            <div class="inp-wrap">
+              <span class="pre">$</span>
+              <input id="taxes" type="number" class="has-pre" placeholder="0" min="0" step="10" oninput="onInput()">
+            </div>
+          </div>
+          <div class="ig" style="margin-bottom:0">
+            <label>Monthly insurance ($)</label>
+            <div class="inp-wrap">
+              <span class="pre">$</span>
+              <input id="insurance" type="number" class="has-pre" placeholder="0" min="0" step="10" oninput="onInput()">
+            </div>
+          </div>
+        </div>
+
+        <div class="ig">
+          <label>Start date <span style="color:var(--gold);font-size:.6rem">optional</span></label>
+          <input id="startDate" type="month" style="border:1px solid var(--bd);border-radius:6px;padding:8px 11px;font-size:.85rem;background:var(--lg);color:var(--black);font-family:'DM Sans',sans-serif;width:100%;transition:all .13s" oninput="onInput()">
+        </div>
+
+        <button class="calc-btn" onclick="calculate()">Calculate Amortization</button>
+
+        <!-- RESULT TILES -->
+        <div id="results" style="display:none">
+          <div class="tiles" id="piti-tile-wrap" style="display:none;margin-bottom:8px">
+            <div class="tile a" style="grid-column:span 2">
+              <div class="t-lbl">Total monthly PITI</div>
+              <div class="t-val" id="r-piti">—</div>
+              <div class="t-sub" id="r-piti-breakdown">principal + interest + taxes + insurance</div>
+            </div>
+          </div>
+          <div class="tiles">
+            <div class="tile a" id="pmt-tile">
+              <div class="t-lbl">Monthly P&amp;I</div>
+              <div class="t-val" id="r-pmt">—</div>
+              <div class="t-sub">principal + interest</div>
+            </div>
+            <div class="tile b">
+              <div class="t-lbl">Total of all payments</div>
+              <div class="t-val" id="r-total">—</div>
+              <div class="t-sub" id="r-n-payments">—</div>
+            </div>
+            <div class="tile c">
+              <div class="t-lbl">Total principal paid</div>
+              <div class="t-val" id="r-principal">—</div>
+              <div class="t-sub" id="r-dp-sub">loan amount</div>
+            </div>
+            <div class="tile d">
+              <div class="t-lbl">Total interest paid</div>
+              <div class="t-val" id="r-interest">—</div>
+              <div class="t-sub" id="r-int-pct">—</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT: SCHEDULE -->
+    <div class="card sched-wrap">
+      <div id="sched-empty" class="empty">
+        <div class="e-icon">📅</div>
+        <div class="e-title">Amortization schedule</div>
+        <div class="e-sub">Enter loan details and click Calculate to see the full payment schedule</div>
+      </div>
+      <div id="sched-content" style="display:none">
+        <div class="ct" id="sched-title">Amortization schedule</div>
+        <div class="sched-controls">
+          <div class="view-btns">
+            <div class="vb act" id="vb-monthly" onclick="setView('monthly',this)">Monthly</div>
+            <div class="vb" id="vb-yearly" onclick="setView('yearly',this)">Yearly</div>
+          </div>
+          <div class="yr-filter" id="yrFilter"></div>
+        </div>
+        <div class="tbl-scroll">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th style="text-align:left" id="th-period">Payment</th>
+                <th id="th-date" style="display:none">Date</th>
+                <th>P&amp;I</th>
+                <th id="th-taxes" style="display:none">Taxes</th>
+                <th id="th-ins" style="display:none">Insurance</th>
+                <th id="th-piti" style="display:none">PITI</th>
+                <th>Principal</th>
+                <th>Interest</th>
+                <th>Balance</th>
+              </tr>
+            </thead>
+            <tbody id="schedBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const fmt = n => '$' + Math.abs(Math.round(n)).toLocaleString();
+const fmtD = n => '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const pmt = (P,ar,n) => { if(!P||!ar) return P/n||0; const r=ar/100/12; return P*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1); };
+
+let schedule = [], viewMode = 'monthly', activeYr = 'all';
+
+// Term quick buttons
+document.querySelectorAll('.tb').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.tb').forEach(x => x.classList.remove('act'));
+    b.classList.add('act');
+    document.getElementById('termYrs').value = b.dataset.yr;
+    onInput();
+  };
+});
+
+function onPurchaseInput() {
+  const pp = parseFloat(document.getElementById('purchasePrice').value) || 0;
+  const dp = parseFloat(document.getElementById('downPayment').value) || 0;
+  if (pp > 0) {
+    const loan = Math.max(0, pp - dp);
+    document.getElementById('principal').value = loan || '';
+    document.getElementById('loan-auto-tag').style.display = '';
+  } else {
+    document.getElementById('loan-auto-tag').style.display = 'none';
+  }
+  onInput();
+}
+
+function onInput() {
+  const yr = document.getElementById('termYrs').value;
+  document.querySelectorAll('.tb').forEach(b => b.classList.toggle('act', b.dataset.yr == yr));
+}
+
+function calculate() {
+  const P = parseFloat(document.getElementById('principal').value) || 0;
+  const r = parseFloat(document.getElementById('rate').value) || 0;
+  const yrs = parseFloat(document.getElementById('termYrs').value) || 0;
+  const taxes = parseFloat(document.getElementById('taxes').value) || 0;
+  const insurance = parseFloat(document.getElementById('insurance').value) || 0;
+  const dp = parseFloat(document.getElementById('downPayment').value) || 0;
+  const startVal = document.getElementById('startDate').value;
+  const hasTI = taxes > 0 || insurance > 0;
+
+  if (!P || !yrs) { alert('Please enter a loan amount and term.'); return; }
+
+  const n = Math.round(yrs * 12);
+  const monthlyRate = r / 100 / 12;
+  const monthlyPmt = pmt(P, r, n);
+  const monthlyPITI = monthlyPmt + taxes + insurance;
+  let balance = P;
+  schedule = [];
+
+  let startDate = null;
+  if (startVal) {
+    const [sy, sm] = startVal.split('-').map(Number);
+    startDate = { y: sy, m: sm };
+  }
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  for (let i = 1; i <= n; i++) {
+    const interest = balance * monthlyRate;
+    let principal = monthlyPmt - interest;
+    if (i === n) principal = balance;
+    balance = Math.max(0, balance - principal);
+    let dateStr = '';
+    if (startDate) {
+      const totalM = startDate.m - 1 + i;
+      const mo = totalM % 12;
+      const yr = startDate.y + Math.floor(totalM / 12);
+      dateStr = MONTHS[mo] + ' ' + yr;
+    }
+    schedule.push({ n:i, yr:Math.ceil(i/12), date:dateStr, pmt:monthlyPmt, principal, interest, taxes, insurance, piti:monthlyPITI, balance });
+  }
+
+  const totalPmt = monthlyPmt * n;
+  const totalInt = totalPmt - P;
+  const totalTI = (taxes + insurance) * n;
+  const intPct = (totalInt / totalPmt * 100).toFixed(1);
+
+  // PITI tile
+  document.getElementById('piti-tile-wrap').style.display = hasTI ? 'grid' : 'none';
+  document.getElementById('r-piti').textContent = fmtD(monthlyPITI);
+  let pitiParts = [];
+  if (monthlyPmt) pitiParts.push(fmtD(monthlyPmt) + ' P&I');
+  if (taxes) pitiParts.push(fmtD(taxes) + ' tax');
+  if (insurance) pitiParts.push(fmtD(insurance) + ' ins');
+  document.getElementById('r-piti-breakdown').textContent = pitiParts.join(' + ');
+
+  // Tiles
+  document.getElementById('r-pmt').textContent = fmtD(monthlyPmt);
+  document.getElementById('r-total').textContent = fmt(totalPmt + totalTI);
+  document.getElementById('r-n-payments').textContent = n + ' payments' + (hasTI ? ' incl. taxes & ins.' : '');
+  document.getElementById('r-principal').textContent = fmt(P);
+  document.getElementById('r-dp-sub').textContent = dp > 0 ? 'down: ' + fmt(dp) + ' · loan: ' + fmt(P) : 'loan amount';
+  document.getElementById('r-interest').textContent = fmt(totalInt);
+  document.getElementById('r-int-pct').textContent = 'over ' + yrs + '-year term';
+
+  document.getElementById('results').style.display = 'block';
+
+  // Show/hide T&I columns
+  ['th-taxes','th-ins','th-piti'].forEach(id => document.getElementById(id).style.display = hasTI ? '' : 'none');
+
+  // Schedule header
+  document.getElementById('sched-empty').style.display = 'none';
+  document.getElementById('sched-content').style.display = 'block';
+  document.getElementById('sched-title').textContent = fmt(P) + ' loan · ' + r + '% · ' + yrs + ' year' + (yrs !== 1 ? 's' : '');
+  document.getElementById('th-date').style.display = startVal ? '' : 'none';
+
+  // Year filter buttons
+  const yrFilter = document.getElementById('yrFilter');
+  yrFilter.innerHTML = '';
+  const allBtn = document.createElement('div');
+  allBtn.className = 'yr-btn act'; allBtn.textContent = 'All'; allBtn.dataset.yr = 'all';
+  allBtn.onclick = () => setYr('all', allBtn);
+  yrFilter.appendChild(allBtn);
+  const totalYrs = Math.ceil(n / 12);
+  for (let y = 1; y <= totalYrs; y++) {
+    const b = document.createElement('div');
+    b.className = 'yr-btn'; b.textContent = 'Yr ' + y; b.dataset.yr = y;
+    b.onclick = () => setYr(y, b);
+    yrFilter.appendChild(b);
+  }
+
+  activeYr = 'all';
+  renderSchedule();
+}
+
+function setView(mode, el) {
+  viewMode = mode;
+  document.querySelectorAll('.vb').forEach(x => x.classList.remove('act'));
+  el.classList.add('act');
+  renderSchedule();
+}
+
+function setYr(yr, el) {
+  activeYr = yr;
+  document.querySelectorAll('.yr-btn').forEach(x => x.classList.remove('act'));
+  el.classList.add('act');
+  renderSchedule();
+}
+
+function renderSchedule() {
+  const tbody = document.getElementById('schedBody');
+  tbody.innerHTML = '';
+  const hasDate = schedule[0]?.date;
+
+  if (viewMode === 'monthly') {
+    const hasTI = schedule[0]?.taxes > 0 || schedule[0]?.insurance > 0;
+    const rows = activeYr === 'all' ? schedule : schedule.filter(r => r.yr == activeYr);
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${row.n}</td>
+        ${hasDate ? `<td style="color:var(--gray);font-size:.72rem">${row.date}</td>` : ''}
+        <td>${fmtD(row.pmt)}</td>
+        ${hasTI ? `<td style="color:var(--gray)">${fmtD(row.taxes)}</td>` : ''}
+        ${hasTI ? `<td style="color:var(--gray)">${fmtD(row.insurance)}</td>` : ''}
+        ${hasTI ? `<td style="font-weight:500;color:var(--blue)">${fmtD(row.piti)}</td>` : ''}
+        <td class="amt-p">${fmtD(row.principal)}</td>
+        <td class="amt-i">${fmtD(row.interest)}</td>
+        <td class="amt-b">${row.balance < 0.005 ? '$0.00' : fmtD(row.balance)}</td>`;
+      tbody.appendChild(tr);
+    });
+  } else {
+    // Yearly view — group by year
+    const yrs = {};
+    schedule.forEach(r => {
+      if (!yrs[r.yr]) yrs[r.yr] = { pmt:0, principal:0, interest:0, taxes:0, insurance:0, piti:0, startBal:0, endBal:0, first:true };
+      const y = yrs[r.yr];
+      y.pmt += r.pmt;
+      y.principal += r.principal;
+      y.interest += r.interest;
+      y.taxes += r.taxes || 0;
+      y.insurance += r.insurance || 0;
+      y.piti += r.piti || r.pmt;
+      y.endBal = r.balance;
+      if (y.first) { y.startBal = r.balance + r.principal; y.first = false; }
+    });
+
+    const yrKeys = Object.keys(yrs).map(Number).filter(y => activeYr === 'all' || y == activeYr);
+    yrKeys.forEach(y => {
+      const d = yrs[y];
+      const hasTI2 = schedule[0]?.taxes > 0 || schedule[0]?.insurance > 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-weight:500;color:var(--black)">Year ${y}</td>
+        ${hasDate ? `<td></td>` : ''}
+        <td>${fmtD(d.pmt)}</td>
+        ${hasTI2 ? `<td style="color:var(--gray)">${fmtD(d.taxes)}</td>` : ''}
+        ${hasTI2 ? `<td style="color:var(--gray)">${fmtD(d.insurance)}</td>` : ''}
+        ${hasTI2 ? `<td style="font-weight:500;color:var(--blue)">${fmtD(d.piti)}</td>` : ''}
+        <td class="amt-p">${fmtD(d.principal)}</td>
+        <td class="amt-i">${fmtD(d.interest)}</td>
+        <td class="amt-b">${d.endBal < 0.005 ? '$0.00' : fmtD(d.endBal)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+}
+</script>
+</body>
+</html>
