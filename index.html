@@ -418,6 +418,57 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     <div class="mrow"><span class="k">Signed in as</span><span class="v" id="sName"></span></div>
     <div class="mrow"><span class="k">Role</span><span class="v" id="sRole"></span></div>
     <div class="mrow"><span class="k">Applications visible</span><span class="v" id="sApps"></span></div>
+
+    <div id="teamSect" style="display:none;margin-top:22px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <h2 style="font-size:16px;margin:0">Team</h2>
+        <span id="teamCnt" style="font-size:12px;color:var(--muted)"></span>
+        <span style="flex:1"></span>
+        <button class="btn-secondary" id="inviteBtn" style="padding:8px 14px;font-size:13px">+ Invite member</button>
+      </div>
+      <p class="msub" style="margin-bottom:10px">One login for every app. Positions set here carry into the CRM, Training, Documents and Deal Analyzer automatically.</p>
+      <div id="teamList"></div>
+
+      <div id="inviteForm" style="display:none;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:10px;background:var(--bg)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <input id="tm-name" placeholder="Full name" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px">
+          <input id="tm-email" placeholder="Email" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px">
+          <input id="tm-phone" placeholder="Cell (optional)" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px">
+          <select id="tm-pos" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff">
+            <option value="owner">Owner</option>
+            <option value="manager">Manager</option>
+            <option value="agent" selected>Agent</option>
+            <option value="marketing">Marketing</option>
+            <option value="assistant">Assistant</option>
+          </select>
+          <select id="tm-biz" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff">
+            <option value="">Sees all businesses</option>
+            <option value="ASAP">ASAP Lending only</option>
+            <option value="H2M">H2M only</option>
+            <option value="RL">Real Living Licensed only</option>
+            <option value="TC">TC only</option>
+          </select>
+        </div>
+        <div id="tm-err" style="display:none;color:#DC2626;font-size:12.5px;margin-top:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn-secondary" id="tm-go" style="padding:9px 16px;font-size:13px;background:var(--brand);color:#fff;border:none">Create login & invite</button>
+          <button class="btn-secondary" id="tm-cancel" style="padding:9px 16px;font-size:13px">Cancel</button>
+        </div>
+      </div>
+
+      <div id="inviteReady" style="display:none;border:1px solid #E7C86B;border-radius:12px;padding:14px;margin-top:10px;background:#FFFDF5">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">Invite ready — send it however you like</div>
+        <div id="ir-detail" style="font-size:13px;line-height:1.7"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <a class="btn-secondary" id="ir-mail" style="padding:8px 14px;font-size:12.5px;text-decoration:none">📧 Email invite</a>
+          <a class="btn-secondary" id="ir-sms" style="padding:8px 14px;font-size:12.5px;text-decoration:none">💬 Text invite</a>
+          <button class="btn-secondary" id="ir-copy" style="padding:8px 14px;font-size:12.5px">📋 Copy</button>
+          <button class="btn-secondary" id="ir-done" style="padding:8px 14px;font-size:12.5px">Done</button>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:8px">They'll set their own password the first time they sign in.</div>
+      </div>
+    </div>
+
     <div class="mfoot">
       <button class="btn-danger" id="logoutBtn">Sign out</button>
       <button class="btn-secondary" id="closeSettings">Close</button>
@@ -559,13 +610,107 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
   });
 
   /* ---------- SETTINGS ---------- */
-  $("settingsBtn").addEventListener("click", () => {
+  $("settingsBtn").addEventListener("click", async () => {
     $("sName").textContent = CU.name;
     $("sRole").textContent = CU.role;
     $("sApps").textContent = CARDS.length;
     $("settingsModal").classList.add("on");
+    const isOwner=(CU.role||'').toLowerCase()==='owner';
+    $("teamSect").style.display=isOwner?'block':'none';
+    if(isOwner){try{await loadTeam();renderTeam();}catch(e){console.error('[team]',e);}}
   });
   $("closeSettings").addEventListener("click", () => $("settingsModal").classList.remove("on"));
+  /* ---------- TEAM MANAGER (owners only) ---------- */
+  const POS_LABEL={owner:'Owner',manager:'Manager',agent:'Agent',marketing:'Marketing',assistant:'Assistant'};
+  let MY_ROLE=null, TEAM=[];
+  async function loadTeam(){
+    const [{data:profs},{data:seats}]=await Promise.all([
+      sb.from('profiles').select('*'),
+      sb.from('records').select('id,data').eq('collection','users').eq('deleted',false)
+    ]);
+    const seatMap={};(seats||[]).forEach(r=>seatMap[r.id]=r.data);
+    TEAM=(profs||[]).map(p=>({...p, seat:seatMap[p.seat_id]||null}));
+    return TEAM;
+  }
+  function posOf(m){ if(m.seat&&m.seat.title==='Assistant')return 'assistant'; return m.role; }
+  function renderTeam(){
+    $("teamCnt").textContent=TEAM.length+' members';
+    $("teamList").innerHTML=TEAM.map(m=>{
+      const pos=posOf(m);
+      const opts=Object.keys(POS_LABEL).map(k=>'<option value="'+k+'"'+(k===pos?' selected':'')+'>'+POS_LABEL[k]+'</option>').join('');
+      const bizzes=[['','All'],['ASAP','ASAP'],['H2M','H2M'],['RL','RL'],['TC','TC']];
+      const bops=bizzes.map(b=>'<option value="'+b[0]+'"'+((m.business||'')===b[0]?' selected':'')+'>'+b[1]+'</option>').join('');
+      return '<div class="mrow" style="gap:8px;flex-wrap:wrap">'+
+        '<span class="v" style="min-width:150px">'+(m.full_name||'—')+(m.seat&&m.seat.ext?' <span style="color:var(--muted);font-weight:400">ext '+m.seat.ext+'</span>':'')+'</span>'+
+        '<select data-uid="'+m.id+'" class="tm-role" style="padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:12.5px;background:#fff">'+opts+'</select>'+
+        '<select data-uid="'+m.id+'" class="tm-bizsel" style="padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:12.5px;background:#fff">'+bops+'</select>'+
+      '</div>';
+    }).join('')||'<div style="color:var(--muted);font-size:13px;padding:8px 0">No members yet.</div>';
+    $("teamList").querySelectorAll('.tm-role').forEach(el=>el.addEventListener('change',()=>changePos(el.dataset.uid,el.value)));
+    $("teamList").querySelectorAll('.tm-bizsel').forEach(el=>el.addEventListener('change',()=>changeBiz(el.dataset.uid,el.value)));
+  }
+  async function changePos(uid,pos){
+    const m=TEAM.find(x=>x.id===uid); if(!m)return;
+    const role=(pos==='assistant')?'marketing':pos, title=(pos==='assistant')?'Assistant':null;
+    await sb.from('profiles').update({role}).eq('id',uid);
+    if(m.seat_id){
+      const {data:row}=await sb.from('records').select('data').eq('collection','users').eq('id',m.seat_id).single();
+      if(row){const d=row.data;d.role=role;if(title)d.title=title;else delete d.title;
+        await sb.from('records').update({data:d,updated_at:new Date().toISOString()}).eq('collection','users').eq('id',m.seat_id);}
+    }
+    m.role=role; if(m.seat){if(title)m.seat.title=title;else delete m.seat.title;}
+  }
+  async function changeBiz(uid,biz){
+    const m=TEAM.find(x=>x.id===uid); if(!m)return;
+    await sb.from('profiles').update({business:biz||null}).eq('id',uid);
+    if(m.seat_id){
+      const {data:row}=await sb.from('records').select('data').eq('collection','users').eq('id',m.seat_id).single();
+      if(row){const d=row.data;d.business=biz||null;
+        await sb.from('records').update({data:d,updated_at:new Date().toISOString()}).eq('collection','users').eq('id',m.seat_id);}
+    }
+    m.business=biz||null;
+  }
+  function nextSeat(seats){
+    let n=1;while(seats.some(s=>s.id==='u'+n))n++;
+    let ext=101;while(seats.some(s=>(s.data&&s.data.ext)===String(ext)))ext++;
+    return {id:'u'+n,ext:String(ext)};
+  }
+  $("inviteBtn").addEventListener('click',()=>{$("inviteForm").style.display='block';$("inviteReady").style.display='none';});
+  $("tm-cancel").addEventListener('click',()=>{$("inviteForm").style.display='none';});
+  $("ir-done").addEventListener('click',()=>{$("inviteReady").style.display='none';loadTeam().then(renderTeam);});
+  $("tm-go").addEventListener('click',async()=>{
+    const name=$("tm-name").value.trim(),email=$("tm-email").value.trim().toLowerCase(),phone=$("tm-phone").value.trim();
+    const pos=$("tm-pos").value,biz=$("tm-biz").value||null,err=$("tm-err");
+    err.style.display='none';
+    if(!name||!email){err.textContent='Name and email are required.';err.style.display='block';return;}
+    $("tm-go").disabled=true;$("tm-go").textContent='Creating…';
+    try{
+      const {data:seats}=await sb.from('records').select('id,data').eq('collection','users').eq('deleted',false);
+      const slot=nextSeat(seats||[]);
+      const role=(pos==='assistant')?'marketing':pos;
+      const {data:{session}}=await sb.auth.getSession();
+      const res=await fetch(SUPABASE_URL+'/functions/v1/admin-create-user',{method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({email,name,role,business:biz,seat_id:slot.id})});
+      const out=await res.json();
+      if(!res.ok||out.error)throw new Error(out.error||'Could not create the login');
+      const seatData={id:slot.id,name,email,phone,ext:slot.ext,role,business:biz};
+      if(pos==='assistant')seatData.title='Assistant';
+      await sb.from('records').upsert({collection:'users',id:slot.id,data:seatData,updated_at:new Date().toISOString(),deleted:false});
+      const portal=location.origin+location.pathname.replace(/[^/]*$/,'');
+      const msg="You're set up on the Real Living Business Suite!\n\nSign in here: "+portal+"\nEmail: "+out.email+"\nTemporary password: "+out.tempPass+"\n\nYou'll set your own password the first time you sign in. One login covers every app.";
+      $("ir-detail").innerHTML='<b>'+name+'</b> · '+out.email+'<br>Temp password: <b style="color:#B8860B">'+out.tempPass+'</b>';
+      $("ir-mail").href='mailto:'+encodeURIComponent(out.email)+'?subject='+encodeURIComponent('Your Real Living Business Suite login')+'&body='+encodeURIComponent(msg);
+      const smsA=$("ir-sms");
+      if(phone){smsA.style.display='';smsA.href='sms:'+encodeURIComponent(phone)+'?&body='+encodeURIComponent(msg);}else smsA.style.display='none';
+      $("ir-copy").onclick=()=>{try{navigator.clipboard.writeText(msg);$("ir-copy").textContent='✓ Copied';setTimeout(()=>$("ir-copy").textContent='📋 Copy',1500);}catch(e){}};
+      $("inviteForm").style.display='none';$("inviteReady").style.display='block';
+      $("tm-name").value='';$("tm-email").value='';$("tm-phone").value='';
+      await loadTeam();renderTeam();
+    }catch(e){err.textContent=String(e.message||e);err.style.display='block';}
+    finally{$("tm-go").disabled=false;$("tm-go").textContent='Create login & invite';}
+  });
+
   $("logoutBtn").addEventListener("click", async () => {
     try{ if(sb) await sb.auth.signOut(); }catch(e){}
     $("settingsModal").classList.remove("on");

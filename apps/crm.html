@@ -2494,7 +2494,7 @@ function canManageSeat(u){
   return false;
 }
 function vTeam(){
-  let h='<div class="sect-head"><h2>Team</h2><span class="cnt">'+S.users.length+' users</span><span class="spacer"></span><button class="btn small" onclick="mAddUser()">+ Add user</button></div>';
+  let h='<div class="sect-head"><h2>Team</h2><span class="cnt">'+S.users.length+' users</span><span class="spacer"></span><span class="mut" style="font-size:11.5px">Add & invite members from the <b>Business Suite → Settings → Team</b>. Edit CRM details (extension, cell, pipelines) here.</span></div>';
   h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Name</th><th>Ext</th><th>Email</th><th>Cell (phone tree rings this)</th><th>Role</th><th>Business</th><th></th></tr>'+
     S.users.map(u=>'<tr><td>'+esc(u.name)+'</td><td><span class="tag" style="border-color:var(--line2);color:var(--gold2)">'+esc(u.ext||'—')+'</span></td><td class="mut">'+esc(u.email)+'</td>'+
       '<td class="mut">'+(u.phone?esc(u.phone):'<span style="color:var(--red)">not set</span>')+'</td>'+
@@ -2670,6 +2670,7 @@ function saveProp(){
   save();closeAll();go('prop',p.id);toast('Property added — acquisition deal opened');
 }
 function mAddUser(editId){
+  if(!editId&&CLOUD&&!DEV){toast('Invite new members from the Business Suite — Settings → Team');return}
   const u=editId?S.users.find(x=>x.id===editId):null;
   if(u&&!canManageSeat(u)){toast('Only ownership can edit that seat');return}
   const roles=(me.role==='manager')?['agent','marketing']:['owner','manager','agent','marketing'];
