@@ -801,6 +801,10 @@ function doLogin(){
   DEV=true;me=ADMIN;enter();
 }
 async function cloudEnter(userId,emailFallback){
+  try{
+    const {data:{user}}=await sb.auth.getUser();
+    if(user&&user.user_metadata&&user.user_metadata.must_set_password){mFirstPassword();return}
+  }catch(e){}
   const {data:prof,error:pe}=await sb.from('profiles').select('*').eq('id',userId).single();
   if(pe||!prof)throw new Error('Signed in, but no CRM seat is mapped to this account yet.');
   SEAT_ID=prof.seat_id;DEV=false;
@@ -2679,7 +2683,7 @@ function mAddUser(editId){
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;margin-bottom:6px">'+Object.keys(PIPES).map(p=>
       '<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);margin:0;padding:4px 0;cursor:pointer">'+
       '<input type="checkbox" id="mu-pipe-'+p+'"'+(u&&u.pipes&&u.pipes.includes(p)?' checked':'')+' style="width:auto">'+PIPES[p].name+'</label>').join('')+'</div>':'')+
-  (u?'':(CLOUD?'<label>Temporary password (they change it later)</label><input id="mu-pass" placeholder="At least 8 characters">':''))+
+  (u?'':(CLOUD?'<div class="mut" style="font-size:12px;margin:6px 0 2px">An invite with a temporary password is generated automatically — you\'ll get a ready-to-send text/email on the next screen. They set their own password on first sign-in.</div>':''))+
   '<div class="login-err" id="mu-err"></div>'+
   '<button class="btn" id="mu-go" style="margin-top:14px" onclick="saveUser(\''+(editId||'')+'\')">'+(u?'Save changes':'Add team member')+'</button>'+
   (u&&CLOUD?'<div class="mut" style="font-size:11.5px;margin-top:10px">Changing the email here updates the roster only — their sign-in email stays the same.</div>':''));
@@ -2700,25 +2704,69 @@ async function saveUser(editId){
   if(!ext||S.users.some(x=>x.ext===ext)){let n=101;while(S.users.some(x=>x.ext===String(n)))n++;ext=String(n);}
   const seat={id:uid('u'),name:g('mu-name').trim(),email:g('mu-email').trim().toLowerCase(),phone:g('mu-phone').trim(),ext,role:g('mu-role'),business:g('mu-biz')||null};
   if(me.role==='owner'||me.id==='admin'){const ps=Object.keys(PIPES).filter(p=>{const el=document.getElementById('mu-pipe-'+p);return el&&el.checked});if(ps.length)seat.pipes=ps;}
+  let invite=null;
   if(CLOUD&&sb&&!DEV){
-    const pw=g('mu-pass');
-    if(!pw||pw.length<8){document.getElementById('mu-err').textContent='Temporary password must be at least 8 characters.';return}
     document.getElementById('mu-go').disabled=true;document.getElementById('mu-go').textContent='Creating login…';
     try{
       const {data:{session}}=await sb.auth.getSession();
       const res=await fetch(SUPABASE_URL+'/functions/v1/admin-create-user',{method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-        body:JSON.stringify({email:seat.email,password:pw,name:seat.name,role:seat.role,business:seat.business,seat_id:seat.id})});
+        body:JSON.stringify({email:seat.email,name:seat.name,role:seat.role,business:seat.business,seat_id:seat.id})});
       const out=await res.json();
       if(!res.ok||out.error)throw new Error(out.error||'Could not create login');
+      invite={email:out.email,pass:out.tempPass};
     }catch(e){
       document.getElementById('mu-err').textContent=String(e.message||e);
       document.getElementById('mu-go').disabled=false;document.getElementById('mu-go').textContent='Add team member';return;
     }
   }
   S.users.push(seat);
-  save();closeAll();renderWho();go('settings');
-  toast(CLOUD?'Login created — they can sign in now':'Team member added');
+  save();renderWho();
+  if(invite){mInviteReady(seat,invite)}else{closeAll();go('settings');toast('Team member added')}
+}
+function portalUrl(){
+  try{
+    const p=location.pathname;
+    if(p.includes('/apps/'))return location.origin+p.slice(0,p.indexOf('/apps/'))+'/';
+    return location.origin+p.replace(/[^/]*$/,'');
+  }catch(e){return ''}
+}
+function mFirstPassword(){
+  modal('<h2>Welcome — set your password</h2>'+
+  '<div class="mut" style="font-size:13px;margin-bottom:10px">You signed in with a temporary password. Pick your own to finish setting up — you\'ll use it for every app in the suite.</div>'+
+  '<label>New password (8+ characters)</label><input id="fp-1" type="password">'+
+  '<label>Type it again</label><input id="fp-2" type="password">'+
+  '<div class="login-err" id="fp-err"></div>'+
+  '<button class="btn" id="fp-go" style="margin-top:14px" onclick="saveFirstPassword()">Set password & continue</button>');
+}
+async function saveFirstPassword(){
+  const a=document.getElementById('fp-1').value,b=document.getElementById('fp-2').value,err=document.getElementById('fp-err');
+  if(a.length<8){err.textContent='Use at least 8 characters.';return}
+  if(a!==b){err.textContent='Those don\'t match.';return}
+  const btn=document.getElementById('fp-go');btn.disabled=true;btn.textContent='Saving…';
+  try{
+    const {error}=await sb.auth.updateUser({password:a,data:{must_set_password:false}});
+    if(error)throw new Error(error.message);
+    closeAll();toast('Password set');
+    const {data:{session}}=await sb.auth.getSession();
+    if(session)await cloudEnter(session.user.id,session.user.email);
+  }catch(e){err.textContent=String(e.message||e);btn.disabled=false;btn.textContent='Set password & continue';}
+}
+function copyInvite(btn){try{navigator.clipboard.writeText(btn.dataset.m);toast('Invite copied')}catch(e){toast('Copy failed — select the text manually')}}
+function mInviteReady(seat,inv){
+  const url=portalUrl();
+  const msg='You\'re set up on the Real Living Business Suite!\n\nSign in here: '+url+'\nEmail: '+inv.email+'\nTemporary password: '+inv.pass+'\n\nYou\'ll be asked to set your own password the first time you sign in. Every app in the suite uses this one login.';
+  modal('<h2>Invite ready — '+esc(seat.name)+'</h2>'+
+  '<div class="card" style="padding:14px 16px;margin-bottom:12px;border-color:var(--gold2)">'+
+    '<div class="eyebrow" style="margin-bottom:6px">Their sign-in</div>'+
+    '<div style="font-size:13.5px;line-height:1.7"><b>Portal:</b> '+esc(url)+'<br><b>Email:</b> '+esc(inv.email)+'<br><b>Temp password:</b> <b style="color:var(--gold2)">'+esc(inv.pass)+'</b></div>'+
+    '<div class="mut" style="font-size:11.5px;margin-top:8px">They\'ll set their own password on first sign-in. One login covers every app in the suite.</div></div>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    '<a class="btn small" style="text-decoration:none" href="mailto:'+encodeURIComponent(inv.email)+'?subject='+encodeURIComponent('Your Real Living Business Suite login')+'&body='+encodeURIComponent(msg)+'">📧 Email the invite</a>'+
+    (seat.phone?'<a class="btn small" style="text-decoration:none" href="sms:'+encodeURIComponent(seat.phone)+'?&body='+encodeURIComponent(msg)+'">💬 Text the invite</a>':'')+
+    '<button class="btn ghost small" onclick="copyInvite(this)" data-m="'+esc(msg).replace(/"/g,'&quot;')+'">📋 Copy</button>'+
+  '</div>'+
+  '<button class="btn ghost" style="margin-top:14px" onclick="closeAll();go(\'settings\')">Done</button>');
 }
 /* ================= PROPERTIES OF INTEREST ================= */
 function mAddInterest(cid){

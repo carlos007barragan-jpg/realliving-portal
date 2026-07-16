@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Inventory — Real Living</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F8FAFC;--bg2:#EEF2F7;--card:#fff;--ink:#0F172A;--muted:#64748B;--line:#E2E8F0;--brand:#3B5BFF;--green:#059669;--amber:#D97706;--red:#DC2626}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,var(--bg),var(--bg2));min-height:100vh;color:var(--ink);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px}
+.head{display:flex;align-items:center;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+.head h1{font-size:22px;font-weight:800}
+.head .sub{color:var(--muted);font-size:13.5px}
+.spacer{flex:1}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0 20px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.kpi .n{font-size:22px;font-weight:800}
+.kpi .l{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.bar input{flex:1;min-width:220px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;background:#fff}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--muted)}
+.chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.prop{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.prop .addr{font-weight:700;font-size:14.5px;line-height:1.35}
+.prop .meta{color:var(--muted);font-size:12.5px;margin:6px 0 10px}
+.tag{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em}
+.t-inv{background:#ECFDF5;color:var(--green)}
+.t-uc{background:#FFFBEB;color:var(--amber)}
+.t-acq{background:#EFF6FF;color:var(--brand)}
+.t-sold{background:#F1F5F9;color:var(--muted)}
+.nums{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.nums .v{font-weight:700;font-size:13.5px}
+.nums .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.empty{padding:60px 20px;text-align:center;color:var(--muted)}
+.gate{max-width:420px;margin:16vh auto;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:36px 32px;text-align:center}
+.gate h2{font-size:18px;margin-bottom:8px}
+.gate p{color:var(--muted);font-size:14px;margin-bottom:18px}
+.gate a{display:inline-block;background:var(--brand);color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600;font-size:14px}
+.src{font-size:11.5px;color:var(--muted);margin-top:22px}
+</style>
+</head>
+<body>
+<div id="gate" class="gate" style="display:none">
+  <h2>Sign in at the portal</h2>
+  <p>Inventory uses your Business Suite login. Sign in once at the front door and come back — no separate account.</p>
+  <a href="../index.html">Go to the portal</a>
+</div>
+<div id="app" class="wrap" style="display:none">
+  <div class="head">
+    <h1>🏠 Inventory</h1><span class="sub">Live from the CRM — Properties</span>
+    <span class="spacer"></span><span class="sub" id="who"></span>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="bar">
+    <input id="q" placeholder="Search address…" oninput="draw()">
+    <span class="chip on" data-f="all" onclick="setF(this)">All</span>
+    <span class="chip" data-f="inv" onclick="setF(this)">In inventory</span>
+    <span class="chip" data-f="uc" onclick="setF(this)">Under contract</span>
+    <span class="chip" data-f="acq" onclick="setF(this)">Acquisition</span>
+    <span class="chip" data-f="sold" onclick="setF(this)">Sold</span>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="src">Read-only view. Add or edit properties in the CRM → Shared → Properties; changes appear here automatically.</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf');
+let PROPS=[],F='all';
+const $=id=>document.getElementById(id);
+const money=n=>'$'+(+n||0).toLocaleString();
+function cls(st){st=(st||'').toLowerCase();
+  if(st.includes('sold'))return['t-sold','sold'];
+  if(st.includes('under contract'))return['t-uc','uc'];
+  if(st.includes('acquisition')||st.includes('due diligence'))return['t-acq','acq'];
+  return['t-inv','inv'];}
+function setF(el){document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');F=el.dataset.f;draw();}
+function draw(){
+  const q=($('q').value||'').toLowerCase();
+  const list=PROPS.filter(p=>{
+    const [_,f]=cls(p.status);
+    if(F!=='all'&&f!==F)return false;
+    return !q||(p.address||'').toLowerCase().includes(q);
+  });
+  const inv=PROPS.filter(p=>cls(p.status)[1]==='inv').length,
+        uc=PROPS.filter(p=>cls(p.status)[1]==='uc').length,
+        acq=PROPS.filter(p=>cls(p.status)[1]==='acq').length,
+        sold=PROPS.filter(p=>cls(p.status)[1]==='sold').length;
+  $('kpis').innerHTML=
+    '<div class="kpi"><div class="n">'+PROPS.length+'</div><div class="l">Total properties</div></div>'+
+    '<div class="kpi"><div class="n">'+inv+'</div><div class="l">In inventory</div></div>'+
+    '<div class="kpi"><div class="n">'+uc+'</div><div class="l">Under contract</div></div>'+
+    '<div class="kpi"><div class="n">'+acq+'</div><div class="l">In acquisition</div></div>'+
+    '<div class="kpi"><div class="n">'+sold+'</div><div class="l">Sold</div></div>';
+  $('grid').innerHTML=list.map(p=>{
+    const [tc]=cls(p.status);
+    const allIn=(+p.acqPrice||0)+(+p.rehab||0);
+    const margin=(+p.arv||0)-allIn;
+    return '<div class="prop">'+
+      '<div class="addr">'+esc(p.address||'—')+'</div>'+
+      '<div class="meta">'+(p.beds?p.beds+' bd':'')+(p.baths?' · '+p.baths+' ba':'')+'</div>'+
+      '<span class="tag '+tc+'">'+esc(p.status||'In inventory')+'</span>'+
+      '<div class="nums">'+
+        '<div><div class="v">'+money(allIn)+'</div><div class="k">All-in</div></div>'+
+        '<div><div class="v">'+money(p.arv)+'</div><div class="k">ARV</div></div>'+
+        '<div><div class="v" style="color:'+(margin>=0?'var(--green)':'var(--red)')+'">'+money(margin)+'</div><div class="k">Spread</div></div>'+
+      '</div></div>';
+  }).join('')||'<div class="empty">No properties'+(q||F!=='all'?' match that filter.':' yet — add them in the CRM under Shared → Properties.')+'</div>';
+}
+function esc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+(async()=>{
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session){$('gate').style.display='block';return;}
+    const {data:prof}=await sb.from('profiles').select('full_name').eq('id',session.user.id).single();
+    $('who').textContent=prof?prof.full_name:session.user.email;
+    $('app').style.display='block';
+    const {data,error}=await sb.from('records').select('id,data').eq('collection','properties').eq('deleted',false);
+    if(error)throw new Error(error.message);
+    PROPS=(data||[]).map(r=>r.data);
+    draw();
+    setInterval(async()=>{
+      try{
+        const {data:d2}=await sb.from('records').select('id,data').eq('collection','properties').eq('deleted',false);
+        if(d2){PROPS=d2.map(r=>r.data);draw();}
+      }catch(e){}
+    },30000);
+  }catch(e){
+    $('gate').style.display='block';
+    $('gate').querySelector('p').textContent='Could not load inventory: '+String(e.message||e);
+  }
+})();
+</script>
+</body>
+</html>

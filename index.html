@@ -253,7 +253,7 @@ const CARDS = [
     desc:"Manage deals, contacts, and pipelines across all verticals."
   },
   {
-    id:"inventory", name:"Inventory Check", type:"app", tile:"t-green", icon:"box",
+    id:"inventory", url:"apps/inventory.html", name:"Inventory Check", type:"app", tile:"t-green", icon:"box",
     desc:"View and share active property inventory with your team."
   },
   {
@@ -442,6 +442,39 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     $("shellView").classList.add("on");
     renderDashboard();
   }
+  async function needsFirstPassword(){
+    try{const {data:{user}}=await sb.auth.getUser();return !!(user&&user.user_metadata&&user.user_metadata.must_set_password);}catch(e){return false}
+  }
+  function showFirstPassword(){
+    const card=document.querySelector('.login-card');
+    card.querySelectorAll('.lf,.login-hint,#lbtn').forEach(el=>el.style.display='none');
+    let box=$("fpBox");
+    if(!box){
+      box=document.createElement('div');box.id='fpBox';
+      box.innerHTML='<div style="font-size:13px;color:var(--muted);margin:4px 0 14px">Welcome! You signed in with a temporary password — set your own to finish up. It works in every app here.</div>'+
+      '<input id="fp1" type="password" placeholder="New password (8+ characters)" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;font-size:14px">'+
+      '<input id="fp2" type="password" placeholder="Type it again" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;font-size:14px">'+
+      '<div id="fperr" style="display:none;color:#DC2626;font-size:13px;margin-bottom:10px"></div>'+
+      '<button id="fpgo" style="width:100%;padding:13px;background:var(--brand);color:#fff;border-radius:10px;font-weight:600;font-size:14px">Set password & continue</button>';
+      card.appendChild(box);
+      $("fpgo").addEventListener('click',async()=>{
+        const a=$("fp1").value,b=$("fp2").value,err=$("fperr");
+        if(a.length<8){err.textContent='Use at least 8 characters.';err.style.display='block';return}
+        if(a!==b){err.textContent="Those don't match.";err.style.display='block';return}
+        $("fpgo").disabled=true;$("fpgo").textContent='Saving…';
+        try{
+          const {error}=await sb.auth.updateUser({password:a,data:{must_set_password:false}});
+          if(error)throw new Error(error.message);
+          const {data:{session}}=await sb.auth.getSession();
+          CU=await profileToCU(session.user.id,session.user.email);
+          box.remove();
+          card.querySelectorAll('.lf,.login-hint,#lbtn').forEach(el=>el.style.display='');
+          showShell();
+        }catch(e){err.textContent=String(e.message||e);err.style.display='block';$("fpgo").disabled=false;$("fpgo").textContent='Set password & continue';}
+      });
+    }
+    box.style.display='block';
+  }
   async function attemptLogin(){
     const email = $("lemail").value.trim().toLowerCase();
     const pass = $("lpass").value;
@@ -449,8 +482,9 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     try{
       const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
       if(error)throw new Error(error.message||"That email or password doesn't match.");
-      CU = await profileToCU(data.user.id,email);
       $("lerr").classList.remove("show");
+      if(await needsFirstPassword()){showFirstPassword();return}
+      CU = await profileToCU(data.user.id,email);
       showShell();
     }catch(e){
       $("lerr").textContent=String(e.message||e);
@@ -463,6 +497,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
       if(!sb)return;
       const {data:{session}}=await sb.auth.getSession();
       if(!session)return;
+      if(await needsFirstPassword()){showFirstPassword();return}
       CU = await profileToCU(session.user.id,session.user.email);
       showShell();
     }catch(e){console.error('[resume]',e);}
