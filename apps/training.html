@@ -3470,7 +3470,9 @@ init();
   const {data:prof}=await _sb.from('profiles').select('*').eq('id',session.user.id).single();
   if(!prof)return;
   const _name=prof.full_name||session.user.email, _admin=(prof.role==='owner');
-  CU={name:_name,role:_admin?'admin':prof.role};
+  /* map CRM roles onto Training's role keys — owners/admins get every track */
+  const roleMap={owner:'owner',manager:'sales_manager',marketing:'marketer',agent:(prof.business==='ASAP'?'asap_agent':'licensed_agent')};
+  CU={name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
   e('loginView').style.display='none'; e('mainView').style.display='block';
   const ri=(typeof ROLES!=='undefined'&&ROLES[CU.role])||{label:CU.role,admin:_admin};
   e('utag').textContent=_name+' · '+(ri.label||CU.role);
