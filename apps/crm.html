@@ -1587,7 +1587,23 @@ function moveStage(d,stage){
   if(isFinal(d)&&!d.closedAt)d.closedAt=new Date().toISOString();
   if(!isFinal(d)&&d.closedAt)delete d.closedAt;
   logAct(d.id,d.clientId,'Moved '+PIPES[d.pipe].name+' deal: '+from+' → '+to+'.');
+  if(isFinal(d)&&/closed|won|sold|servicing/i.test(to)&&!/lost|dead/i.test(to))reviewAsk(d);
   save();toast('Moved to '+to);
+}
+/* ---- closing → Google review request workflow ---- */
+function reviewAsk(d){
+  const c=C(d.clientId);if(!c)return;
+  if(S.tasks.some(t=>t.clientId===c.id&&t.plan==='review'))return; /* once per client */
+  const who=d.agent||me.id;
+  S.tasks.push({id:uid('t'),title:'⭐ Request a Google review from '+c.name+' — just closed!',who,clientId:c.id,
+    due:new Date(Date.now()+86400000).toISOString().slice(0,10),done:false,createdAt:new Date().toISOString(),plan:'review'});
+  const link=(S.targets&&S.targets.reviewLink)||'';
+  if(link){
+    const t=S.tasks[S.tasks.length-1];
+    t.tpl='Congratulations on your closing, {first}! 🎉 It was an honor to help your family. If we earned it, a quick Google review means the world to our small team: '+link;
+    if(S.targets.autoText===true)t.auto='sms';
+  }
+  logAct(d.id,c.id,'Review request queued'+(link?'':' — add your Google review link in Settings → Company to arm the auto-text')+'.');
 }
 /* ================= CLIENTS ================= */
 let clientQ='';
@@ -2356,8 +2372,13 @@ function setGeneral(){
   h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">Auto-send plan texts</h2><span class="spacer"></span>'+
     '<button class="btn '+(at?'':'ghost ')+'small" onclick="S.targets.autoText='+(at?'false':'true')+';save();go(\'settings\')">'+(at?'On':'Off')+'</button></div>'+
     '<div class="mut" style="font-size:13px">When on, the day-2 check-in text sends itself through Twilio every morning at 9 AM — no agent action needed. Template: "Hi {first}, it\'s {agent} with Real Living…". Requires Twilio configured and A2P registration complete; leave off until then.</div></div>';
+  h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">⭐ Google review requests</h2><span class="spacer"></span><button class="btn small" onclick="saveReviewLink()">Save</button></div>'+
+    '<div class="mut" style="font-size:13px;margin-bottom:10px">Every deal moved to Closed automatically creates a "request a review" task for the closing agent. Paste your Google review link below and the congratulations text (with the link) is armed too — it sends via auto-text when that\'s on.</div>'+
+    '<input id="rev-link" placeholder="https://g.page/r/…  (from your Google Business Profile → Ask for reviews)" value="'+esc(S.targets.reviewLink||'')+'">'+
+    '</div>';
   return h;
 }
+function saveReviewLink(){S.targets.reviewLink=document.getElementById('rev-link').value.trim();save();toast('Review link saved — closings now queue the ask automatically')}
 function setComm(){
   return '<div class="card"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">Commission splits</h2><span class="spacer"></span><button class="btn small" onclick="saveSplits()">Save splits</button></div>'+
     '<div class="mut" style="font-size:12.5px;margin-bottom:10px">Per pipeline: the agent\'s share of closed revenue — the house keeps the rest. The Commissions ledger recalculates instantly for everyone.</div>'+
