@@ -2045,11 +2045,19 @@ function vProps(){
         noPhoto.slice(0,6).map(p=>'<span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="go(\'prop\',\''+p.id+'\')">'+esc(p.address)+'</span>').join(' · ')+
         (noPhoto.length>6?' <span class="mut">+'+(noPhoto.length-6)+' more</span>':'')+'</div>':'')+'</div>';
   }
-  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Address</th><th>Category</th><th>Bd/Ba</th>'+(me.role==='agent'?'<th>List price</th>':'<th>Acq price</th><th>Rehab</th>')+'<th>ARV</th><th>Status</th><th>Transactions</th></tr>'+
+  const anyInvest=list.some(isInvestProp);
+  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Address</th><th>Category</th><th>Bd/Ba</th>'+
+    (me.role!=='agent'&&anyInvest?'<th>Acq price</th><th>Rehab</th><th>ARV</th><th>Spread</th>':'')+
+    '<th>Price</th><th>Status</th><th>Transactions</th></tr>'+
     list.map(p=>{const ds=S.deals.filter(d=>d.propertyId===p.id&&d.pipe!=='h2m_acq');
+      const inv=isInvestProp(p), dash='<td class="mut">—</td>';
       return '<tr class="rowlink" onclick="go(\'prop\',\''+p.id+'\')"><td>'+esc(p.address)+(p.photos&&p.photos.length?' <span class="tag" style="font-size:10px">'+p.photos.length+' 📷</span>':'')+'</td><td>'+(p.category?'<span class="tag">'+esc(p.category)+'</span>':'<span class="mut">—</span>')+'</td><td class="mut">'+p.beds+'/'+p.baths+'</td>'+
-      (me.role==='agent'?'<td class="money">'+money(p.listPrice||p.arv)+'</td>':'<td class="money">'+money(p.acqPrice)+'</td><td class="money">'+money(p.rehab)+'</td>')+
-      '<td class="money">'+money(p.arv)+'</td><td><span class="tag'+(propArchived(p)?'':' gr')+'">'+esc(p.status)+'</span></td><td>'+(ds.length?'<span class="tag bl">×'+ds.length+'</span>':'<span class="mut">—</span>')+'</td></tr>'}).join('')+'</table></div>';
+      (me.role!=='agent'&&anyInvest?(inv
+        ?'<td class="money">'+money(p.acqPrice)+'</td><td class="money">'+money(p.rehab)+'</td><td class="money">'+money(p.arv)+'</td><td class="money">'+money((p.arv||0)-(p.acqPrice||0)-(p.rehab||0))+'</td>'
+        :dash+dash+dash+dash):'')+
+      '<td class="money">'+(propPrice(p)?money(propPrice(p)):'<span class="mut">no price</span>')+'</td>'+
+      '<td><span class="tag'+(propArchived(p)?'':' gr')+'">'+esc(p.status)+'</span></td><td>'+(ds.length?'<span class="tag bl">×'+ds.length+'</span>':'<span class="mut">—</span>')+'</td></tr>'}).join('')+'</table></div>'+
+    (anyInvest&&list.some(p=>!isInvestProp(p))?'<div class="mut" style="font-size:12px;margin-top:8px">Acquisition, rehab, ARV and spread are investor numbers — they stay blank on owner-finance and on-market homes, which are sold on price and terms.</div>':'');
   return h;
 }
 function togglePropArchive(id){
@@ -2074,10 +2082,19 @@ function vProp(id){
       (p.desc?'<div class="mut" style="font-size:13px;margin-top:10px;line-height:1.7">'+esc(p.desc).slice(0,300)+(p.desc.length>300?'…':'')+'</div>':'')+
       (p.photos&&p.photos.length?'<div style="display:flex;gap:8px;margin-top:12px;overflow:auto">'+p.photos.slice(0,5).map(u=>'<img src="'+esc(u)+'" style="height:70px;border-radius:7px;border:1px solid var(--line)" onerror="this.style.display=\'none\'">').join('')+'</div>':'')+'</div>';
   }
-  h+='<div class="grid cards4" style="margin-top:18px"><div class="card"><div class="eyebrow">Acquisition</div><div class="big">'+money(p.acqPrice)+'</div></div>'+
+  if(isInvestProp(p)){
+    h+='<div class="grid cards4" style="margin-top:18px"><div class="card"><div class="eyebrow">Acquisition</div><div class="big">'+money(p.acqPrice)+'</div></div>'+
      '<div class="card"><div class="eyebrow">Rehab budget</div><div class="big">'+money(p.rehab)+'</div></div>'+
      '<div class="card"><div class="eyebrow">ARV</div><div class="big">'+money(p.arv)+'</div></div>'+
-     '<div class="card"><div class="eyebrow">Projected margin</div><div class="big">'+money(p.arv-p.acqPrice-p.rehab)+'</div></div></div>';
+     '<div class="card"><div class="eyebrow">Spread</div><div class="big">'+money((p.arv||0)-(p.acqPrice||0)-(p.rehab||0))+'</div></div></div>';
+  } else {
+    const dn=p.down||0, price=propPrice(p);
+    h+='<div class="grid cards4" style="margin-top:18px"><div class="card"><div class="eyebrow">List price</div><div class="big">'+(price?money(price):'—')+'</div></div>'+
+     '<div class="card"><div class="eyebrow">Down payment</div><div class="big">'+(dn?money(dn):'—')+'</div><div class="sub">'+(dn&&price?Math.round(dn/price*100)+'% down':'set on Edit')+'</div></div>'+
+     '<div class="card"><div class="eyebrow">Monthly payment</div><div class="big">'+(p.monthly?money(p.monthly):'—')+'</div></div>'+
+     '<div class="card"><div class="eyebrow">Financing</div><div class="big" style="font-size:19px">'+esc(p.terms||(p.category==='On-market'?'On-market sale':'Owner finance'))+'</div></div></div>'+
+     '<div class="mut" style="font-size:12px;margin-top:8px">'+esc(p.category||'This')+' property — sold on price and terms, so no ARV or spread is tracked here.</div>';
+  }
   h+='<div class="sect"><div class="sect-head"><h2>Transactions on this property</h2><span class="cnt">every business touching it</span></div>'+
     (ds.length?ds.map(d=>'<div class="deal-row" onclick="openDeal(\''+d.id+'\')"><div class="a">'+esc(PIPES[d.pipe].name)+' — '+esc(d.type)+(d.clientId?' · '+esc(C(d.clientId).name):'')+'<small>'+esc(U(d.agentId).name)+(d.closeDate?' · closes '+fdate(d.closeDate):'')+'</small></div>'+
     '<div style="text-align:right"><span class="tag'+(isFinal(d)?' gr':'')+'">'+PIPES[d.pipe].stages[d.stage]+'</span>'+(hideMoney()||d.pipe==='h2m_acq'?'':'<div class="money" style="margin-top:5px;font-size:13px">'+money(d.revenue)+'</div>')+'</div></div>').join(''):'<div class="empty">No transactions linked yet.</div>')+'</div>';
@@ -3012,6 +3029,11 @@ function saveNewDeal(){
   save();closeAll();pipeSel=pipe;go('biz',PIPES[pipe].biz);toast('Deal opened in '+PIPES[pipe].stages[0]);
 }
 const PCATS=['Residential','Wholesale','Commercial','Multifamily','On-market'];
+/* ARV, rehab and spread are investor math — they only mean something on a deal we're wholesaling
+   or holding. Owner-finance and on-market homes are sold on price and terms, not on spread. */
+const INVEST_CATS=['Wholesale','Commercial','Multifamily'];
+const isInvestProp=p=>!p.category||INVEST_CATS.includes(p.category);
+const propPrice=p=>p.listPrice||(isInvestProp(p)?p.arv:0)||0;
 const PSTATUSES=['Acquisition — Off-Market Lead','Acquisition — Due Diligence','In Inventory — Rehab','In Inventory — Marketed','Under Contract (Dispo)','Sold'];
 function mAddProp(editId){
   const p=editId?P(editId):null;
@@ -3023,6 +3045,10 @@ function mAddProp(editId){
   '<div class="frow"><div><label>ARV</label><input id="mp-arv" type="number" value="'+v('arv')+'"></div>'+
   (p?'<div><label>Status</label><select id="mp-status">'+PSTATUSES.map(st=>'<option'+(st===p.status?' selected':'')+'>'+st+'</option>').join('')+(PSTATUSES.includes(p.status)?'':'<option selected>'+esc(p.status)+'</option>')+'</select></div>':'<div></div>')+'</div>'+
   '<label>Category</label><select id="mp-cat"><option value="">— none —</option>'+PCATS.map(ct=>'<option'+(v('category')===ct?' selected':'')+'>'+ct+'</option>').join('')+'</select>'+
+  '<div class="eyebrow" style="margin:18px 0 2px;padding-top:14px;border-top:1px solid var(--line)">Owner-finance / sale terms — used on Residential and On-market homes</div>'+
+  '<div class="frow"><div><label>Down payment ($)</label><input id="mp-down" type="number" value="'+(v('down')||'')+'"></div>'+
+  '<div><label>Monthly payment ($)</label><input id="mp-monthly" type="number" value="'+(v('monthly')||'')+'"></div>'+
+  '<div><label>Financing</label><input id="mp-terms" value="'+esc(v('terms'))+'" placeholder="e.g. Owner finance, Cash, On-market sale"></div></div>'+
   '<div class="eyebrow" style="margin:18px 0 2px;padding-top:14px;border-top:1px solid var(--line)">Website marketing — shows on the sites when status is In Inventory — Marketed</div>'+
   '<div class="frow"><div><label>List price ($)</label><input id="mp-list" type="number" value="'+(v('listPrice')||'')+'" placeholder="blank = uses ARV"></div>'+
   '<div><label>Square feet</label><input id="mp-sqft" type="number" value="'+(v('sqft')||'')+'"></div></div>'+
@@ -3046,6 +3072,9 @@ function readPropForm(p){
   p.photo=p.photos[0]||null;
   const st=document.getElementById('mp-status');if(st)p.status=st.value;
   const ct=document.getElementById('mp-cat');if(ct)p.category=ct.value||undefined;
+  const dn=document.getElementById('mp-down');if(dn)p.down=+dn.value||0;
+  const mo=document.getElementById('mp-monthly');if(mo)p.monthly=+mo.value||0;
+  const tm=document.getElementById('mp-terms');if(tm)p.terms=tm.value.trim()||undefined;
   return p;
 }
 function saveProp(editId){
