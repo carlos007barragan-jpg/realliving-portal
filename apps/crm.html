@@ -860,7 +860,7 @@ const canSeeArchive=()=>me.role==='owner'||me.role==='manager'||me.id==='admin';
 /* only ownership sets what a closed file was worth — everyone else records the sale itself */
 const canSetNumbers=()=>me.role==='owner'||me.id==='admin';
 /* what this user is allowed to see at all in inventory */
-const visibleProps=()=>S.properties.filter(p=>canSeeArchive()?true:propAvailable(p));
+const visibleProps=()=>S.properties.filter(p=>canSeeWholeBook()?true:propAvailable(p));
 /* dormant: parked leads — kept in full, but out of dashboards, alerts and follow-up until reheated */
 const isDormant=c=>!!c&&c.dormant===true;
 const workingClients=()=>S.clients.filter(c=>!isDormant(c));
@@ -1565,7 +1565,7 @@ function vBiz(b){
     '<div class="card"><div class="eyebrow">Closed revenue</div><div class="big">'+(hideMoney()?closedN:money(closed))+'</div><div class="sub"><b>'+closedN+'</b> deals closed</div></div>'+
     '<div class="card"><div class="eyebrow">Close rate</div><div class="big">'+rate+'%</div><div class="sub">of all deals in '+BIZ[b]+'</div></div>'+
     (b==='H2M'
-      ?'<div class="card click" onclick="go(\'props\')"><div class="eyebrow">Inventory</div><div class="big">'+visibleProps().length+'</div><div class="sub">'+(canSeeArchive()?'wholly owned properties →':'available now →')+'</div></div>'
+      ?'<div class="card click" onclick="go(\'props\')"><div class="eyebrow">Inventory</div><div class="big">'+visibleProps().length+'</div><div class="sub">'+(canSeeWholeBook()?'wholly owned properties →':'available now →')+'</div></div>'
       :'<div class="card"><div class="eyebrow">Avg deal value</div><div class="big">'+(hideMoney()?'—':money((openN+closedN)?Math.round((open+closed)/(openN+closedN)):0))+'</div><div class="sub">expected per deal</div></div>')+
     '</div>';
   if(pipes.length>1)h+='<div class="pipetabs" style="margin-top:20px">'+pipes.map(p=>'<button class="pipetab'+(p===pipeSel?' on':'')+'" onclick="pipeSel=\''+p+'\';go(\'biz\',\''+b+'\')">'+PIPES[p].name+'</button>').join('')+'</div>';
@@ -2019,12 +2019,12 @@ function vProps(){
   const all=S.properties;
   const avail=all.filter(propAvailable), arch=all.filter(propArchived);
   const pipeline=all.filter(p=>!propArchived(p)&&!propAvailable(p));
-  if(!canSeeArchive())propTab='avail';
+  if(!canSeeWholeBook())propTab='avail';
   let list=propTab==='arch'?arch:(propTab==='pipe'?pipeline:avail);
   const sub=propTab==='arch'?'sold &amp; archived files — kept for the record':(propTab==='pipe'?'acquired / in rehab — not yet marketed':'live and marketable right now');
   let h='<div class="sect-head"><h2>H2M Inventory</h2><span class="cnt">'+list.length+' '+(propTab==='arch'?'archived':propTab==='pipe'?'in the works':'available')+' — '+sub+'</span><span class="spacer"></span>'+
-    (me.role!=='agent'?'<button class="btn small" onclick="mAddProp()">+ New property</button>':'')+'</div>';
-  if(canSeeArchive())h+='<div class="ttabs" style="margin:2px 0 14px">'+
+    (canEditProps()?'<button class="btn small" onclick="mAddProp()">+ New property</button>':'')+'</div>';
+  if(canSeeWholeBook())h+='<div class="ttabs" style="margin:2px 0 14px">'+
     '<button class="ttab'+(propTab==='avail'?' on':'')+'" onclick="propTab=\'avail\';go(\'props\')">Available · '+avail.length+'</button>'+
     '<button class="ttab'+(propTab==='pipe'?' on':'')+'" onclick="propTab=\'pipe\';go(\'props\')">In the works · '+pipeline.length+'</button>'+
     '<button class="ttab'+(propTab==='arch'?' on':'')+'" onclick="propTab=\'arch\';go(\'props\')">Archive · '+arch.length+'</button></div>';
@@ -2036,7 +2036,7 @@ function vProps(){
     catsPresent.map(ct=>'<button class="ttab'+(propCat===ct?' on':'')+'" onclick="propCat=\''+ct+'\';go(\'props\')">'+esc(ct)+' · '+list.filter(p=>p.category===ct).length+'</button>').join('')+'</div>';
   if(propCat)list=list.filter(p=>p.category===propCat);
   /* what's blocking a marketed home from showing on the websites */
-  if(propTab==='avail'&&canSeeArchive()){
+  if(propTab==='avail'&&canSeeWholeBook()){
     const noPrice=list.filter(p=>!((p.listPrice||p.arv)>=20000));
     const noPhoto=list.filter(p=>!(p.photos&&p.photos.length)&&!p.photo);
     if(noPrice.length||noPhoto.length)h+='<div class="card" style="margin-bottom:14px;border-left:3px solid var(--amber)">'+
@@ -2063,8 +2063,22 @@ function vProps(){
     (anyInvest&&list.some(p=>!isInvestProp(p))?'<div class="mut" style="font-size:12px;margin-top:8px">Rehab, ARV and spread are investor numbers — they stay blank on owner-finance and on-market homes, which are sold on price and terms.</div>':'');
   return h;
 }
+function rmProp(id){
+  const p=P(id);if(!p||!canEditProps())return;
+  const ds=S.deals.filter(d=>d.propertyId===p.id);
+  if(ds.length){
+    const live=ds.filter(d=>!isFinal(d)).length;
+    if(!confirm(p.address+'\n\nThis property is attached to '+ds.length+' transaction'+(ds.length>1?'s':'')+
+      (live?' ('+live+' still open)':'')+'. Deleting it unlinks them — the deals themselves stay on their clients.\n\nDelete anyway? Archive keeps the record and the history.'))return;
+  } else if(!confirm('Delete '+p.address+' permanently? Archive keeps it out of the way without losing it.'))return;
+  S.deals.forEach(d=>{if(d.propertyId===p.id){d.propertyId=null;if(!d.propInterest)d.propInterest=p.address}});
+  S.properties=S.properties.filter(x=>x.id!==p.id);
+  (S.deletedProps=S.deletedProps||[]).push({id:p.id,address:p.address,by:me.id,at:new Date().toISOString()});
+  logAct(null,null,'Property deleted by '+me.name+' — '+p.address+(ds.length?' ('+ds.length+' transaction(s) unlinked)':'')+'.');
+  save();closeAll();go('props');toast('Deleted — '+p.address);
+}
 function togglePropArchive(id){
-  const p=P(id);if(!p||!canSeeArchive())return;
+  const p=P(id);if(!p||!canSeeWholeBook())return;
   const wasArch=propArchived(p);
   p.archived=!wasArch;
   if(!p.archived&&/^\s*sold\s*$/i.test(p.status||''))p.status='In Inventory — Marketed';
@@ -2072,13 +2086,14 @@ function togglePropArchive(id){
 }
 function vProp(id){
   const p=P(id);if(!p)return '<div class="empty">Property not found.</div>';
-  if(!canSeeArchive()&&!propAvailable(p))return '<button class="back" onclick="go(\'props\')">← Inventory</button><div class="empty">That property isn\'t in the available inventory. Ask a manager if you need it.</div>';
+  if(!canSeeWholeBook()&&!propAvailable(p))return '<button class="back" onclick="go(\'props\')">← Inventory</button><div class="empty">That property isn\'t in the available inventory. Ask a manager if you need it.</div>';
   const ds=S.deals.filter(d=>d.propertyId===id).sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
   let h='<button class="back" onclick="go(\'props\')">← H2M Inventory</button>';
   const live=/inventory — marketed|in inventory/i.test(p.status||'')&&/marketed/i.test(p.status||'');
   h+='<div class="prof-head"><div style="flex:1"><h1 style="font-size:28px">'+esc(p.address)+'</h1><div class="meta">'+p.beds+' bd / '+p.baths+' ba'+(p.sqft?' · '+p.sqft.toLocaleString()+' sqft':'')+' · <b>'+esc(p.status)+'</b>'+(p.category?' · <span class="tag">'+esc(p.category)+'</span>':'')+(live?' <span class="tag gr">LIVE on the websites</span>':'')+'</div></div>'+
-     (canSeeArchive()?'<button class="btn ghost small" onclick="togglePropArchive(\''+p.id+'\')">'+(propArchived(p)?'Restore to inventory':'Archive')+'</button> ':'')+
-     (me.role!=='agent'?'<button class="btn small" onclick="mEditProp(\''+p.id+'\')">Edit property</button>':'')+'</div>';
+     (canSeeWholeBook()?'<button class="btn ghost small" onclick="togglePropArchive(\''+p.id+'\')">'+(propArchived(p)?'Restore to inventory':'Archive')+'</button> ':'')+
+     (canEditProps()?'<button class="btn ghost small" style="border-color:var(--red);color:var(--red)" onclick="rmProp(\''+p.id+'\')">Delete</button> '+
+      '<button class="btn small" onclick="mEditProp(\''+p.id+'\')">Edit property</button>':'')+'</div>';
   if(live||p.photos&&p.photos.length||p.desc){
     h+='<div class="card" style="margin-top:16px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Website listing</h2><span class="cnt">'+(live?'visible on reallivingkc + Mi Casa':'not visible — set status to In Inventory — Marketed to publish')+'</span></div>'+
       '<div class="kv">'+kv('Headline',p.title)+kv('List price',p.listPrice?money(p.listPrice):(p.arv?money(p.arv)+' (from ARV)':'—'))+kv('Area',p.area)+kv('Photos',(p.photos&&p.photos.length?p.photos.length+' attached':'none — add photo URLs via Edit'))+'</div>'+
@@ -3045,6 +3060,11 @@ const isInvestProp=p=>!p.category||INVEST_CATS.includes(p.category);
 /* what we PAID is internal — ownership, managers over acquisitions, and acquisitions agents.
    Everyone else (dispo included) works off sale price, rehab and ARV. */
 const canSeeAcq=()=>me.role==='owner'||me.id==='admin'||(myPipes().includes('h2m_acq'));
+/* anyone who works H2M inventory can add and edit properties — same gate as the Properties tab */
+const canEditProps=()=>me.role!=='marketing'&&(me.role==='owner'||me.role==='manager'||me.id==='admin'||myPipes().some(p=>PIPES[p]&&PIPES[p].biz==='H2M'));
+/* whoever can work the inventory sees the whole book: available, in the works, archive.
+   An RL- or ASAP-only agent still sees just what's marketed and sellable. */
+const canSeeWholeBook=()=>canEditProps();
 /* the spread a DISPO agent quotes an investor: what's left after they buy it and fix it */
 const buyerSpread=p=>(p.arv||0)-(propPrice(p)||0)-(p.rehab||0);
 const ourSpread=p=>(p.arv||0)-(p.acqPrice||0)-(p.rehab||0);
@@ -3066,7 +3086,7 @@ function mAddProp(editId){
   '<div><label>Monthly payment ($)</label><input id="mp-monthly" type="number" value="'+(v('monthly')||'')+'"></div>'+
   '<div><label>Financing</label><input id="mp-terms" value="'+esc(v('terms'))+'" placeholder="e.g. Owner finance, Cash, On-market sale"></div></div>'+
   '<div class="eyebrow" style="margin:18px 0 2px;padding-top:14px;border-top:1px solid var(--line)">Website marketing — shows on the sites when status is In Inventory — Marketed</div>'+
-  '<div class="frow"><div><label>List price ($)</label><input id="mp-list" type="number" value="'+(v('listPrice')||'')+'" placeholder="blank = uses ARV"></div>'+
+  '<div class="frow"><div><label>List / disposition price ($)</label><input id="mp-list" type="number" value="'+(v('listPrice')||'')+'" placeholder="blank = uses ARV"></div>'+
   '<div><label>Square feet</label><input id="mp-sqft" type="number" value="'+(v('sqft')||'')+'"></div></div>'+
   '<div class="frow"><div><label>Neighborhood / area</label><input id="mp-area" value="'+esc(v('area'))+'" placeholder="e.g. Historic Northeast, KC MO"></div>'+
   '<div><label>Listing headline</label><input id="mp-title" value="'+esc(v('title'))+'" placeholder="e.g. Fully renovated 3-bed ranch"></div></div>'+
