@@ -340,7 +340,7 @@ const DOCS=[
   {id:'h10',biz:'h2m',cat:'Operations',t:'Property Info Sheet',d:'Template for listing property details',type:'docx',roles:['admin','marketer','senior_marketer','team_lead','sales_manager']},
   {id:'h11',biz:'h2m',cat:'Operations',t:'Deal Submission Sheet',d:'Deal entry for buyer/seller matches',type:'docx',roles:['admin','marketer','senior_marketer','team_lead','sales_manager']},
   {id:'h12',biz:'h2m',cat:'Operations',t:'Closing Cost Estimate',d:'Estimated closing costs for buyers',type:'docx',roles:['admin','marketer','senior_marketer','team_lead','sales_manager']},
-  {id:'h13',biz:'h2m',cat:'Compliance',t:'Buyer Disclosure Form',d:'Required disclosures for owner finance',type:'docx',roles:['admin','senior_marketer','team_lead','sales_manager']},
+  {id:'h13',biz:'h2m',cat:'Compliance',t:'Buyer Disclosure Form',d:'Required disclosures for creative financing',type:'docx',roles:['admin','senior_marketer','team_lead','sales_manager']},
   {id:'h14',biz:'h2m',cat:'Operations',t:'Post-Close Follow-Up',d:'Follow-up sequence after closing',type:'docx',roles:['admin','marketer','senior_marketer','team_lead','sales_manager']},
   {id:'h15',biz:'h2m',cat:'Compliance',t:'Code of Conduct',d:'H2M standards of professional conduct',type:'docx',roles:['admin','marketer','senior_marketer','team_lead','sales_manager']},
   {id:'h16',biz:'h2m',cat:'Compliance',t:'Buyer Privacy Notice',d:'GLBA-compliant privacy notice',type:'docx',roles:['admin','senior_marketer','team_lead','sales_manager']},
@@ -369,6 +369,28 @@ const DOCS=[
 
 
 
+
+  {id:'c1',biz:'all',cat:'Hiring & Onboarding',t:'Manager Cover Sheet',d:'Run every new hire the same way — packet order and setup',type:'docx',roles:['admin','team_lead','sales_manager']},
+  {id:'c2',biz:'all',cat:'Hiring & Onboarding',t:'Offer & Engagement Letter',d:'Fill-in offer letter for a new contractor',type:'docx',roles:['admin','team_lead','sales_manager']},
+  {id:'c3',biz:'all',cat:'Agreements',t:'Team Member Agreement',d:'Master contract — system of record, pairs with a vertical Addendum',type:'docx',roles:['admin','agent','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'c4',biz:'all',cat:'Agreements',t:'Confidentiality & NDA',d:'Standard confidentiality agreement (includes DTSA notice)',type:'docx',roles:['admin','agent','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'c5',biz:'all',cat:'Agreements',t:'Confidentiality & Non-Disparagement Agreement',d:'Optional stronger alternative to the short NDA',type:'docx',roles:['admin','team_lead','sales_manager']},
+  {id:'c6',biz:'all',cat:'Agreements',t:'Non-Compete Agreement',d:'Required for everyone — 12 months, KC metro, directly competing work only',type:'docx',roles:['admin','agent','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'c7',biz:'all',cat:'Agreements',t:'Photo, Video & Media Release',d:'Permission to use likeness in company marketing',type:'docx',roles:['admin','agent','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'c8',biz:'all',cat:'Hiring & Onboarding',t:'IRS Form W-9 (Rev. March 2024)',d:'Required for everyone — official fillable IRS form',type:'pdf',roles:['admin','agent','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'c9',biz:'all',cat:'Hiring & Onboarding',t:'Payment & Tax Setup',d:'How contractors get paid and 1099 basics',type:'docx',roles:['admin','agent','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'c10',biz:'all',cat:'Hiring & Onboarding',t:'Onboarding Acknowledgement',d:'The gate — signed before training begins',type:'docx',roles:['admin','agent','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'c11',biz:'all',cat:'Onboarding',t:'Contractor Handbook',d:'How we work — standards, conduct, confidentiality, getting paid',type:'docx',roles:['admin','agent','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'c12',biz:'all',cat:'Onboarding',t:'New-Hire Onboarding & First-Week Ramp',d:'Signed Monday to dialing Thursday — the week-one checklist',type:'docx',roles:['admin','agent','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'c13',biz:'all',cat:'Management',t:'Offboarding & Separation Checklist',d:'Clean exit — access, property, final pay, continuing obligations',type:'docx',roles:['admin','team_lead','sales_manager']},
+  {id:'c14',biz:'all',cat:'Agreements',t:'Virtual Assistant Addendum',d:'VA terms — monthly retainer plus $200 per closed deal brought in',type:'docx',roles:['admin','team_lead','sales_manager']},
+  {id:'c15',biz:'all',cat:'Hiring & Onboarding',t:'VA New-Hire Packet (print-ready)',d:'Complete VA signing packet in order, ready to print',type:'pdf',roles:['admin','team_lead','sales_manager']},
+  {id:'c16',biz:'all',cat:'Management',t:'INTERNAL — Legal Review Punch List',d:'Leadership only — attorney review agenda. Do not distribute.',type:'docx',roles:['admin']},
+  {id:'a18',biz:'asap',cat:'Compliance',t:'Broker Disclosure',d:'Client-facing — ASAP is a broker, not the lender. Business-purpose only',type:'docx',roles:['admin','agent']},
+  {id:'a19',biz:'asap',cat:'Onboarding',t:'ASAP New-Hire Packet (print-ready)',d:'Complete ASAP signing packet in order, ready to print',type:'pdf',roles:['admin','team_lead','sales_manager']},
+  {id:'h35',biz:'h2m',cat:'Operations',t:'Purchase Agreement — Missouri (fillable)',d:'Residential purchase agreement with fill-in fields',type:'pdf',roles:['admin','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'h36',biz:'h2m',cat:'Operations',t:'Assignment of Contract (fillable)',d:'Assignment of purchase agreement with fill-in fields',type:'pdf',roles:['admin','marketer','senior_marketer','team_lead','sales_manager']},
+  {id:'h37',biz:'h2m',cat:'Onboarding',t:'H2M New-Hire Packet (print-ready)',d:'Complete H2M signing packet in order, ready to print',type:'pdf',roles:['admin','team_lead','sales_manager']},
 ];
 
 const DEF_USERS=[{id:'su',name:'Admin',pin:'1234',role:'admin',biz:'all'},{id:'a1u',name:'ASAP Agent',pin:'2222',role:'agent',biz:'asap'},{id:'h1u',name:'H2M Marketer',pin:'3333',role:'marketer',biz:'h2m'}];
@@ -396,8 +418,8 @@ function doLogout(){CU=null;e('hubView').style.display='none';e('loginView').sty
 function vis(){
   const isAdm=CU?.role==='admin';
   return DOCS.filter(d=>{
-    if(activeBiz!=='all'&&d.biz!==activeBiz)return false;
-    if(!isAdm&&d.biz!==CU.biz)return false;
+    if(activeBiz!=='all'&&d.biz!=='all'&&d.biz!==activeBiz)return false;
+    if(!isAdm&&d.biz!=='all'&&d.biz!==CU.biz)return false;
     if(!isAdm&&!d.roles.includes(CU.role))return false;
     return true;
   });
