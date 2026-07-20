@@ -231,7 +231,24 @@ input{font-family:inherit}
   .user-block{padding:4px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.card.locked{opacity:.55;cursor:not-allowed;position:relative}
+.card.locked .tile{filter:grayscale(1)}
+.lockpill{position:absolute;top:12px;right:12px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#E2E8F0;color:#475569;padding:4px 9px;border-radius:999px}
+.ob-banner{background:linear-gradient(135deg,#0F1A2B,#16243A);color:#E9EEF7;border-radius:16px;padding:22px 24px;margin-bottom:22px}
+.ob-h{font-size:17px;font-weight:800;margin-bottom:5px}
+.ob-s{font-size:13.5px;color:#9FB0CA;line-height:1.65;max-width:760px}
+.ob-s b{color:#C8A44D}
+.ob-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:18px}
+.ob-step{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:13px 15px}
+.ob-step b{display:block;font-size:13px;font-weight:700}
+.ob-step span{display:block;font-size:11.5px;color:#9FB0CA;margin-top:2px}
+.ob-step.now{border-color:#C8A44D}
+.ob-step.ok b:after{content:' \2713';color:#4ADE80}
+.ob-bar{height:5px;background:rgba(255,255,255,.10);border-radius:999px;margin-top:9px;overflow:hidden}
+.ob-bar i{display:block;height:100%;background:#C8A44D}
 </style>
+<script src="apps/onboard.js"></script>
 </head>
 <body>
 
@@ -492,6 +509,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     $("loginView").classList.add("off");
     $("shellView").classList.add("on");
     renderDashboard();
+    loadOnboarding();
   }
   async function needsFirstPassword(){
     try{const {data:{user}}=await sb.auth.getUser();return !!(user&&user.user_metadata&&user.user_metadata.must_set_password);}catch(e){return false}
@@ -556,6 +574,12 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
   $("lbtn").addEventListener("click", attemptLogin);
   ["lemail","lpass"].forEach(id => $(id).addEventListener("keydown", e => { if(e.key==="Enter") attemptLogin(); }));
 
+  function openCard(id){
+    const c = CARDS.find(x=>x.id===id); if(!c||!c.url) return;
+    const f=$("appFrame"); f.removeAttribute("srcdoc"); f.src=c.url;
+    $("appTitle").textContent=c.name; $("appView").classList.add("on");
+  }
+
   /* ---------- DASHBOARD ---------- */
   function renderDashboard(){
     $("uName").textContent = CU.name;
@@ -564,20 +588,75 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     const first = CU.name.split(" ")[0];
     $("greeting").textContent = "Welcome back, " + first;
 
-    $("cardGrid").innerHTML = CARDS.map(c => `
-      <button class="card" data-id="${c.id}">
+    $("cardGrid").innerHTML = CARDS.map(c => {
+      const lock = lockReason(c.id);
+      return `
+      <button class="card${lock?' locked':''}" data-id="${c.id}">
         <div class="tile ${c.tile}"><svg><use href="#i-${c.icon}"/></svg></div>
         <div>
           <h3>${c.name}${c.type==="external" ? '<span class="ext-icon"><svg><use href="#i-ext"/></svg></span>' : ""}</h3>
         </div>
-        <p>${c.desc}</p>
-      </button>
-    `).join("");
+        <p>${lock ? lock : c.desc}</p>
+        ${lock?'<span class="lockpill">Locked</span>':''}
+      </button>`;
+    }).join("");
+    renderOnboardBanner();
   }
+
+  /* ---------- onboarding gate ----------
+     A new person signs their paperwork, then trains, then everything opens. */
+  let OB = null;
+  function lockReason(id){
+    if(!OB || OB.stage==='done') return '';
+    if(OB.stage==='docs')
+      return id==='documents' ? '' : 'Sign your paperwork in Documents first.';
+    if(OB.stage==='training')
+      return (id==='documents'||id==='training') ? '' : 'Finish your training first.';
+    return '';
+  }
+  function renderOnboardBanner(){
+    let b=$("obBanner");
+    if(!OB || OB.stage==='done'){ if(b)b.remove(); return; }
+    if(!b){
+      b=document.createElement('div'); b.id='obBanner';
+      const grid=$("cardGrid"); grid.parentNode.insertBefore(b,grid);
+    }
+    const docsPct=Math.round(OB.signed/Math.max(1,OB.docs.length)*100);
+    const trPct=Math.round(OB.trained/Math.max(1,OB.tracks.length)*100);
+    b.className='ob-banner';
+    b.innerHTML=
+      '<div class="ob-h">Finish setting up your access</div>'+
+      '<div class="ob-s">'+(OB.stage==='docs'
+        ? 'Your paperwork comes first. Open <b>Documents</b>, read each item and sign it — that unlocks your training, and training unlocks the rest of the suite.'
+        : 'Paperwork is done. Now finish the training for your role in the <b>Training Center</b> and everything else opens.')+'</div>'+
+      '<div class="ob-steps">'+
+        '<div class="ob-step'+(OB.docsDone?' ok':' now')+'"><b>1 · Paperwork</b><span>'+OB.signed+' of '+OB.docs.length+' signed</span>'+
+          '<div class="ob-bar"><i style="width:'+docsPct+'%"></i></div></div>'+
+        '<div class="ob-step'+(OB.trainDone?' ok':(OB.docsDone?' now':''))+'"><b>2 · Training</b><span>'+OB.trained+' of '+OB.tracks.length+' tracks</span>'+
+          '<div class="ob-bar"><i style="width:'+trPct+'%"></i></div></div>'+
+        '<div class="ob-step"><b>3 · Full access</b><span>CRM, inventory and the rest</span><div class="ob-bar"><i style="width:0%"></i></div></div>'+
+      '</div>';
+  }
+  async function loadOnboarding(){
+    try{
+      if(!window.RLOnboard) return;
+      OB = await window.RLOnboard.load(sb);
+      renderDashboard();
+    }catch(e){ console.error('[onboarding]',e); }
+  }
+  window.addEventListener('message', e => {
+    if(e.data && e.data.rl==='onboarding'){
+      if(e.data.go==='training'){ loadOnboarding().then(()=>openCard('training')); return; }
+      if(e.data.go==='home'){ $("appView").classList.remove("on"); $("appFrame").src='about:blank'; }
+      loadOnboarding();
+    }
+  });
 
   $("cardGrid").addEventListener("click", e => {
     const card = e.target.closest(".card"); if(!card) return;
     const c = CARDS.find(x => x.id === card.dataset.id); if(!c) return;
+    const lock = lockReason(c.id);
+    if(lock){ alert(c.name + " is locked.\n\n" + lock.replace(/<[^>]+>/g,'')); return; }
     if(c.type === "external"){
       window.open(c.src, "_blank", "noopener");
       return;
