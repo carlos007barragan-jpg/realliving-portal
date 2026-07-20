@@ -31,6 +31,7 @@ const COMPANY=[
   {id:'c12',kind:'ack',  t:'New-Hire Onboarding & First-Week Ramp'},
   {id:'c10',kind:'sign', t:'Onboarding Acknowledgement'}
 ];
+/* SECOND AXIS — the vertical addendum and whatever that vertical requires */
 const BIZ_DOCS={
   asap:[{id:'a20',kind:'sign',t:'ASAP Lending Addendum'},
         {id:'a13',kind:'sign',t:'Agent Code of Conduct'},
@@ -42,10 +43,23 @@ const BIZ_DOCS={
         {id:'h16',kind:'ack', t:'Buyer Privacy Notice'},
         {id:'h1a',kind:'ack', t:'Marketer Onboarding Guide'}],
   rl:  [],   /* RL Team paperwork runs through eXp — nothing to sign in here yet */
-  tc:  [],
-  va:  [{id:'c14',kind:'sign',t:'Virtual Assistant Addendum'}]
+  tc:  []
 };
-const BIZ_LABEL={asap:'ASAP Lending',h2m:'H2M — Creative Financing',rl:'RL Licensed Team',tc:'Transaction Coordination',va:'Virtual Assistant'};
+/* THIRD AXIS — what the person's ROLE requires, whatever vertical they sit in */
+const ROLE_DOCS={
+  owner:   [{id:'c1', kind:'ack', t:'Manager Cover Sheet'},
+            {id:'c13',kind:'ack', t:'Offboarding & Separation Checklist'}],
+  manager: [{id:'c1', kind:'ack', t:'Manager Cover Sheet'},
+            {id:'c13',kind:'ack', t:'Offboarding & Separation Checklist'}],
+  agent:   [],
+  marketing:[],
+  va:      [{id:'c14',kind:'sign',t:'Virtual Assistant Addendum'}],
+  referral:[{id:'a9', kind:'sign',t:'Referral Partner Agreement (ASAP)'},
+            {id:'a14',kind:'sign',t:'Referral Partner NDA'},
+            {id:'h17',kind:'sign',t:'Referral Partner Agreement (H2M)'}]
+};
+const BIZ_LABEL={asap:'ASAP Lending',h2m:'H2M — Creative Financing',rl:'RL Licensed Team',tc:'Transaction Coordination'};
+const ROLE_LABEL={owner:'Ownership',manager:'Manager',agent:'Agent',marketing:'Marketing',va:'Virtual Assistant',referral:'Referral partner'};
 const BIZ_TRACK={asap:'asap',h2m:'h2m',rl:'rl',tc:null,va:null};
 const TRACK_LABEL={fundamentals:'Sales Fundamentals',asap:'ASAP Lending',h2m:'H2M — Creative Financing',rl:'RL Licensed Team'};
 
@@ -54,19 +68,41 @@ function bizFromSeat(seat){
   const out=[];
   const pipes=(seat&&seat.pipes)||[];
   const role=(seat&&seat.role)||'';
-  if(role==='owner'||role==='manager'||role==='admin')return ['asap','h2m','rl','tc'];
+  /* ownership sees the whole company; a manager only covers the pipelines they actually hold */
+  if(role==='owner'||role==='admin')return ['asap','h2m','rl','tc'];
+  if(role==='manager'&&!pipes.length)return ['asap','h2m','rl','tc'];
   if(pipes.indexOf('asap')>-1)out.push('asap');
   if(pipes.some(p=>p.indexOf('h2m')===0))out.push('h2m');
   if(pipes.indexOf('rl_buy')>-1||pipes.indexOf('rl_list')>-1)out.push('rl');
   if(pipes.indexOf('tc')>-1)out.push('tc');
-  if(seat&&seat.va===true)out.push('va');
   return out;
 }
-function docsFor(biz){
+/* the role tier a seat sits in — drives the third axis */
+function roleFromSeat(seat){
+  const r=(seat&&seat.role)||'agent';
+  if(seat&&seat.va===true)return 'va';
+  if(seat&&seat.referralPartner===true)return 'referral';
+  if(r==='admin')return 'owner';
+  return ['owner','manager','agent','marketing'].indexOf(r)>-1?r:'agent';
+}
+/* every requirement, tagged with why it applies, so a person can see the reason */
+function requirements(biz,role){
   const seen={},list=[];
-  COMPANY.concat(...biz.map(b=>BIZ_DOCS[b]||[])).forEach(d=>{if(!seen[d.id]){seen[d.id]=1;list.push(d)}});
+  const add=(arr,why)=>((arr||[]).forEach(d=>{if(!seen[d.id]){seen[d.id]=1;list.push(Object.assign({},d,{why}))}}));
+  /* a referral partner is not a team member — they don't sign the employment set,
+     only the paperwork that makes a referral relationship legal */
+  if(role==='referral'){
+    add(COMPANY.filter(d=>['c8','c9'].indexOf(d.id)>-1),'company');
+    biz.forEach(b=>add((BIZ_DOCS[b]||[]).filter(d=>d.kind==='ack'),b));
+    add(ROLE_DOCS.referral,'role:referral');
+    return list;
+  }
+  add(COMPANY,'company');
+  biz.forEach(b=>add(BIZ_DOCS[b],b));
+  add(ROLE_DOCS[role],'role:'+role);
   return list;
 }
+function docsFor(biz,role){ return requirements(biz,role||'agent'); }
 function tracksFor(biz){
   const out=['fundamentals'];
   biz.forEach(b=>{const t=BIZ_TRACK[b];if(t&&out.indexOf(t)<0)out.push(t)});
@@ -98,14 +134,16 @@ async function load(sb){
   }catch(e){}
   if(!st)st={email,name:(session.user.user_metadata&&session.user.user_metadata.full_name)||email,seatId:seat?seat.id:null,sigs:{},tracks:{}};
   const biz=bizFromSeat(seat);
-  const docs=docsFor(biz), tracks=tracksFor(biz);
+  const role=roleFromSeat(seat);
+  const docs=docsFor(biz,role), tracks=tracksFor(biz);
   const signed=docs.filter(d=>st.sigs&&st.sigs[d.id]).length;
   const trained=tracks.filter(t=>st.tracks&&st.tracks[t]).length;
   const docsDone=signed>=docs.length;
   const trainDone=docsDone&&trained>=tracks.length;
   return {
     sb, uid, email, session, seat, state:st,
-    biz, bizLabels:biz.map(b=>BIZ_LABEL[b]).filter(Boolean),
+    biz, role, roleLabel:ROLE_LABEL[role]||'Team member',
+    bizLabels:biz.map(b=>BIZ_LABEL[b]).filter(Boolean),
     docs, tracks, signed, trained, docsDone, trainDone,
     stage: !docsDone ? 'docs' : (!trainDone ? 'training' : 'done')
   };
@@ -132,6 +170,6 @@ async function completeTrack(ctx,trackId){
   return await save(ctx);
 }
 
-global.RLOnboard={load,save,sign,completeTrack,docsFor,tracksFor,bizFromSeat,
-  COMPANY,BIZ_DOCS,BIZ_LABEL,TRACK_LABEL,client};
+global.RLOnboard={load,save,sign,completeTrack,docsFor,tracksFor,bizFromSeat,roleFromSeat,requirements,
+  COMPANY,BIZ_DOCS,ROLE_DOCS,BIZ_LABEL,ROLE_LABEL,TRACK_LABEL,client};
 })(window);
