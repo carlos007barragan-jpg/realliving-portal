@@ -1993,10 +1993,12 @@ async function addDoc(cid,input){
   const f=input.files[0];if(!f)return;
   const entry={name:f.name,by:me.id,ts:new Date().toISOString(),size:f.size,mime:f.type};
   if(CLOUD&&sb){
+    const blocked=await storageReady();
+    if(blocked){toast(blocked);input.value='';return}
     const path=cid+'/'+Date.now()+'-'+f.name.replace(/[^A-Za-z0-9._-]/g,'_').slice(-80);
     toast('Uploading '+f.name+'…');
     const {error}=await sb.storage.from('lead-docs').upload(path,f,{contentType:f.type||'application/octet-stream',upsert:true});
-    if(error){toast('Upload failed: '+error.message);return}
+    if(error){toast('Upload failed — '+uploadHint(error.message));return}
     entry.path=path;
   }
   C(cid).docs.unshift(entry);
@@ -2082,7 +2084,8 @@ function vPropPhotos(p){
   if(!ph.length&&!can)return '';
   let h='<div class="card" style="margin-top:16px"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:17px">Photos</h2>'+
     '<span class="cnt">'+(ph.length?ph.length+' on file · the first one is the cover the websites use':'none yet')+'</span>'+
-    (can?'<span class="spacer"></span><label class="btn small" style="cursor:pointer;margin:0">+ Add photos<input type="file" accept="image/*" multiple style="display:none" onchange="addPhotos(\''+p.id+'\',this)"></label>':'')+'</div>';
+    (can?'<span class="spacer"></span><label class="btn small" style="cursor:pointer;margin:0">+ Add photos<input type="file" accept="image/*,.heic,.heif" multiple style="display:none" onchange="addPhotos(\''+p.id+'\',this)"></label>':'')+'</div>'+
+    (can&&DEV?'<div class="mut" style="font-size:12px;margin:-2px 0 10px;color:var(--amber)">You\'re signed in through the admin door — uploads need the Business Suite login. Paste image links under Edit property, or sign in at the portal.</div>':'');
   if(!ph.length)return h+'<div class="empty" style="padding:14px 0">No photos yet. '+(can?'Add them straight from your phone or computer — they go live on the websites as soon as the home is marketed and priced.':'')+'</div></div>';
   h+='<div style="display:flex;flex-wrap:wrap;gap:12px">'+ph.map((u,i)=>
     '<div style="width:150px"><div style="position:relative">'+
@@ -2099,24 +2102,60 @@ function vPropPhotos(p){
   return h;
 }
 const PHOTO_BUCKET='property-photos';
+/* Storage writes need a real Supabase session. The admin password door doesn't create one,
+   so uploads silently failed with an RLS error — say so in plain words instead. */
+async function storageReady(){
+  if(!CLOUD||!sb)return 'This copy of the CRM is running offline — open it from the Business Suite to upload files.';
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return 'Uploads need your Business Suite login. You came in through the admin door, so there\'s no file access on this session — sign in at the portal (or paste image links under Edit property).';
+  }catch(e){return 'Could not check your login: '+(e.message||e)}
+  return null;
+}
+const MIME_BY_EXT={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',gif:'image/gif',heic:'image/heic',heif:'image/heif',bmp:'image/bmp',tif:'image/tiff',tiff:'image/tiff'};
+function guessMime(f){
+  if(f.type&&/^image\//.test(f.type))return f.type;
+  const ext=(f.name||'').split('.').pop().toLowerCase();
+  return MIME_BY_EXT[ext]||'';
+}
+function uploadHint(msg){
+  const m=(msg||'').toLowerCase();
+  if(m.indexOf('row-level security')>-1||m.indexOf('unauthorized')>-1||m.indexOf('jwt')>-1)
+    return 'Your login doesn\'t have file access — sign in again at the Business Suite front door.';
+  if(m.indexOf('exceeded the maximum allowed size')>-1||m.indexOf('payload too large')>-1)
+    return 'That photo is over the 50MB limit — send a smaller version.';
+  if(m.indexOf('bucket not found')>-1)return 'The photo library is missing on the server — tell Claude and it gets fixed.';
+  if(m.indexOf('mime')>-1)return 'That file type isn\'t accepted — use a JPG, PNG or HEIC.';
+  return msg;
+}
 async function addPhotos(pid,input){
   const p=P(pid);if(!p||!canEditProps())return;
   const files=[...(input.files||[])];if(!files.length)return;
-  if(!CLOUD||!sb){toast('Photo upload needs the cloud CRM — paste image links in Edit instead');return}
-  p.photos=p.photos||[];let done=0,failed=0;
+  const blocked=await storageReady();
+  if(blocked){toast(blocked);input.value='';return}
+  p.photos=p.photos||[];let done=0,failed=0,lastErr='';
   for(const f of files){
-    if(!/^image\//.test(f.type||'')){toast(f.name+' is not an image — skipped');failed++;continue}
-    toast('Uploading '+(done+failed+1)+' of '+files.length+'…');
+    const mime=guessMime(f);
+    if(!mime){toast('"'+f.name+'" doesn\'t look like a photo — skipped');failed++;continue}
+    toast('Uploading '+(done+failed+1)+' of '+files.length+' — '+f.name);
     const path=pid+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,7)+'-'+f.name.replace(/[^A-Za-z0-9._-]/g,'_').slice(-60);
-    const {error}=await sb.storage.from(PHOTO_BUCKET).upload(path,f,{contentType:f.type,upsert:true});
-    if(error){toast('Upload failed: '+error.message);failed++;continue}
+    let error=null;
+    try{
+      const res=await sb.storage.from(PHOTO_BUCKET).upload(path,f,{contentType:mime,upsert:true});
+      error=res.error;
+    }catch(e){error={message:String(e&&e.message||e)}}
+    if(error){lastErr=uploadHint(error.message);failed++;continue}
     const {data}=sb.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-    if(data&&data.publicUrl){p.photos.push(data.publicUrl);done++}
+    if(data&&data.publicUrl){p.photos.push(data.publicUrl);done++}else{failed++;lastErr='Uploaded but could not read the link back.'}
   }
   p.photo=p.photos[0]||null;
   if(done)logAct(null,null,done+' photo'+(done>1?'s':'')+' added to '+p.address+' by '+me.name+'.');
-  input.value='';save();go('prop',pid);
-  toast(done?done+' photo'+(done>1?'s':'')+' added'+(failed?' · '+failed+' skipped':''):'Nothing uploaded');
+  input.value='';
+  if(done)save();
+  go('prop',pid);
+  toast(done
+    ? done+' photo'+(done>1?'s':'')+' added'+(failed?' · '+failed+' failed: '+lastErr:'')
+    : 'Upload failed — '+(lastErr||'nothing went through'));
 }
 function movePhoto(pid,i,dir){
   const p=P(pid);if(!p||!canEditProps())return;
