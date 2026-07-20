@@ -744,6 +744,7 @@ function attentionItems(){
     items.push({aid:a.agentId,sev:'am',t:(c?c.name:'—')+' — '+a.type+' appointment passed, never closed out',s:fdate(a.dt)+' · '+U(a.agentId).name,fn:"apptDone('"+a.id+"')",act:'Mark done'});
   });
   S.clients.forEach(c=>{
+    if(isDormant(c))return;
     const age=Math.floor((now-new Date(c.createdAt))/864e5);
     if(age>14)return;
     const touched=S.deals.some(d=>d.clientId===c.id)||S.appts.some(a=>a.clientId===c.id)||S.touches.some(t=>t.clientId===c.id)||S.acts.some(a=>a.clientId===c.id&&a.text.indexOf('Client created')!==0);
@@ -854,6 +855,9 @@ const propAvailable=p=>!propArchived(p)&&/marketed/i.test(p.status||'');
 const canSeeArchive=()=>me.role==='owner'||me.role==='manager'||me.id==='admin';
 /* what this user is allowed to see at all in inventory */
 const visibleProps=()=>S.properties.filter(p=>canSeeArchive()?true:propAvailable(p));
+/* dormant: parked leads — kept in full, but out of dashboards, alerts and follow-up until reheated */
+const isDormant=c=>!!c&&c.dormant===true;
+const workingClients=()=>S.clients.filter(c=>!isDormant(c));
 function allowedPipes(u){
   if(!u)return [];
   if(u.role==='owner'||u.id==='admin')return Object.keys(PIPES);
@@ -926,7 +930,7 @@ function renderNav(){
   }).join('');
 }
 /* ================= SHELL ================= *//* ================= SHELL ================= *//* ================= SHELL ================= */
-let page='dash', propTab='avail', profFull=false, histFull=false, pageArg=null, pipeSel=null, bizSel=null, boardFilter='', dashFilter='ALL', scAg='ALL', scDays=7, velPipe='h2m_dispo', repTab='perf', trendRange='M', profTab='all', calMode='month', calOff=0, calWOff=0, calBiz='ALL', setTab='general', fuDone=false, commKind='ALL';
+let page='dash', propTab='avail', profFull=false, histFull=false, dormView=false, pageArg=null, pipeSel=null, bizSel=null, boardFilter='', dashFilter='ALL', scAg='ALL', scDays=7, velPipe='h2m_dispo', repTab='perf', trendRange='M', profTab='all', calMode='month', calOff=0, calWOff=0, calBiz='ALL', setTab='general', fuDone=false, commKind='ALL';
 function refresh(){go(page,pageArg)}
 (function(){const _go=null})();
 function renderWho(){
@@ -1117,7 +1121,7 @@ function vDash(){
     const bySrc={};S.clients.forEach(c=>{bySrc[c.source]=bySrc[c.source]||{n:0,won:0};bySrc[c.source].n++;
       if(S.deals.some(d=>d.clientId===c.id&&isFinal(d)))bySrc[c.source].won++;});
     const leadsMo=S.clients.filter(c=>inThisMonth(c.createdAt)).length;
-    h+='<div class="grid cards4"><div class="card"><div class="eyebrow">Total leads</div><div class="big">'+S.clients.length+'</div><div class="sub">in shared database</div></div>'+
+    h+='<div class="grid cards4"><div class="card"><div class="eyebrow">Total leads</div><div class="big">'+workingClients().length+'</div><div class="sub">being worked'+(S.clients.length-workingClients().length?' · '+(S.clients.length-workingClients().length)+' dormant':'')+'</div></div>'+
        '<div class="card"><div class="eyebrow">Leads I generated</div><div class="big">'+S.clients.filter(c=>c.genBy===me.id).length+'</div><div class="sub">credited to '+esc(me.name)+'</div></div>'+
        '<div class="card"><div class="eyebrow">Top source</div><div class="big" style="font-size:22px">'+esc(Object.entries(bySrc).sort((a,b)=>b[1].n-a[1].n)[0]?.[0]||'—')+'</div><div class="sub">by lead volume</div></div></div>';
     h+='<div class="sect"><div class="sect-head"><h2>Lead pace</h2></div><div class="card" style="padding:6px 20px">'+
@@ -1208,6 +1212,7 @@ function opportunities(){
   const hasBiz=(cid,biz)=>S.deals.some(x=>x.clientId===cid&&PIPES[x.pipe].biz===biz);
   const hasPipe=(cid,p)=>S.deals.some(x=>x.clientId===cid&&x.pipe===p);
   S.clients.forEach(c=>{
+    if(isDormant(c))return;
     const ds=S.deals.filter(x=>x.clientId===c.id);
     if(!ds.length)return;
     if(ds.some(x=>x.pipe==='rl_buy')&&!hasBiz(c.id,'ASAP'))
@@ -1617,12 +1622,18 @@ let clientQ='';
 function vClients(){
   const activeL=S.smartlists.find(x=>x.id===slSel);
   let list=activeL?listMembers(activeL.q):S.clients.slice();
+  const dormN=S.clients.filter(isDormant).length;
+  list=list.filter(c=>dormView?isDormant(c):!isDormant(c));
   list=list.filter(c=>!clientQ||c.name.toLowerCase().includes(clientQ)||c.phone.includes(clientQ)||(c.email||'').toLowerCase().includes(clientQ))
     .sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  let h='<div class="sect-head"><h2>Contacts</h2><span class="cnt">'+list.length+(activeL?' in "'+esc(activeL.name)+'"':' — shared across all businesses')+'</span><span class="spacer"></span>'+
+  let h='<div class="sect-head"><h2>Contacts</h2><span class="cnt">'+list.length+(dormView?' dormant — parked until someone reheats them':(activeL?' in "'+esc(activeL.name)+'"':' being worked'))+'</span><span class="spacer"></span>'+
     '<input style="width:220px" placeholder="Filter by name / phone / email" value="'+esc(clientQ)+'" oninput="clientQ=this.value.toLowerCase();go(\'clients\')">'+
     '<button class="btn ghost small" style="margin-left:10px" onclick="mAddClient()">Quick add</button>'+
     '<button class="btn small" style="margin-left:8px" onclick="mIntake()">+ New intake</button></div>';
+  h+='<div class="ttabs" style="margin:2px 0 10px">'+
+    '<button class="ttab'+(dormView?'':' on')+'" onclick="dormView=false;go(\'clients\')">Being worked · '+(S.clients.length-dormN)+'</button>'+
+    '<button class="ttab'+(dormView?' on':'')+'" onclick="dormView=true;go(\'clients\')">Dormant · '+dormN+'</button>'+
+    (list.length&&me.role!=='marketing'?'<button class="ttab" style="border-color:var(--gold2);color:var(--gold2)" onclick="bulkDormant('+(dormView?'false':'true')+')">'+(dormView?'Reheat all '+list.length+' shown':'Park all '+list.length+' shown as dormant')+'</button>':'')+'</div>';
   h+='<div class="ttabs" style="margin:2px 0 14px">'+
     '<button class="ttab'+(slSel?'':' on')+'" onclick="slSel=null;go(\'clients\')">Everyone</button>'+
     S.smartlists.map(l=>'<button class="ttab'+(slSel===l.id?' on':'')+'" onclick="slSel=\''+l.id+'\';go(\'clients\')">'+esc(l.name)+' · '+listMembers(l.q).length+
@@ -1639,7 +1650,7 @@ function vClients(){
       '<span class="rowacts"><button class="btn ghost small" title="Call" onclick="event.stopPropagation();mCall(\''+c.id+'\')">📞</button><button class="btn ghost small" title="Text" onclick="event.stopPropagation();mSendText(\''+c.id+'\')">💬</button></span>'+
       '<span>'+esc(c.name)+'<small style="display:block;color:var(--mut);font-size:11.5px">'+esc(c.email||'')+'</small></span></div></td>'+
       '<td class="mut">'+esc(c.phone)+'</td><td class="mut">'+esc(c.source)+'</td>'+
-      '<td style="font-size:12.5px;color:'+((days===null||days>=30)?'var(--red)':'var(--mut)')+'">'+lastTxt+'</td>'+
+      '<td style="font-size:12.5px;color:'+(isDormant(c)?'var(--mut)':((days===null||days>=30)?'var(--red)':'var(--mut)'))+'">'+(isDormant(c)?'dormant':lastTxt)+'</td>'+
       '<td>'+(open.length||'—')+'</td><td>'+(bizs.length?bizs.map(bz=>'<span class="tag" style="border-color:'+BIZCOLOR[bz]+';color:'+BIZCOLOR[bz]+'">'+BIZ[bz]+'</span>').join(' '):'<span class="mut">—</span>')+'</td></tr>'}).join('')+'</table></div>';
   return h;
 }
@@ -1656,13 +1667,14 @@ function vClient(id){
   let h='<button class="back" onclick="go(\'clients\')">← All contacts</button>';
   /* header band */
   h+='<div class="prof-head"><div class="avatar">'+esc(initials)+'</div><div style="flex:1;min-width:220px"><h1>'+esc(c.name)+'</h1>'+
-     '<div class="meta" style="margin-top:5px">'+(c.archived?'<span class="tag" style="border-color:var(--mut);color:var(--mut)">Archived in previous CRM</span> ':'')+'<span class="tag">'+esc(c.source)+'</span> '+bizs.map(b=>'<span class="tag" style="background:'+BIZCOLOR[b]+'18;border-color:'+BIZCOLOR[b]+'55;color:'+BIZCOLOR[b]+'">'+BIZ[b]+'</span>').join(' ')+
+     '<div class="meta" style="margin-top:5px">'+(isDormant(c)?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">Dormant — not being worked</span> ':'')+(c.archived?'<span class="tag" style="border-color:var(--mut);color:var(--mut)">Archived in previous CRM</span> ':'')+'<span class="tag">'+esc(c.source)+'</span> '+bizs.map(b=>'<span class="tag" style="background:'+BIZCOLOR[b]+'18;border-color:'+BIZCOLOR[b]+'55;color:'+BIZCOLOR[b]+'">'+BIZ[b]+'</span>').join(' ')+
      (open.length?' <span class="tag gr">'+open.length+' active deal'+(open.length===1?'':'s')+'</span>':'')+'</div></div>'+
      '<button class="btn ghost small" onclick="mCall(\''+c.id+'\')">Call</button>'+
      '<button class="btn ghost small" onclick="mSendText(\''+c.id+'\')">Text</button>'+
      (c.email?'<button class="btn ghost small" onclick="mSendEmail(\''+c.id+'\')">Email</button>':'')+
      '<button class="btn ghost small" onclick="mAddAppt(\''+c.id+'\')">+ Appointment</button>'+
      '<button class="btn ghost small" onclick="mAddTask(\''+c.id+'\')">+ Task</button>'+
+     (me.role!=='marketing'?'<button class="btn ghost small" style="border-color:var(--amber);color:var(--amber)" onclick="toggleDormant(\''+c.id+'\')">'+(isDormant(c)?'Reheat — start working this lead':'Park as dormant')+'</button>':'')+
      (me.role!=='marketing'?'<button class="btn small" onclick="mAddDeal(null,\''+c.id+'\')">+ New deal</button>':'')+'</div>';
   /* live status strip — where this person is at, right now */
   (function(){
@@ -1772,6 +1784,36 @@ function vClient(id){
     '<div class="mut" style="font-size:11.5px;margin-top:10px">Files are stored securely — click a name to open it. Only signed-in team members can view them.</div></div>';
   h+='</div></div>';
   return h;
+}
+function toggleDormant(cid){
+  const c=C(cid);if(!c||me.role==='marketing')return;
+  c.dormant=!isDormant(c);
+  if(c.dormant){
+    /* parking a lead clears its open follow-up so nobody's dashboard nags about it */
+    const killed=S.tasks.filter(t=>t.clientId===cid&&!t.done);
+    killed.forEach(t=>{const i=S.tasks.indexOf(t);if(i>-1)S.tasks.splice(i,1)});
+    logAct(null,cid,'Parked as dormant'+(killed.length?' — '+killed.length+' open follow-up cleared':''));
+  } else logAct(null,cid,'Reheated — back in the working list');
+  save();toast(c.dormant?'Parked as dormant':'Reheated — this lead is back in play');go('client',cid);
+}
+function bulkDormant(makeDormant){
+  if(me.role==='marketing')return;
+  const activeL=S.smartlists.find(x=>x.id===slSel);
+  let list=activeL?listMembers(activeL.q):S.clients.slice();
+  list=list.filter(c=>dormView?isDormant(c):!isDormant(c))
+    .filter(c=>!clientQ||c.name.toLowerCase().includes(clientQ)||c.phone.includes(clientQ)||(c.email||'').toLowerCase().includes(clientQ));
+  if(!list.length)return;
+  if(!confirm((makeDormant?'Park ':'Reheat ')+list.length+' contact'+(list.length===1?'':'s')+'?'+(makeDormant?' Their open follow-up tasks are cleared. Nothing is deleted — they stay searchable and callable in the Dormant tab.':'')))return;
+  let cleared=0;
+  list.forEach(c=>{
+    c.dormant=!!makeDormant;
+    if(makeDormant){
+      const killed=S.tasks.filter(t=>t.clientId===c.id&&!t.done);
+      killed.forEach(t=>{const i=S.tasks.indexOf(t);if(i>-1)S.tasks.splice(i,1);cleared++});
+    }
+  });
+  save();toast((makeDormant?'Parked ':'Reheated ')+list.length+' contact'+(list.length===1?'':'s')+(cleared?' · '+cleared+' follow-up cleared':''));
+  dormView=!!makeDormant;go('clients');
 }
 function addNote(cid){
   const el=document.getElementById('note-in');if(!el.value.trim())return;
@@ -2022,7 +2064,7 @@ function requestUpdate(cid){
   save();refresh();toast('Update requested from '+U(handler).name);
 }
 function vMyLeads(){
-  const mine=S.clients.filter(c=>c.genBy===me.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const mine=S.clients.filter(c=>c.genBy===me.id&&!isDormant(c)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   const stats={mo:mine.filter(c=>inThisMonth(c.createdAt)).length,eng:0,conv:0,wait:0};
   mine.forEach(c=>{const st=leadStatus(c);if(st==='converted')stats.conv++;else if(st==='engaged')stats.eng++;else stats.wait++;});
   let h='<div class="sect-head" style="margin-top:4px"><h2>My Leads</h2><span class="cnt">every lead you\'ve generated, and where it stands</span><span class="spacer"></span><button class="btn small" onclick="mAddClient()">+ New lead</button></div>';
