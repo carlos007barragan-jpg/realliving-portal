@@ -1717,12 +1717,15 @@ function mDealNumbers(id){
 function dnPreview(id){
   const d=D(id);const el=document.getElementById('dn-out');if(!el||!d)return;
   const rev=parseFloat((document.getElementById('dn-rev')||{}).value)||0;
-  const pct=splitPct(d.pipe), agent=Math.round(rev*pct/100), house=rev-agent;
+  const flat=payMode(d.pipe)==='flat';
+  const agent=flat?Math.min(flatFee(d.pipe),rev):Math.round(rev*splitPct(d.pipe)/100);
+  const house=rev-agent;
   el.innerHTML='<div class="kv" style="margin:0">'+
-    '<div><small>'+esc(U(d.agentId).name)+' earns ('+pct+'%)</small><span class="money">'+money(agent)+'</span></div>'+
-    '<div><small>The business keeps ('+(100-pct)+'%)</small><span class="money">'+money(house)+'</span></div>'+
+    '<div><small>'+esc(U(d.agentId).name)+' earns ('+(flat?'flat fee':splitPct(d.pipe)+'%')+')</small><span class="money">'+money(agent)+'</span></div>'+
+    '<div><small>The business keeps'+(flat?'':' ('+(100-splitPct(d.pipe))+'%)')+'</small><span class="money">'+money(house)+'</span></div>'+
     '<div><small>Counts toward closed volume</small><span class="money">'+money(rev)+'</span></div></div>'+
-    '<div class="mut" style="font-size:11.5px;margin-top:8px">Split comes from Settings → Commission splits for '+esc(PIPES[d.pipe].name)+'. Change it there and every file in that pipeline follows.</div>';
+    (flat&&rev>0&&rev<flatFee(d.pipe)?'<div style="font-size:12px;margin-top:8px;color:var(--amber)">Revenue is below the '+money(flatFee(d.pipe))+' flat fee — the payout is capped at the revenue so the business never goes negative.</div>':'')+
+    '<div class="mut" style="font-size:11.5px;margin-top:8px">'+esc(PIPES[d.pipe].name)+' pays '+payLabel(d.pipe)+' — set in Settings → Commission splits. Change it there and every file in that pipeline follows.</div>';
 }
 function saveDealNumbers(id){
   const d=D(id);if(!d||!canSetNumbers())return;
@@ -2423,10 +2426,27 @@ function vComms(){
 }
 /* ================= COMMISSIONS ================= */
 function splitPct(pipe){return Math.max(0,Math.min(100,(S.splits&&S.splits[pipe]!=null)?S.splits[pipe]:0))}
-function agentPay(d){return Math.round((d.revenue||0)*splitPct(d.pipe)/100)}
+/* each pipeline pays the agent either a % of revenue or a flat fee per closing */
+function payMode(pipe){return (S.payMode&&S.payMode[pipe]==='flat')?'flat':'pct'}
+function flatFee(pipe){return Math.max(0,(S.payFlat&&S.payFlat[pipe]!=null)?S.payFlat[pipe]:0)}
+function agentPay(d){
+  const rev=d.revenue||0;
+  if(payMode(d.pipe)==='flat')return Math.min(flatFee(d.pipe),rev); /* never pay out more than came in */
+  return Math.round(rev*splitPct(d.pipe)/100);
+}
+const payLabel=pipe=>payMode(pipe)==='flat'?money(flatFee(pipe))+' flat':splitPct(pipe)+'% / '+(100-splitPct(pipe))+'%';
+function setPayMode(pipe,mode){
+  S.payMode=S.payMode||{};S.payMode[pipe]=mode;
+  S.payFlat=S.payFlat||{};if(S.payFlat[pipe]==null)S.payFlat[pipe]=0;
+  save();go('settings');
+}
 function saveSplits(){
-  Object.keys(S.splits).forEach(p=>{const el=document.getElementById('sp-'+p);if(el)S.splits[p]=Math.max(0,Math.min(100,parseFloat(el.value)||0));});
-  save();go('settings');toast('Commission splits saved');
+  S.payFlat=S.payFlat||{};
+  Object.keys(S.splits).forEach(p=>{
+    if(payMode(p)==='flat'){const el=document.getElementById('fl-'+p);if(el)S.payFlat[p]=Math.max(0,parseFloat(el.value)||0);}
+    else {const el=document.getElementById('sp-'+p);if(el)S.splits[p]=Math.max(0,Math.min(100,parseFloat(el.value)||0));}
+  });
+  save();go('settings');toast('Commission settings saved');
 }
 function vCommissions(){
   let ds=S.deals.filter(d=>d.pipe!=='h2m_acq'&&isWon(d)&&closedDate(d));
@@ -2442,8 +2462,8 @@ function vCommissions(){
   h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Closed</th><th>Contact</th><th>Business</th><th>Team member</th><th>Split</th><th>Revenue</th><th>Agent pay</th><th>House</th></tr>'+
     ds.map(d=>{const ap=agentPay(d);
       return '<tr class="rowlink" onclick="openDeal(\''+d.id+'\')"><td class="mut">'+fdate(closedDate(d))+'</td><td>'+esc(dealTitle(d))+'</td><td>'+BIZ[PIPES[d.pipe].biz]+'</td><td class="mut">'+esc(U(d.agentId).name)+'</td>'+
-      '<td class="mut">'+splitPct(d.pipe)+'% / '+(100-splitPct(d.pipe))+'%</td><td class="money">'+(d.needsNumbers?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">pending</span>':money(d.revenue))+'</td><td class="money">'+money(ap)+'</td><td class="mut">'+money((d.revenue||0)-ap)+'</td></tr>'}).join('')+'</table></div>'+
-    '<div class="mut" style="font-size:12px;margin-top:8px">Splits are set by ownership in Settings → Commission splits and apply per pipeline.</div>';
+      '<td class="mut">'+payLabel(d.pipe)+'</td><td class="money">'+(d.needsNumbers?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">pending</span>':money(d.revenue))+'</td><td class="money">'+money(ap)+'</td><td class="mut">'+money((d.revenue||0)-ap)+'</td></tr>'}).join('')+'</table></div>'+
+    '<div class="mut" style="font-size:12px;margin-top:8px">Ownership sets each pipeline to a percentage split or a flat fee in Settings → Commission splits.</div>';
   return h;
 }
 /* ================= FOLLOW-UPS ================= */
@@ -2677,9 +2697,21 @@ function setGeneral(){
 function saveReviewLink(){S.targets.reviewLink=document.getElementById('rev-link').value.trim();save();toast('Review link saved — closings now queue the ask automatically')}
 function setComm(){
   return '<div class="card"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">Commission splits</h2><span class="spacer"></span><button class="btn small" onclick="saveSplits()">Save splits</button></div>'+
-    '<div class="mut" style="font-size:12.5px;margin-bottom:10px">Per pipeline: the agent\'s share of closed revenue — the house keeps the rest. The Commissions ledger recalculates instantly for everyone.</div>'+
-    '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">'+
-    Object.keys(S.splits).map(p=>'<div><label>'+PIPES[p].name+'</label><div style="display:flex;align-items:center;gap:8px"><input id="sp-'+p+'" type="number" min="0" max="100" value="'+splitPct(p)+'" style="max-width:90px"> <span class="mut" style="font-size:12.5px">% agent · '+(100-splitPct(p))+'% house</span></div></div>').join('')+'</div></div>';
+    '<div class="mut" style="font-size:12.5px;margin-bottom:12px">Per pipeline, pick how the agent gets paid on a closing: a percentage of the revenue, or a flat fee. The Commissions ledger and every payout recalculate instantly.</div>'+
+    '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">'+
+    Object.keys(S.splits).map(p=>{const flat=payMode(p)==='flat';
+      return '<div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px">'+
+      '<label style="margin-bottom:6px">'+PIPES[p].name+'</label>'+
+      '<div style="display:flex;gap:6px;margin-bottom:10px">'+
+        '<button class="btn '+(flat?'ghost ':'')+'small" style="flex:1" onclick="setPayMode(\''+p+'\',\'pct\')">Percentage</button>'+
+        '<button class="btn '+(flat?'':'ghost ')+'small" style="flex:1" onclick="setPayMode(\''+p+'\',\'flat\')">Flat fee</button></div>'+
+      (flat
+        ? '<div style="display:flex;align-items:center;gap:8px"><span class="mut" style="font-size:13px">$</span><input id="fl-'+p+'" type="number" min="0" step="50" value="'+flatFee(p)+'" style="max-width:120px"></div>'+
+          '<div class="mut" style="font-size:12px;margin-top:6px">'+money(flatFee(p))+' to the agent per closing · the business keeps the rest of the revenue</div>'
+        : '<div style="display:flex;align-items:center;gap:8px"><input id="sp-'+p+'" type="number" min="0" max="100" value="'+splitPct(p)+'" style="max-width:90px"><span class="mut" style="font-size:12.5px">% to the agent</span></div>'+
+          '<div class="mut" style="font-size:12px;margin-top:6px">agent '+splitPct(p)+'% · business '+(100-splitPct(p))+'%</div>')+
+      '</div>'}).join('')+'</div>'+
+    '<div class="mut" style="font-size:11.5px;margin-top:12px">Switching a pipeline between percentage and flat fee saves right away; the amount saves when you hit <b style="color:var(--ink)">Save splits</b>. A flat fee never pays out more than the revenue that came in on that file.</div></div>';
 }
 function setIntegrations(){
   const cr=S.targets.callRecord===true;
