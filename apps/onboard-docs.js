@@ -15,6 +15,7 @@ const CSS=`
 #obWrap .bar i{display:block;height:100%;background:#C8A44D;transition:width .3s}
 #obWrap .count{font-size:12.5px;color:#93A4BF;margin-bottom:22px}
 #obWrap .grp{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#C8A44D;font-weight:800;margin:24px 0 10px}
+#obWrap .gsub{display:block;font-size:11.5px;letter-spacing:0;text-transform:none;color:#7E8FA8;font-weight:500;margin-top:3px}
 #obWrap .row{display:flex;gap:14px;align-items:center;background:#111C2E;border:1px solid #1F2C42;border-radius:12px;padding:14px 16px;margin-bottom:9px}
 #obWrap .row.done{opacity:.62}
 #obWrap .row .t{font-weight:700;font-size:14.5px}
@@ -64,8 +65,15 @@ function render(){
   w.style.display='block';
   const pct=Math.round(CTX.signed/CTX.docs.length*100);
   const need=CTX.docs.filter(d=>!CTX.state.sigs[d.id]);
-  const company=CTX.docs.filter(d=>['c2','c3','c4','c5','c6','c7','c8','c9','c10','c11','c12','c14'].indexOf(d.id)>-1);
-  const vertical=CTX.docs.filter(d=>company.indexOf(d)<0);
+  /* group by WHY each one applies — base set, each vertical, then the role */
+  const groups=[];
+  const push=(key,label,sub)=>{
+    const items=CTX.docs.filter(d=>d.why===key);
+    if(items.length)groups.push({label,sub,items});
+  };
+  push('company','Everyone at Real Living','The base agreements every team member signs');
+  CTX.biz.forEach(b=>push(b,(window.RLOnboard.BIZ_LABEL[b]||b),'Required because you work this side of the business'));
+  push('role:'+CTX.role,'Because you\'re '+(CTX.role==='owner'?'in ownership':(CTX.roleLabel||'on the team')),'Tied to your role, not your vertical');
   const row=d=>{
     const done=!!CTX.state.sigs[d.id];
     return '<div class="row'+(done?' done':'')+'">'+
@@ -86,8 +94,7 @@ function render(){
       'Read each one, then sign it. The rest of the Business Suite opens as soon as you\u2019re finished.</div>'+
     '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
     '<div class="count">'+CTX.signed+' of '+CTX.docs.length+' complete'+(need.length?' \u00b7 '+need.length+' to go':'')+'</div>'+
-    (company.length?'<div class="grp">Everyone at Real Living</div>'+company.map(row).join(''):'')+
-    (vertical.length?'<div class="grp">'+esc(CTX.bizLabels.join(' \u00b7 ')||'Your vertical')+'</div>'+vertical.map(row).join(''):'');
+    groups.map(g=>'<div class="grp">'+esc(g.label)+'<span class="gsub">'+esc(g.sub)+'</span></div>'+g.items.map(row).join('')).join('');
 }
 
 function done(){
