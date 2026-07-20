@@ -915,7 +915,9 @@ function pagesFor(){
   if(rlCore.length)out.push({sec:'Real Living Licensed'},{k:'biz',arg:'RL',pipe:rlCore[0],label:'RL Pipeline',icon:BIZICON.RL});
   out.push({sec:'Shared'});
   out.push({k:'clients',label:'Contacts',icon:I.contacts});
-  if(me.role==='owner'||me.business==='H2M')out.push({k:'props',label:'Properties',icon:I.props});
+  /* inventory follows the pipelines a seat is given, not a legacy business field that nobody fills in */
+  if(me.role==='owner'||me.role==='manager'||me.business==='H2M'||P.some(p=>PIPES[p]&&PIPES[p].biz==='H2M'))
+    out.push({k:'props',label:'Properties',icon:I.props});
   out.push({k:'calendar',label:'Calendar',icon:I.cal});
   out.push({k:'comms',label:'Communications',icon:I.comm});
   if(me.role!=='agent')out.push({k:'reports',rep:'perf',label:'Reports',icon:I.rep});
