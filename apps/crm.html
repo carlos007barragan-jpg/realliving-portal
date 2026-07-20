@@ -3203,6 +3203,10 @@ function mAddProp(editId){
   '<div class="eyebrow" style="margin:18px 0 2px;padding-top:14px;border-top:1px solid var(--line)">Website marketing — shows on the sites when status is In Inventory — Marketed</div>'+
   '<div class="frow"><div><label>Neighborhood / area</label><input id="mp-area" value="'+esc(v('area'))+'" placeholder="e.g. Historic Northeast, KC MO"></div>'+
   '<div><label>Listing headline</label><input id="mp-title" value="'+esc(v('title'))+'" placeholder="e.g. Fully renovated 3-bed ranch"></div></div>'+
+  '<div style="display:flex;align-items:center;gap:10px;margin:12px 0 2px;flex-wrap:wrap">'+
+    '<button class="btn ghost small" id="mp-ai-go" onclick="aiListing()">\u2728 Write the listing for me</button>'+
+    '<span class="mut" style="font-size:12px">Uses the address, beds and baths, and what kind of deal it is \u2014 you can edit anything it writes.</span></div>'+
+  '<div class="login-err" id="mp-ai-err" style="margin-bottom:6px"></div>'+
   '<label>Description — English (property page)</label><textarea id="mp-desc" rows="4" placeholder="What makes this home worth seeing…">'+esc(v('desc'))+'</textarea>'+
   '<label>Description — Spanish (optional; Mi Casa + /es/ fall back to English if blank)</label><textarea id="mp-descEs" rows="3">'+esc(v('descEs'))+'</textarea>'+
   '<label>Photo URLs — one per line, first is the cover</label><textarea id="mp-photos" rows="4" placeholder="https://…/front.jpg&#10;https://…/kitchen.jpg">'+esc(p&&p.photos?p.photos.join('\n'):(v('photo')||''))+'</textarea>'+
@@ -3211,6 +3215,95 @@ function mAddProp(editId){
   mpMoney();
 }
 function mEditProp(id){mAddProp(id)}
+/* Written right here in the browser from the facts on the form — no API key needed.
+   Used as-is until an Anthropic key is vaulted, and as the safety net if the AI call fails. */
+function localListing(p){
+  const bb=[]; if(p.beds)bb.push(p.beds+'-bedroom'); if(p.baths)bb.push(p.baths+'-bath');
+  const bbEs=[]; if(p.beds)bbEs.push(p.beds+(+p.beds===1?' recámara':' recámaras')); if(p.baths)bbEs.push(p.baths+(+p.baths===1?' baño':' baños'));
+  const size=p.sqft?' with about '+(+p.sqft).toLocaleString()+' square feet':'';
+  const sizeEs=p.sqft?' con aproximadamente '+(+p.sqft).toLocaleString()+' pies cuadrados':'';
+  const where=p.area?' in '+p.area:'';
+  const whereEs=p.area?' en '+p.area:'';
+  const street=(p.address||'').split(',')[0];
+  const ti=Math.round(((+p.taxes||0)+(+p.insurance||0))/12);
+  const cat=p.category||'';
+  let title,desc,descEs;
+  if(cat==='Residential'){
+    title='Owner financing available — '+(p.beds?p.beds+' bed, ':'')+(p.baths?p.baths+' bath ':'')+'on '+street;
+    desc='A '+(bb.join(', ')||'')+' home at '+p.address+size+where+', available with owner financing. '+
+      (p.down||p.monthly?'It takes '+(p.down?money(p.down)+' down':'a down payment')+(p.monthly?' and '+money(p.monthly)+' a month':'')+(p.rate?' at '+p.rate+'% interest':'')+'. ':'')+
+      (ti?'Taxes and insurance run about '+money(ti)+' a month on top of that. ':'')+
+      'No bank qualifying — ask us what it takes to get the keys.';
+    descEs='Casa de '+(bbEs.join(' y ')||'')+' en '+p.address+sizeEs+whereEs+', disponible con financiamiento del dueño. '+
+      (p.down||p.monthly?'Se necesita '+(p.down?money(p.down)+' de enganche':'un enganche')+(p.monthly?' y '+money(p.monthly)+' al mes':'')+(p.rate?' con '+p.rate+'% de interés':'')+'. ':'')+
+      (ti?'Los impuestos y el seguro son aproximadamente '+money(ti)+' al mes adicionales. ':'')+
+      'Sin calificar con el banco — pregúntanos qué se necesita para recibir las llaves.';
+  } else if(cat==='Wholesale'){
+    title='Fix-and-flip opportunity on '+street;
+    desc='Fix-and-flip opportunity at '+p.address+'. '+(bb.length?bb.join(', ')+size+where+'. ':'')+
+      (p.listPrice?'Priced at '+money(p.listPrice)+'. ':'')+
+      (p.rehab?'Rehab is estimated around '+money(p.rehab)+(p.arv?', with an ARV near '+money(p.arv):'')+'. ':(p.arv?'ARV is around '+money(p.arv)+'. ':''))+
+      'Sold as-is — bring your contractor and your own numbers.';
+    descEs='Oportunidad para remodelar y vender en '+p.address+'. '+(bbEs.length?bbEs.join(' y ')+sizeEs+whereEs+'. ':'')+
+      (p.listPrice?'Precio: '+money(p.listPrice)+'. ':'')+
+      (p.rehab?'La remodelación se estima en '+money(p.rehab)+(p.arv?', con un valor después de reparaciones cerca de '+money(p.arv):'')+'. ':'')+
+      'Se vende en las condiciones actuales — traiga a su contratista y sus propios números.';
+  } else if(cat==='Multifamily'){
+    title='Multifamily investment on '+street;
+    desc='Multifamily investment at '+p.address+where+'. '+(p.listPrice?'Offered at '+money(p.listPrice)+'. ':'')+
+      (p.rehab?'Budget about '+money(p.rehab)+' in work'+(p.arv?', with an ARV near '+money(p.arv):'')+'. ':'')+
+      'Ask us for the unit mix and the rent roll.';
+    descEs='Inversión multifamiliar en '+p.address+whereEs+'. '+(p.listPrice?'Precio: '+money(p.listPrice)+'. ':'')+
+      'Pregúntanos por el detalle de las unidades y las rentas.';
+  } else if(cat==='Commercial'){
+    title='Commercial investment opportunity on '+street;
+    desc='Commercial investment opportunity at '+p.address+where+size+'. '+
+      (p.listPrice?'Offered at '+money(p.listPrice)+'. ':'')+'Ask us for the details on the building and the terms.';
+    descEs='Oportunidad de inversión comercial en '+p.address+whereEs+sizeEs+'. '+
+      (p.listPrice?'Precio: '+money(p.listPrice)+'. ':'')+'Pregúntanos por los detalles del inmueble y las condiciones.';
+  } else {
+    title=(bb.join(', ')||'Home')+' on '+street;
+    desc='A '+(bb.join(', ')||'')+' home at '+p.address+size+where+'. '+
+      (p.listPrice?'Offered at '+money(p.listPrice)+'. ':'')+'Reach out to set up a walkthrough.';
+    descEs='Casa de '+(bbEs.join(' y ')||'')+' en '+p.address+sizeEs+whereEs+'. '+
+      (p.listPrice?'Precio: '+money(p.listPrice)+'. ':'')+'Contáctanos para agendar una visita.';
+  }
+  return {title:title.replace(/\s+/g,' ').trim(),desc:desc.replace(/\s+/g,' ').trim(),descEs:descEs.replace(/\s+/g,' ').trim()};
+}
+/* ✨ listing copy — headline + English and Spanish descriptions, angled by what kind of deal it is */
+async function aiListing(){
+  const err=document.getElementById('mp-ai-err');err.textContent='';
+  const g=x=>{const el=document.getElementById(x);return el?el.value:''};
+  const addr=g('mp-addr').trim();
+  if(!addr){err.textContent='Put the address in first — everything is written from it.';return}
+  const cat=g('mp-cat');
+  const prop={address:addr,category:cat,beds:+g('mp-beds')||0,baths:+g('mp-baths')||0,sqft:+g('mp-sqft')||0,area:g('mp-area').trim(),
+    listPrice:+g('mp-list')||0,down:+g('mp-down')||0,monthly:+g('mp-monthly')||0,rate:+g('mp-rate')||0,
+    taxes:+g('mp-taxes')||0,insurance:+g('mp-ins')||0,rehab:+g('mp-rehab')||0,arv:+g('mp-arv')||0};
+  const set=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val};
+  const btn=document.getElementById('mp-ai-go');btn.disabled=true;btn.textContent='Writing…';
+  let why='';
+  try{
+    if(!CLOUD||!sb||!SEAT_ID)throw new Error(DEV?'the admin door has no server login':'this copy runs offline');
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)throw new Error('your session expired');
+    const res=await fetch(SUPABASE_URL+'/functions/v1/ai',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({kind:'listing',prop})});
+    const out=await res.json();
+    if(!res.ok||out.error)throw new Error(out.error||'AI error');
+    set('mp-title',out.title);set('mp-desc',out.desc);set('mp-descEs',out.descEs);
+    err.style.color='var(--green)';
+    err.textContent='Written for a '+(cat||'general')+' property — read it over and change anything before you save.';
+    btn.disabled=false;btn.textContent='✨ Write the listing for me';return;
+  }catch(e){why=String(e.message||e);}
+  /* the AI leg didn't run — write it here from the same facts so the button always delivers */
+  const w=localListing(prop);
+  set('mp-title',w.title);set('mp-desc',w.desc);set('mp-descEs',w.descEs);
+  err.style.color='var(--amber)';
+  err.textContent='Drafted here from the form ('+why+'). Edit freely — once an Anthropic key is vaulted this writes richer copy.';
+  btn.disabled=false;btn.textContent='✨ Write the listing for me';
+}
 /* the money a property has depends on what it is — swap the fields when the category changes */
 function mpMoney(){
   const box=document.getElementById('mp-money');if(!box)return;
