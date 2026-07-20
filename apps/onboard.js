@@ -61,7 +61,12 @@ const ROLE_DOCS={
 const BIZ_LABEL={asap:'ASAP Lending',h2m:'H2M — Creative Financing',rl:'RL Licensed Team',tc:'Transaction Coordination'};
 const ROLE_LABEL={owner:'Ownership',manager:'Manager',agent:'Agent',marketing:'Marketing',va:'Virtual Assistant',referral:'Referral partner'};
 const BIZ_TRACK={asap:'asap',h2m:'h2m',rl:'rl',tc:null,va:null};
-const TRACK_LABEL={fundamentals:'Sales Fundamentals',asap:'ASAP Lending',h2m:'H2M — Creative Financing',rl:'RL Licensed Team'};
+const TRACK_LABEL={
+  fundamentals:'Sales Fundamentals',
+  crm:'How to Use the CRM',
+  suite:'Business Suite — Getting Started',
+  asap:'ASAP Lending',h2m:'H2M — Creative Financing',rl:'RL Licensed Team'
+};
 
 /* pipelines on a CRM seat → which businesses this person actually works */
 function bizFromSeat(seat){
@@ -104,7 +109,7 @@ function requirements(biz,role){
 }
 function docsFor(biz,role){ return requirements(biz,role||'agent'); }
 function tracksFor(biz){
-  const out=['fundamentals'];
+  const out=['fundamentals','crm','suite'];  /* everyone learns the platform first */
   biz.forEach(b=>{const t=BIZ_TRACK[b];if(t&&out.indexOf(t)<0)out.push(t)});
   return out;
 }
