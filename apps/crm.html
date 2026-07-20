@@ -1216,7 +1216,7 @@ function opportunities(){
       opps.push({key:c.id+':tc',cid:c.id,target:'tc',biz:'TC',t:'Under contract with no TC file open',act:'Open TC file'});
   });
   let out=opps.filter(o=>!(S.dismissed||[]).includes(o.key));
-  if(me.role==='manager')out=out.filter(o=>(BIZPIPES[me.business]||[]).includes(o.target));
+  if(me.role==='manager')out=out.filter(o=>allowedPipes(me).includes(o.target));
   return out;
 }
 function dismissOpp(key){(S.dismissed=S.dismissed||[]).push(key);save();refresh();toast('Dismissed');}
@@ -1505,7 +1505,7 @@ function vApptList(scope){
 }
 function vClosingTimeline(scope){
   let ds=S.deals.filter(d=>d.pipe!=='h2m_acq'&&!isFinal(d)&&d.closeDate);
-  if(scope==='team')ds=ds.filter(d=>(BIZPIPES[me.business]||[]).includes(d.pipe));
+  if(scope==='team')ds=ds.filter(d=>allowedPipes(me).includes(d.pipe));
   else if(scope&&scope!=='team')ds=ds.filter(d=>d.agentId===scope);
   ds.sort((a,b)=>a.closeDate.localeCompare(b.closeDate));
   return '<div class="card"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">Closing timeline</h2><span class="cnt">deals with a close date</span></div><ul class="tl">'+
@@ -2144,7 +2144,7 @@ function saveSplits(){
 function vCommissions(){
   let ds=S.deals.filter(d=>d.pipe!=='h2m_acq'&&isFinal(d)&&closedDate(d));
   if(me.role==='agent')ds=ds.filter(d=>d.agentId===me.id);
-  else if(me.role==='manager')ds=ds.filter(d=>(BIZPIPES[me.business]||[]).includes(d.pipe));
+  else if(me.role==='manager')ds=ds.filter(d=>allowedPipes(me).includes(d.pipe));
   ds.sort((a,b)=>closedDate(b).localeCompare(closedDate(a)));
   const ytdRows=ds.filter(d=>inThisYear(closedDate(d)));
   const gross=ytdRows.reduce((a,d)=>a+(d.revenue||0),0);
