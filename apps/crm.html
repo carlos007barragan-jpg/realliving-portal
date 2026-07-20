@@ -1816,6 +1816,18 @@ function vProps(){
     '<button class="ttab'+(propTab==='avail'?' on':'')+'" onclick="propTab=\'avail\';go(\'props\')">Available · '+avail.length+'</button>'+
     '<button class="ttab'+(propTab==='pipe'?' on':'')+'" onclick="propTab=\'pipe\';go(\'props\')">In the works · '+pipeline.length+'</button>'+
     '<button class="ttab'+(propTab==='arch'?' on':'')+'" onclick="propTab=\'arch\';go(\'props\')">Archive · '+arch.length+'</button></div>';
+  /* what's blocking a marketed home from showing on the websites */
+  if(propTab==='avail'&&canSeeArchive()){
+    const noPrice=avail.filter(p=>!((p.listPrice||p.arv)>=20000));
+    const noPhoto=avail.filter(p=>!(p.photos&&p.photos.length)&&!p.photo);
+    if(noPrice.length||noPhoto.length)h+='<div class="card" style="margin-bottom:14px;border-left:3px solid var(--amber)">'+
+      '<div class="eyebrow" style="margin-bottom:6px">Before these show on the websites</div>'+
+      (noPrice.length?'<div style="font-size:13px;line-height:1.7"><b style="color:var(--amber)">'+noPrice.length+' held back — no list price:</b> '+
+        noPrice.map(p=>'<span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="go(\'prop\',\''+p.id+'\')">'+esc(p.address)+'</span>').join(' · ')+'</div>':'')+
+      (noPhoto.length?'<div style="font-size:13px;line-height:1.7;margin-top:'+(noPrice.length?'6px':'0')+'"><b>'+noPhoto.length+' live with no photos:</b> '+
+        noPhoto.slice(0,6).map(p=>'<span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="go(\'prop\',\''+p.id+'\')">'+esc(p.address)+'</span>').join(' · ')+
+        (noPhoto.length>6?' <span class="mut">+'+(noPhoto.length-6)+' more</span>':'')+'</div>':'')+'</div>';
+  }
   if(!list.length)return h+'<div class="empty">Nothing here'+(propTab==='avail'?' — mark a property “In Inventory — Marketed” to make it available.':'.')+'</div>';
   h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Address</th><th>Bd/Ba</th>'+(me.role==='agent'?'<th>List price</th>':'<th>Acq price</th><th>Rehab</th>')+'<th>ARV</th><th>Status</th><th>Transactions</th></tr>'+
     list.map(p=>{const ds=S.deals.filter(d=>d.propertyId===p.id&&d.pipe!=='h2m_acq');
