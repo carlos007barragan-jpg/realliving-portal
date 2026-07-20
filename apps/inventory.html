@@ -9,37 +9,95 @@
 :root{--bg:#F8FAFC;--bg2:#EEF2F7;--card:#fff;--ink:#0F172A;--muted:#64748B;--line:#E2E8F0;--brand:#3B5BFF;--green:#059669;--amber:#D97706;--red:#DC2626}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,var(--bg),var(--bg2));min-height:100vh;color:var(--ink);-webkit-font-smoothing:antialiased}
-.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 110px}
 .head{display:flex;align-items:center;gap:14px;margin-bottom:6px;flex-wrap:wrap}
 .head h1{font-size:22px;font-weight:800}
 .head .sub{color:var(--muted);font-size:13.5px}
 .spacer{flex:1}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0 20px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:18px 0 20px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 .kpi .n{font-size:22px;font-weight:800}
 .kpi .l{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
 .bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
 .bar input{flex:1;min-width:220px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;background:#fff}
-.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--muted)}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--muted);user-select:none}
 .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
-.prop{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.prop{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04);cursor:pointer;transition:box-shadow .15s,transform .15s;position:relative}
+.prop:hover{box-shadow:0 6px 22px rgba(15,23,42,.10);transform:translateY(-2px)}
+.prop .ph{width:100%;height:184px;object-fit:cover;display:block;background:var(--bg2)}
+.nophoto{width:100%;height:184px;display:flex;align-items:center;justify-content:center;background:var(--bg2);color:var(--muted);font-size:12.5px;font-weight:600}
+.prop .body{padding:14px 16px 16px}
 .prop .addr{font-weight:700;font-size:14.5px;line-height:1.35}
-.prop .meta{color:var(--muted);font-size:12.5px;margin:6px 0 10px}
+.prop .meta{color:var(--muted);font-size:12.5px;margin:5px 0 9px}
 .tag{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em}
 .t-inv{background:#ECFDF5;color:var(--green)}
 .t-uc{background:#FFFBEB;color:var(--amber)}
 .t-acq{background:#EFF6FF;color:var(--brand)}
 .t-sold{background:#F1F5F9;color:var(--muted)}
-.nums{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.t-cat{background:#F1F5F9;color:#475569;margin-left:5px}
+.price{font-size:19px;font-weight:800;margin-top:10px}
+.price small{font-size:12px;color:var(--muted);font-weight:600}
+.terms{color:var(--muted);font-size:12.5px;margin-top:3px;font-weight:600}
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 .nums .v{font-weight:700;font-size:13.5px}
 .nums .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.pick{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.94);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--muted);z-index:2}
+.pick.on{background:var(--brand);border-color:var(--brand);color:#fff}
 .empty{padding:60px 20px;text-align:center;color:var(--muted)}
 .gate{max-width:420px;margin:16vh auto;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:36px 32px;text-align:center}
 .gate h2{font-size:18px;margin-bottom:8px}
 .gate p{color:var(--muted);font-size:14px;margin-bottom:18px}
 .gate a{display:inline-block;background:var(--brand);color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600;font-size:14px}
 .src{font-size:11.5px;color:var(--muted);margin-top:22px}
+.btn{background:var(--brand);color:#fff;border:none;padding:10px 16px;border-radius:10px;font-weight:600;font-size:13.5px;font-family:inherit;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.back{background:none;border:none;color:var(--brand);font-weight:600;font-size:13.5px;cursor:pointer;padding:0;margin-bottom:14px;font-family:inherit}
+.dwrap{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.hero{width:100%;max-height:430px;object-fit:cover;display:block;background:var(--bg2)}
+.thumbs{display:flex;gap:8px;padding:12px 18px 0;overflow:auto}
+.thumbs img{height:64px;width:88px;object-fit:cover;border-radius:8px;border:2px solid transparent;cursor:pointer}
+.thumbs img.on{border-color:var(--brand)}
+.dbody{padding:18px 22px 24px}
+.dbody h2{font-size:21px;font-weight:800;line-height:1.3}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:16px 0}
+.fact{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.fact .v{font-size:17px;font-weight:800}
+.fact .k{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-top:2px}
+.desc{font-size:14px;line-height:1.75;color:#334155;margin-top:6px;white-space:pre-wrap}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+.selbar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -4px 20px rgba(15,23,42,.09);padding:12px 20px;display:none;align-items:center;gap:12px;flex-wrap:wrap;z-index:40}
+.selbar .n{font-weight:700;font-size:14px}
+.ovl{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;z-index:60;overflow:auto;padding:24px 14px}
+.modal{max-width:760px;margin:0 auto;background:var(--card);border-radius:16px;padding:20px 22px 24px}
+.modal h3{font-size:17px;font-weight:800;margin-bottom:4px}
+.modal .hint{color:var(--muted);font-size:13px;margin-bottom:14px}
+.shot{border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:56vh;background:var(--bg)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:13.5px;font-weight:600;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+#stage{position:fixed;left:-10000px;top:0}
+.flyer{width:900px;background:#fff;font-family:'Inter',system-ui,sans-serif;color:#0F172A}
+.flyer .fh{display:flex;align-items:center;gap:12px;padding:22px 30px;border-bottom:3px solid #C8A44D}
+.flyer .fh .b{font-size:21px;font-weight:800;letter-spacing:-.01em}
+.flyer .fh .s{font-size:12.5px;color:#64748B;font-weight:600;margin-top:2px}
+.flyer .fimg{width:900px;height:470px;object-fit:cover;display:block;background:#EEF2F7}
+.flyer .fb{padding:24px 30px 28px}
+.flyer .fa{font-size:27px;font-weight:800;line-height:1.25}
+.flyer .fm{font-size:14.5px;color:#64748B;font-weight:600;margin-top:6px}
+.flyer .fp{font-size:38px;font-weight:800;margin:16px 0 2px}
+.flyer .ft{font-size:16px;font-weight:700}
+.flyer .fg{display:flex;gap:14px;margin-top:18px;flex-wrap:wrap}
+.flyer .fc{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:13px 17px;min-width:150px}
+.flyer .fc .v{font-size:20px;font-weight:800}
+.flyer .fc .k{font-size:11px;color:#64748B;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.flyer .fd{font-size:14.5px;line-height:1.7;color:#334155;margin-top:18px;white-space:pre-wrap}
+.flyer .ff{margin-top:22px;padding-top:16px;border-top:1px solid #E2E8F0;font-size:13px;color:#64748B;font-weight:600}
+.flyer .row{display:flex;gap:16px;padding:16px 30px;border-bottom:1px solid #E2E8F0;align-items:center}
+.flyer .row img{width:170px;height:118px;object-fit:cover;border-radius:10px;background:#EEF2F7;flex:none}
+.flyer .row .ra{font-size:18px;font-weight:800}
+.flyer .row .rm{font-size:13px;color:#64748B;font-weight:600;margin-top:3px}
+.flyer .row .rp{font-size:22px;font-weight:800;margin-top:6px}
+.flyer .row .rt{font-size:13px;color:#334155;font-weight:600}
 </style>
 </head>
 <body>
@@ -48,68 +106,282 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,
   <p>Inventory uses your Business Suite login. Sign in once at the front door and come back — no separate account.</p>
   <a href="../index.html">Go to the portal</a>
 </div>
+
 <div id="app" class="wrap" style="display:none">
-  <div class="head">
-    <h1>🏠 Inventory</h1><span class="sub">Live from the CRM — Properties</span>
-    <span class="spacer"></span><span class="sub" id="who"></span>
+  <div id="listview">
+    <div class="head">
+      <h1>🏠 Inventory</h1><span class="sub">Live from the CRM — Properties</span>
+      <span class="spacer"></span><span class="sub" id="who"></span>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="bar">
+      <input id="q" placeholder="Search address…" oninput="draw()">
+      <span class="chip on" data-f="all" onclick="setF(this)">All</span>
+      <span class="chip" data-f="inv" onclick="setF(this)">In inventory</span>
+      <span class="chip" data-f="uc" onclick="setF(this)">Under contract</span>
+      <span class="chip" data-f="acq" onclick="setF(this)">Acquisition</span>
+      <span class="chip" data-f="sold" onclick="setF(this)">Sold</span>
+    </div>
+    <div class="bar" id="cats"></div>
+    <div class="grid" id="grid"></div>
+    <div class="src">Photos, prices and terms come straight from the CRM &rarr; Shared &rarr; Properties. Tap any property to open it and send it, or tick several and send them as one sheet.</div>
   </div>
-  <div class="kpis" id="kpis"></div>
-  <div class="bar">
-    <input id="q" placeholder="Search address…" oninput="draw()">
-    <span class="chip on" data-f="all" onclick="setF(this)">All</span>
-    <span class="chip" data-f="inv" onclick="setF(this)">In inventory</span>
-    <span class="chip" data-f="uc" onclick="setF(this)">Under contract</span>
-    <span class="chip" data-f="acq" onclick="setF(this)">Acquisition</span>
-    <span class="chip" data-f="sold" onclick="setF(this)">Sold</span>
-  </div>
-  <div class="grid" id="grid"></div>
-  <div class="src">Read-only view. Add or edit properties in the CRM → Shared → Properties; changes appear here automatically.</div>
+  <div id="detail" style="display:none"></div>
 </div>
+
+<div class="selbar" id="selbar">
+  <span class="n" id="selN">0 selected</span>
+  <button class="btn ghost" onclick="clearSel()">Clear</button>
+  <span class="spacer"></span>
+  <button class="btn" onclick="openSheet()">Build a sheet to send &rarr;</button>
+</div>
+
+<div class="ovl" id="ovl" onclick="if(event.target===this)closeOvl()">
+  <div class="modal" id="modal"></div>
+</div>
+
+<div id="stage"></div>
+<div class="toast" id="toast"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf');
-let PROPS=[],F='all';
+let PROPS=[],F='all',CAT='',SEL=[],ME=null,HERO=0,CUR=null;
 const $=id=>document.getElementById(id);
 const money=n=>'$'+(+n||0).toLocaleString();
-function cls(st){st=(st||'').toLowerCase();
-  if(st.includes('sold'))return['t-sold','sold'];
-  if(st.includes('under contract'))return['t-uc','uc'];
-  if(st.includes('acquisition')||st.includes('due diligence'))return['t-acq','acq'];
-  return['t-inv','inv'];}
-function setF(el){document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');F=el.dataset.f;draw();}
-function draw(){
-  const q=($('q').value||'').toLowerCase();
-  const list=PROPS.filter(p=>{
-    const [_,f]=cls(p.status);
-    if(F!=='all'&&f!==F)return false;
-    return !q||(p.address||'').toLowerCase().includes(q);
-  });
-  const inv=PROPS.filter(p=>cls(p.status)[1]==='inv').length,
-        uc=PROPS.filter(p=>cls(p.status)[1]==='uc').length,
-        acq=PROPS.filter(p=>cls(p.status)[1]==='acq').length,
-        sold=PROPS.filter(p=>cls(p.status)[1]==='sold').length;
-  $('kpis').innerHTML=
-    '<div class="kpi"><div class="n">'+PROPS.length+'</div><div class="l">Total properties</div></div>'+
-    '<div class="kpi"><div class="n">'+inv+'</div><div class="l">In inventory</div></div>'+
-    '<div class="kpi"><div class="n">'+uc+'</div><div class="l">Under contract</div></div>'+
-    '<div class="kpi"><div class="n">'+acq+'</div><div class="l">In acquisition</div></div>'+
-    '<div class="kpi"><div class="n">'+sold+'</div><div class="l">Sold</div></div>';
-  $('grid').innerHTML=list.map(p=>{
-    const [tc]=cls(p.status);
-    const allIn=(+p.acqPrice||0)+(+p.rehab||0);
-    const margin=(+p.arv||0)-allIn;
-    return '<div class="prop">'+
-      '<div class="addr">'+esc(p.address||'—')+'</div>'+
-      '<div class="meta">'+(p.beds?p.beds+' bd':'')+(p.baths?' · '+p.baths+' ba':'')+'</div>'+
-      '<span class="tag '+tc+'">'+esc(p.status||'In inventory')+'</span>'+
-      '<div class="nums">'+
-        '<div><div class="v">'+money(allIn)+'</div><div class="k">All-in</div></div>'+
-        '<div><div class="v">'+money(p.arv)+'</div><div class="k">ARV</div></div>'+
-        '<div><div class="v" style="color:'+(margin>=0?'var(--green)':'var(--red)')+'">'+money(margin)+'</div><div class="k">Spread</div></div>'+
-      '</div></div>';
-  }).join('')||'<div class="empty">No properties'+(q||F!=='all'?' match that filter.':' yet — add them in the CRM under Shared → Properties.')+'</div>';
+const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const P=id=>PROPS.find(p=>p.id===id);
+function toast(t){const el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),2600)}
+
+const INVEST_CATS=['Wholesale','Commercial','Multifamily'];
+const isInvest=p=>!p.category||INVEST_CATS.indexOf(p.category)>-1;
+function canSeeAcq(){
+  if(!ME)return false;
+  if(ME.role==='owner'||ME.role==='manager')return true;
+  return (ME.pipes||[]).indexOf('h2m_acq')>-1;
 }
-function esc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const photosOf=p=>(p.photos&&p.photos.length?p.photos:(p.photo?[p.photo]:[]));
+const priceOf=p=>+p.listPrice||(isInvest(p)?+p.arv||0:0);
+function cls(st){st=(st||'').toLowerCase();
+  if(st.indexOf('sold')>-1)return['t-sold','sold'];
+  if(st.indexOf('under contract')>-1)return['t-uc','uc'];
+  if(st.indexOf('acquisition')>-1||st.indexOf('due diligence')>-1)return['t-acq','acq'];
+  return['t-inv','inv'];}
+function setF(el){document.querySelectorAll('.bar .chip[data-f]').forEach(c=>c.classList.remove('on'));el.classList.add('on');F=el.dataset.f;draw();}
+function setCat(c){CAT=CAT===c?'':c;draw();}
+function termsLine(p){
+  const bits=[];
+  if(+p.down)bits.push(money(p.down)+' down');
+  if(+p.monthly)bits.push(money(p.monthly)+'/mo');
+  if(p.terms)bits.push(p.terms);
+  return bits.join(' \u00b7 ');
+}
+
+function visible(){
+  const q=($('q').value||'').toLowerCase();
+  return PROPS.filter(p=>{
+    if(p.archived===true)return false;
+    const f=cls(p.status)[1];
+    if(F!=='all'&&f!==F)return false;
+    if(CAT&&p.category!==CAT)return false;
+    return !q||(p.address||'').toLowerCase().indexOf(q)>-1;
+  });
+}
+function draw(){
+  const live=PROPS.filter(p=>p.archived!==true);
+  const n=f=>live.filter(p=>cls(p.status)[1]===f).length;
+  $('kpis').innerHTML=
+    '<div class="kpi"><div class="n">'+live.length+'</div><div class="l">Active properties</div></div>'+
+    '<div class="kpi"><div class="n">'+n('inv')+'</div><div class="l">In inventory</div></div>'+
+    '<div class="kpi"><div class="n">'+n('uc')+'</div><div class="l">Under contract</div></div>'+
+    '<div class="kpi"><div class="n">'+live.filter(p=>photosOf(p).length).length+'</div><div class="l">With photos</div></div>'+
+    '<div class="kpi"><div class="n">'+live.filter(p=>priceOf(p)).length+'</div><div class="l">Priced</div></div>';
+  const cats=[];live.forEach(p=>{if(p.category&&cats.indexOf(p.category)<0)cats.push(p.category)});
+  $('cats').innerHTML=cats.map(c=>'<span class="chip'+(CAT===c?' on':'')+'" onclick="setCat(\''+esc(c)+'\')">'+esc(c)+' \u00b7 '+live.filter(p=>p.category===c).length+'</span>').join('');
+  const list=visible();
+  $('grid').innerHTML=list.map(p=>{
+    const tc=cls(p.status)[0], ph=photosOf(p), pr=priceOf(p), tl=termsLine(p), on=SEL.indexOf(p.id)>-1;
+    return '<div class="prop" onclick="openProp(\''+p.id+'\')">'+
+      '<div class="pick'+(on?' on':'')+'" onclick="event.stopPropagation();toggleSel(\''+p.id+'\')">'+(on?'\u2713':'+')+'</div>'+
+      (ph.length?'<img class="ph" src="'+esc(ph[0])+'" loading="lazy">':'<div class="nophoto">no photo yet</div>')+
+      '<div class="body">'+
+      '<div class="addr">'+esc(p.address||'\u2014')+'</div>'+
+      '<div class="meta">'+[(p.beds?p.beds+' bd':''),(p.baths?p.baths+' ba':''),(p.sqft?(+p.sqft).toLocaleString()+' sqft':'')].filter(Boolean).join(' \u00b7 ')+'</div>'+
+      '<span class="tag '+tc+'">'+esc(p.status||'In inventory')+'</span>'+(p.category?'<span class="tag t-cat">'+esc(p.category)+'</span>':'')+
+      '<div class="price">'+(pr?money(pr):'<small>price not set</small>')+'</div>'+
+      (tl?'<div class="terms">'+esc(tl)+'</div>':'')+
+      (isInvest(p)&&(+p.arv||+p.rehab)?'<div class="nums">'+
+        (canSeeAcq()?'<div><div class="v">'+money(p.acqPrice)+'</div><div class="k">Acq</div></div>':'')+
+        '<div><div class="v">'+money(p.rehab)+'</div><div class="k">Rehab</div></div>'+
+        '<div><div class="v">'+money(p.arv)+'</div><div class="k">ARV</div></div>'+
+        (canSeeAcq()?'':'<div><div class="v" style="color:var(--green)">'+money((+p.arv||0)-pr-(+p.rehab||0))+'</div><div class="k">Buyer spread</div></div>')+
+      '</div>':'')+
+      '</div></div>';
+  }).join('')||'<div class="empty">No properties match that filter.</div>';
+}
+
+function openProp(id){
+  const p=P(id);if(!p)return;
+  CUR=id;HERO=0;
+  $('listview').style.display='none';$('detail').style.display='block';
+  drawDetail();window.scrollTo(0,0);
+}
+function backToList(){CUR=null;$('detail').style.display='none';$('listview').style.display='block';draw();}
+function setHero(i){HERO=i;drawDetail();}
+function fact(v,k){return '<div class="fact"><div class="v">'+esc(v)+'</div><div class="k">'+esc(k)+'</div></div>'}
+function drawDetail(){
+  const p=P(CUR);if(!p)return backToList();
+  const ph=photosOf(p), pr=priceOf(p), tl=termsLine(p), tc=cls(p.status)[0], on=SEL.indexOf(p.id)>-1;
+  let facts='';
+  if(isInvest(p)){
+    facts=(canSeeAcq()?fact(money(p.acqPrice),'Acquisition'):'')+
+      fact(money(p.rehab),'Rehab budget')+fact(money(p.arv),'ARV')+
+      fact(money(canSeeAcq()?(+p.arv||0)-(+p.acqPrice||0)-(+p.rehab||0):(+p.arv||0)-pr-(+p.rehab||0)),canSeeAcq()?'Our spread':'Buyer spread');
+  } else {
+    facts=fact(pr?money(pr):'\u2014','List price')+fact(+p.down?money(p.down):'\u2014','Down payment')+
+      fact(+p.monthly?money(p.monthly):'\u2014','Monthly')+fact(p.terms||'Owner finance','Financing');
+  }
+  $('detail').innerHTML=
+    '<button class="back" onclick="backToList()">\u2190 All inventory</button>'+
+    '<div class="dwrap">'+
+    (ph.length?'<img class="hero" src="'+esc(ph[HERO]||ph[0])+'">':'<div class="nophoto" style="height:240px">no photos yet \u2014 add them in the CRM</div>')+
+    (ph.length>1?'<div class="thumbs">'+ph.map((u,i)=>'<img src="'+esc(u)+'" class="'+(i===HERO?'on':'')+'" onclick="setHero('+i+')">').join('')+'</div>':'')+
+    '<div class="dbody">'+
+      '<h2>'+esc(p.address||'\u2014')+'</h2>'+
+      '<div style="color:var(--muted);font-size:13.5px;margin-top:6px">'+
+        [(p.beds?p.beds+' bd':''),(p.baths?p.baths+' ba':''),(p.sqft?(+p.sqft).toLocaleString()+' sqft':''),(p.area||'')].filter(Boolean).join(' \u00b7 ')+'</div>'+
+      '<div style="margin-top:10px"><span class="tag '+tc+'">'+esc(p.status||'')+'</span>'+(p.category?'<span class="tag t-cat">'+esc(p.category)+'</span>':'')+'</div>'+
+      (pr?'<div class="price" style="font-size:29px;margin-top:14px">'+money(pr)+'</div>':'<div class="price" style="margin-top:14px"><small>price not set yet</small></div>')+
+      (tl?'<div class="terms" style="font-size:14px">'+esc(tl)+'</div>':'')+
+      '<div class="facts">'+facts+'</div>'+
+      (p.title?'<div style="font-weight:700;font-size:15px">'+esc(p.title)+'</div>':'')+
+      (p.desc?'<div class="desc">'+esc(p.desc)+'</div>':'<div class="desc" style="color:var(--muted)">No description written yet \u2014 add one in the CRM under Edit property.</div>')+
+      '<div class="actions">'+
+        '<button class="btn" onclick="shareOne(\''+p.id+'\')">\ud83d\udce4 Send this property</button>'+
+        '<button class="btn ghost" onclick="copyOne(\''+p.id+'\')">Copy the details</button>'+
+        '<button class="btn ghost" onclick="toggleSel(\''+p.id+'\')">'+(on?'\u2713 On your sheet':'+ Add to a sheet')+'</button>'+
+      '</div>'+
+    '</div></div>';
+}
+
+function toggleSel(id){
+  const i=SEL.indexOf(id);
+  if(i>-1)SEL.splice(i,1);else SEL.push(id);
+  $('selbar').style.display=SEL.length?'flex':'none';
+  $('selN').textContent=SEL.length+' selected';
+  if(CUR)drawDetail();else draw();
+}
+function clearSel(){SEL=[];$('selbar').style.display='none';if(CUR)drawDetail();else draw();}
+
+function fhead(sub){return '<div class="fh"><div><div class="b">Real Living Companies</div>'+
+  '<div class="s">'+esc(sub||'Available property')+' \u00b7 '+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+'</div></div></div>'}
+function fcard(v,k){return '<div class="fc"><div class="v">'+esc(v)+'</div><div class="k">'+esc(k)+'</div></div>'}
+function flyerOne(p){
+  const ph=photosOf(p), pr=priceOf(p), tl=termsLine(p);
+  let cards='';
+  if(isInvest(p)){
+    if(+p.rehab)cards+=fcard(money(p.rehab),'Rehab estimate');
+    if(+p.arv)cards+=fcard(money(p.arv),'ARV');
+    if(+p.arv&&pr)cards+=fcard(money((+p.arv||0)-pr-(+p.rehab||0)),'Your spread');
+  } else {
+    if(+p.down)cards+=fcard(money(p.down),'Down payment');
+    if(+p.monthly)cards+=fcard(money(p.monthly),'Per month');
+    if(p.terms)cards+=fcard(p.terms,'Financing');
+  }
+  if(p.beds)cards+=fcard(p.beds+' bd / '+(p.baths||0)+' ba','Layout');
+  return '<div class="flyer">'+fhead()+
+    (ph.length?'<img class="fimg" src="'+esc(ph[0])+'" crossorigin="anonymous">':'')+
+    '<div class="fb"><div class="fa">'+esc(p.address||'')+'</div>'+
+    '<div class="fm">'+[(p.category||''),(p.area||''),(p.sqft?(+p.sqft).toLocaleString()+' sqft':'')].filter(Boolean).join(' \u00b7 ')+'</div>'+
+    (pr?'<div class="fp">'+money(pr)+'</div>':'')+
+    (tl?'<div class="ft">'+esc(tl)+'</div>':'')+
+    (cards?'<div class="fg">'+cards+'</div>':'')+
+    (p.desc?'<div class="fd">'+esc(String(p.desc).slice(0,600))+'</div>':'')+
+    '<div class="ff">Real Living Companies \u00b7 Kansas City \u00b7 Ask us about this property</div>'+
+    '</div></div>';
+}
+function flyerMany(ps){
+  return '<div class="flyer">'+fhead(ps.length+' properties')+
+    ps.map(p=>{const ph=photosOf(p),pr=priceOf(p),tl=termsLine(p);
+      return '<div class="row">'+
+        (ph.length?'<img src="'+esc(ph[0])+'" crossorigin="anonymous">':'<div style="width:170px;height:118px;border-radius:10px;background:#EEF2F7;flex:none"></div>')+
+        '<div><div class="ra">'+esc(p.address||'')+'</div>'+
+        '<div class="rm">'+[(p.category||''),(p.beds?p.beds+' bd':''),(p.baths?p.baths+' ba':''),(p.sqft?(+p.sqft).toLocaleString()+' sqft':'')].filter(Boolean).join(' \u00b7 ')+'</div>'+
+        (pr?'<div class="rp">'+money(pr)+'</div>':'<div class="rp" style="color:#64748B;font-size:16px">Call for price</div>')+
+        (tl?'<div class="rt">'+esc(tl)+'</div>':'')+
+        (isInvest(p)&&+p.arv?'<div class="rt">ARV '+money(p.arv)+(+p.rehab?' \u00b7 rehab '+money(p.rehab):'')+'</div>':'')+
+        '</div></div>'}).join('')+
+    '<div class="ff" style="padding:18px 30px 24px;margin:0;border-top:none">Real Living Companies \u00b7 Kansas City \u00b7 Ask us about any of these</div></div>';
+}
+
+async function renderShot(html,name){
+  $('stage').innerHTML=html;
+  const node=$('stage').firstChild;
+  const imgs=Array.prototype.slice.call(node.querySelectorAll('img'));
+  await Promise.all(imgs.map(im=>im.complete?Promise.resolve():new Promise(r=>{im.onload=r;im.onerror=function(){im.style.display='none';r()};setTimeout(r,6000)})));
+  const canvas=await html2canvas(node,{useCORS:true,backgroundColor:'#ffffff',scale:2,logging:false});
+  const url=canvas.toDataURL('image/png');
+  const blob=await new Promise(res=>canvas.toBlob(res,'image/png',0.95));
+  $('stage').innerHTML='';
+  return {url:url,blob:blob,name:name};
+}
+async function shareShot(html,name,caption){
+  toast('Building the picture\u2026');
+  let shot;
+  try{ shot=await renderShot(html,name); }
+  catch(e){
+    $('stage').innerHTML='';
+    toast('Could not build the image \u2014 copied the details instead');
+    if(navigator.clipboard)navigator.clipboard.writeText(caption);
+    return;
+  }
+  showShot(shot,caption);
+}
+function showShot(shot,caption){
+  $('ovl').style.display='block';
+  $('modal').innerHTML='<h3>Ready to send</h3>'+
+    '<div class="hint">Send it straight from here, save the picture, or copy the details as text.</div>'+
+    '<div class="shot"><img src="'+shot.url+'" style="width:100%;display:block"></div>'+
+    '<div class="actions">'+
+      (navigator.share?'<button class="btn" id="shbtn">\ud83d\udce4 Send</button>':'')+
+      '<button class="btn'+(navigator.share?' ghost':'')+'" id="dlbtn">\u2b07\ufe0e Save the picture</button>'+
+      '<button class="btn ghost" id="cpbtn">Copy the details</button>'+
+      '<button class="btn ghost" onclick="closeOvl()">Close</button>'+
+    '</div>';
+  const file=shot.blob?new File([shot.blob],shot.name+'.png',{type:'image/png'}):null;
+  const sh=$('shbtn');
+  if(sh)sh.onclick=async function(){
+    try{
+      if(file&&navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],text:caption});
+      else await navigator.share({title:'Real Living',text:caption});
+    }catch(e){}
+  };
+  $('dlbtn').onclick=function(){const a=document.createElement('a');a.href=shot.url;a.download=shot.name+'.png';a.click();toast('Saved to your downloads')};
+  $('cpbtn').onclick=function(){navigator.clipboard.writeText(caption).then(function(){toast('Details copied')})};
+}
+function closeOvl(){$('ovl').style.display='none'}
+
+function textOne(p){
+  const pr=priceOf(p), tl=termsLine(p), L=[];
+  L.push(p.address||'');
+  const line=[(p.beds?p.beds+' bd':''),(p.baths?p.baths+' ba':''),(p.sqft?(+p.sqft).toLocaleString()+' sqft':'')].filter(Boolean).join(' \u00b7 ');
+  if(line)L.push(line);
+  if(pr)L.push('Price: '+money(pr));
+  if(tl)L.push(tl);
+  if(isInvest(p)){ if(+p.arv)L.push('ARV: '+money(p.arv)); if(+p.rehab)L.push('Rehab estimate: '+money(p.rehab)); }
+  if(p.desc)L.push('',String(p.desc).slice(0,500));
+  L.push('','Real Living Companies \u00b7 Kansas City');
+  return L.join('\n');
+}
+function copyOne(id){const p=P(id);navigator.clipboard.writeText(textOne(p)).then(function(){toast('Details copied \u2014 paste them anywhere')})}
+function shareOne(id){const p=P(id);shareShot(flyerOne(p),(p.address||'property').replace(/[^A-Za-z0-9]+/g,'-').slice(0,50),textOne(p))}
+function openSheet(){
+  const ps=SEL.map(P).filter(Boolean);if(!ps.length)return;
+  const caption=ps.map(textOne).join('\n\n\u2014 \u2014 \u2014\n\n');
+  shareShot(flyerMany(ps),'real-living-'+ps.length+'-properties',caption);
+}
+
 (async()=>{
   try{
     const {data:{session}}=await sb.auth.getSession();
@@ -117,6 +389,12 @@ function esc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;',
     const {data:prof}=await sb.from('profiles').select('full_name').eq('id',session.user.id).single();
     $('who').textContent=prof?prof.full_name:session.user.email;
     $('app').style.display='block';
+    try{
+      const {data:us}=await sb.from('records').select('id,data').eq('collection','users').eq('deleted',false);
+      const email=(session.user.email||'').toLowerCase();
+      const seat=(us||[]).map(r=>r.data).filter(u=>(u.email||'').toLowerCase()===email)[0];
+      ME=seat||{role:'agent',pipes:[]};
+    }catch(e){ ME={role:'agent',pipes:[]} }
     const {data,error}=await sb.from('records').select('id,data').eq('collection','properties').eq('deleted',false);
     if(error)throw new Error(error.message);
     PROPS=(data||[]).map(r=>r.data);
@@ -124,7 +402,7 @@ function esc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;',
     setInterval(async()=>{
       try{
         const {data:d2}=await sb.from('records').select('id,data').eq('collection','properties').eq('deleted',false);
-        if(d2){PROPS=d2.map(r=>r.data);draw();}
+        if(d2){PROPS=d2.map(r=>r.data);if(CUR)drawDetail();else draw();}
       }catch(e){}
     },30000);
   }catch(e){
