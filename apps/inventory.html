@@ -121,6 +121,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,
       <span class="chip" data-f="uc" onclick="setF(this)">Under contract</span>
       <span class="chip" data-f="acq" onclick="setF(this)">Acquisition</span>
       <span class="chip" data-f="sold" onclick="setF(this)">Sold</span>
+      <span class="chip" data-f="arch" onclick="setF(this)">Archived</span>
     </div>
     <div class="bar" id="cats"></div>
     <div class="grid" id="grid"></div>
@@ -181,9 +182,10 @@ function termsLine(p){
 function visible(){
   const q=($('q').value||'').toLowerCase();
   return PROPS.filter(p=>{
-    if(p.archived===true)return false;
+    if(F==='arch'){ if(p.archived!==true)return false; }
+    else if(p.archived===true)return false;
     const f=cls(p.status)[1];
-    if(F!=='all'&&f!==F)return false;
+    if(F!=='all'&&F!=='arch'&&f!==F)return false;
     if(CAT&&p.category!==CAT)return false;
     return !q||(p.address||'').toLowerCase().indexOf(q)>-1;
   });
@@ -196,9 +198,11 @@ function draw(){
     '<div class="kpi"><div class="n">'+n('inv')+'</div><div class="l">In inventory</div></div>'+
     '<div class="kpi"><div class="n">'+n('uc')+'</div><div class="l">Under contract</div></div>'+
     '<div class="kpi"><div class="n">'+live.filter(p=>photosOf(p).length).length+'</div><div class="l">With photos</div></div>'+
-    '<div class="kpi"><div class="n">'+live.filter(p=>priceOf(p)).length+'</div><div class="l">Priced</div></div>';
-  const cats=[];live.forEach(p=>{if(p.category&&cats.indexOf(p.category)<0)cats.push(p.category)});
-  $('cats').innerHTML=cats.map(c=>'<span class="chip'+(CAT===c?' on':'')+'" onclick="setCat(\''+esc(c)+'\')">'+esc(c)+' \u00b7 '+live.filter(p=>p.category===c).length+'</span>').join('');
+    '<div class="kpi"><div class="n">'+live.filter(p=>priceOf(p)).length+'</div><div class="l">Priced</div></div>'+
+    '<div class="kpi"><div class="n">'+PROPS.filter(p=>p.archived===true).length+'</div><div class="l">Archived</div></div>';
+  const pool=F==='arch'?PROPS.filter(p=>p.archived===true):live;
+  const cats=[];pool.forEach(p=>{if(p.category&&cats.indexOf(p.category)<0)cats.push(p.category)});
+  $('cats').innerHTML=cats.map(c=>'<span class="chip'+(CAT===c?' on':'')+'" onclick="setCat(\''+esc(c)+'\')">'+esc(c)+' \u00b7 '+pool.filter(p=>p.category===c).length+'</span>').join('');
   const list=visible();
   $('grid').innerHTML=list.map(p=>{
     const tc=cls(p.status)[0], ph=photosOf(p), pr=priceOf(p), tl=termsLine(p), on=SEL.indexOf(p.id)>-1;
@@ -218,7 +222,9 @@ function draw(){
         (canSeeAcq()?'':'<div><div class="v" style="color:var(--green)">'+money((+p.arv||0)-pr-(+p.rehab||0))+'</div><div class="k">Buyer spread</div></div>')+
       '</div>':'')+
       '</div></div>';
-  }).join('')||'<div class="empty">No properties match that filter.</div>';
+  }).join('')||'<div class="empty">'+(PROPS.length
+      ?'None of the '+PROPS.length+' properties match this filter.'+(F!=='all'?' Try <b>All</b>'+(PROPS.filter(p=>p.archived===true).length?' or <b>Archived</b>':'')+'.':'')
+      :'Nothing loaded from the CRM yet \u2014 if this stays empty, sign out at the portal and back in.')+'</div>';
 }
 
 function openProp(id){
