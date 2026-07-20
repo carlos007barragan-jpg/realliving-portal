@@ -155,8 +155,13 @@ const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const P=id=>PROPS.find(p=>p.id===id);
 function toast(t){const el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),2600)}
 
-const INVEST_CATS=['Wholesale','Commercial','Multifamily'];
-const isInvest=p=>!p.category||INVEST_CATS.indexOf(p.category)>-1;
+function moneyKind(cat){
+  if(cat==='Residential')return 'of';
+  if(cat==='Commercial'||cat==='On-market')return 'sale';
+  return 'invest';
+}
+const kindOf=p=>moneyKind(p&&p.category);
+const isInvest=p=>kindOf(p)==='invest';
 function canSeeAcq(){
   if(!ME)return false;
   if(ME.role==='owner'||ME.role==='manager')return true;
@@ -175,9 +180,11 @@ function termsLine(p){
   const bits=[];
   if(+p.down)bits.push(money(p.down)+' down');
   if(+p.monthly)bits.push(money(p.monthly)+'/mo');
+  if(+p.rate)bits.push(p.rate+'%');
   if(p.terms)bits.push(p.terms);
   return bits.join(' \u00b7 ');
 }
+const tiMonthly=p=>Math.round(((+p.taxes||0)+(+p.insurance||0))/12);
 
 function visible(){
   const q=($('q').value||'').toLowerCase();
@@ -244,9 +251,17 @@ function drawDetail(){
     facts=(canSeeAcq()?fact(money(p.acqPrice),'Acquisition'):'')+
       fact(money(p.rehab),'Rehab budget')+fact(money(p.arv),'ARV')+
       fact(money(canSeeAcq()?(+p.arv||0)-(+p.acqPrice||0)-(+p.rehab||0):(+p.arv||0)-pr-(+p.rehab||0)),canSeeAcq()?'Our spread':'Buyer spread');
+  } else if(kindOf(p)==='of'){
+    facts=fact(pr?money(pr):'\u2014','Sales price')+fact(+p.down?money(p.down):'\u2014','Down payment')+
+      fact(+p.monthly?money(p.monthly):'\u2014','Monthly')+
+      (+p.rate?fact(p.rate+'%','Interest rate'):'')+
+      (tiMonthly(p)?fact(money(tiMonthly(p)),'Taxes + insurance / mo'):'')+
+      fact(p.terms||'Owner finance','Financing');
   } else {
-    facts=fact(pr?money(pr):'\u2014','List price')+fact(+p.down?money(p.down):'\u2014','Down payment')+
-      fact(+p.monthly?money(p.monthly):'\u2014','Monthly')+fact(p.terms||'Owner finance','Financing');
+    facts=fact(pr?money(pr):'\u2014','Sales price')+
+      fact((p.beds||0)+' / '+(p.baths||0),'Beds / baths')+
+      (p.sqft?fact((+p.sqft).toLocaleString(),'Square feet'):'')+
+      fact(p.terms||(p.category==='On-market'?'On-market sale':'For sale'),'Listing');
   }
   $('detail').innerHTML=
     '<button class="back" onclick="backToList()">\u2190 All inventory</button>'+
@@ -290,10 +305,15 @@ function flyerOne(p){
     if(+p.rehab)cards+=fcard(money(p.rehab),'Rehab estimate');
     if(+p.arv)cards+=fcard(money(p.arv),'ARV');
     if(+p.arv&&pr)cards+=fcard(money((+p.arv||0)-pr-(+p.rehab||0)),'Your spread');
-  } else {
+  } else if(kindOf(p)==='of'){
     if(+p.down)cards+=fcard(money(p.down),'Down payment');
     if(+p.monthly)cards+=fcard(money(p.monthly),'Per month');
+    if(+p.rate)cards+=fcard(p.rate+'%','Interest rate');
+    if(tiMonthly(p))cards+=fcard(money(tiMonthly(p)),'Taxes + ins / mo');
     if(p.terms)cards+=fcard(p.terms,'Financing');
+  } else {
+    if(p.sqft)cards+=fcard((+p.sqft).toLocaleString(),'Square feet');
+    if(p.terms)cards+=fcard(p.terms,'Listing');
   }
   if(p.beds)cards+=fcard(p.beds+' bd / '+(p.baths||0)+' ba','Layout');
   return '<div class="flyer">'+fhead()+
@@ -376,6 +396,7 @@ function textOne(p){
   if(pr)L.push('Price: '+money(pr));
   if(tl)L.push(tl);
   if(isInvest(p)){ if(+p.arv)L.push('ARV: '+money(p.arv)); if(+p.rehab)L.push('Rehab estimate: '+money(p.rehab)); }
+  else if(kindOf(p)==='of'&&tiMonthly(p))L.push('Taxes + insurance: about '+money(tiMonthly(p))+'/mo');
   if(p.desc)L.push('',String(p.desc).slice(0,500));
   L.push('','Real Living Companies \u00b7 Kansas City');
   return L.join('\n');
