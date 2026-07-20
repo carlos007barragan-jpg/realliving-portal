@@ -2059,7 +2059,8 @@ function vProps(){
       (anyInvest?(inv
         ?(showAcq?'<td class="money">'+money(p.acqPrice)+'</td>':'')+'<td class="money">'+money(p.rehab)+'</td><td class="money">'+money(p.arv)+'</td><td class="money">'+money(showAcq?ourSpread(p):buyerSpread(p))+'</td>'
         :(showAcq?dash:'')+dash+dash+dash):'')+
-      '<td class="money">'+(propPrice(p)?money(propPrice(p)):'<span class="mut">no price</span>')+'</td>'+
+      '<td class="money">'+(propPrice(p)?money(propPrice(p)):'<span class="mut">no price</span>')+
+        (kindOf(p)==='of'&&(p.down||p.monthly)?'<div class="mut" style="font-size:11px;font-weight:400">'+(p.down?money(p.down)+' down':'')+(p.down&&p.monthly?' · ':'')+(p.monthly?money(p.monthly)+'/mo':'')+'</div>':'')+'</td>'+
       '<td><span class="tag'+(propArchived(p)?'':' gr')+'">'+esc(p.status)+'</span></td><td>'+(ds.length?'<span class="tag bl">×'+ds.length+'</span>':'<span class="mut">—</span>')+'</td></tr>'}).join('')+'</table></div>'+
     (anyInvest&&!showAcq?'<div class="mut" style="font-size:12px;margin-top:8px">Buyer spread is what the investor is left with: ARV minus our price minus the rehab. What we paid for the property is internal to acquisitions.</div>':'')+
     (anyInvest&&list.some(p=>!isInvestProp(p))?'<div class="mut" style="font-size:12px;margin-top:8px">Rehab, ARV and spread are investor numbers — they stay blank on owner-finance and on-market homes, which are sold on price and terms.</div>':'');
@@ -2212,13 +2213,22 @@ function vProp(id){
        '<div class="card"><div class="eyebrow">Rehab budget</div><div class="big">'+money(p.rehab)+'</div></div>'+
        '<div class="card"><div class="eyebrow">ARV</div><div class="big">'+money(p.arv)+'</div></div>'+
        '<div class="card"><div class="eyebrow">Buyer spread</div><div class="big">'+money(buyerSpread(p))+'</div><div class="sub">ARV − price − rehab</div></div></div>';
-  } else {
-    const dn=p.down||0, price=propPrice(p);
-    h+='<div class="grid cards4" style="margin-top:18px"><div class="card"><div class="eyebrow">List price</div><div class="big">'+(price?money(price):'—')+'</div></div>'+
+  } else if(kindOf(p)==='of'){
+    const dn=p.down||0, price=propPrice(p), esc_=v=>v;
+    const ti=(+p.taxes||0)+(+p.insurance||0);
+    h+='<div class="grid cards4" style="margin-top:18px"><div class="card"><div class="eyebrow">Sales price</div><div class="big">'+(price?money(price):'—')+'</div></div>'+
      '<div class="card"><div class="eyebrow">Down payment</div><div class="big">'+(dn?money(dn):'—')+'</div><div class="sub">'+(dn&&price?Math.round(dn/price*100)+'% down':'set on Edit')+'</div></div>'+
-     '<div class="card"><div class="eyebrow">Monthly payment</div><div class="big">'+(p.monthly?money(p.monthly):'—')+'</div></div>'+
-     '<div class="card"><div class="eyebrow">Financing</div><div class="big" style="font-size:19px">'+esc(p.terms||(p.category==='On-market'?'On-market sale':'Owner finance'))+'</div></div></div>'+
-     '<div class="mut" style="font-size:12px;margin-top:8px">'+esc(p.category||'This')+' property — sold on price and terms, so no ARV or spread is tracked here.</div>';
+     '<div class="card"><div class="eyebrow">Monthly payment</div><div class="big">'+(p.monthly?money(p.monthly):'—')+'</div>'+(p.rate?'<div class="sub">'+p.rate+'% interest</div>':'')+'</div>'+
+     '<div class="card"><div class="eyebrow">Taxes + insurance</div><div class="big">'+(ti?money(Math.round(ti/12)):'—')+'</div><div class="sub">'+(ti?'a month · '+money(ti)+' a year':'not set')+'</div></div></div>'+
+     '<div class="mut" style="font-size:12px;margin-top:8px">Owner finance'+(p.terms?' · '+esc(p.terms):'')+
+       ((p.monthly&&ti)?' · all in about '+money(Math.round((+p.monthly||0)+ti/12))+' a month with taxes and insurance':'')+'</div>';
+  } else {
+    const price=propPrice(p);
+    h+='<div class="grid cards4" style="margin-top:18px"><div class="card"><div class="eyebrow">Sales price</div><div class="big">'+(price?money(price):'—')+'</div></div>'+
+     '<div class="card"><div class="eyebrow">Beds / baths</div><div class="big">'+(p.beds||0)+' / '+(p.baths||0)+'</div></div>'+
+     '<div class="card"><div class="eyebrow">Square feet</div><div class="big">'+(p.sqft?(+p.sqft).toLocaleString():'—')+'</div></div>'+
+     '<div class="card"><div class="eyebrow">'+(p.category==='Commercial'?'Commercial':'Listing')+'</div><div class="big" style="font-size:19px">'+esc(p.terms||(p.category==='On-market'?'On-market sale':'For sale'))+'</div></div></div>'+
+     '<div class="mut" style="font-size:12px;margin-top:8px">Priced, not underwritten — we sell this one, we don\'t hold it, so there is no acquisition, rehab or ARV.</div>';
   }
   h+='<div class="sect"><div class="sect-head"><h2>Transactions on this property</h2><span class="cnt">every business touching it</span></div>'+
     (ds.length?ds.map(d=>'<div class="deal-row" onclick="openDeal(\''+d.id+'\')"><div class="a">'+esc(PIPES[d.pipe].name)+' — '+esc(d.type)+(d.clientId?' · '+esc(C(d.clientId).name):'')+'<small>'+esc(U(d.agentId).name)+(d.closeDate?' · closes '+fdate(d.closeDate):'')+'</small></div>'+
@@ -3156,7 +3166,15 @@ function saveNewDeal(){
 const PCATS=['Residential','Wholesale','Commercial','Multifamily','On-market'];
 /* ARV, rehab and spread are investor math — they only mean something on a deal we're wholesaling
    or holding. Owner-finance and on-market homes are sold on price and terms, not on spread. */
-const INVEST_CATS=['Wholesale','Commercial','Multifamily'];
+const INVEST_CATS=['Wholesale','Multifamily'];
+/* three kinds of money, decided by what the property IS:
+   invest = we buy it, fix it, sell it   ·  of = we sell it on terms  ·  sale = we just sell it */
+function moneyKind(cat){
+  if(cat==='Residential')return 'of';
+  if(cat==='Commercial'||cat==='On-market')return 'sale';
+  return 'invest';               /* Wholesale, Multifamily, and anything not categorised yet */
+}
+const kindOf=p=>moneyKind(p&&p.category);
 const isInvestProp=p=>!p.category||INVEST_CATS.includes(p.category);
 /* what we PAID is internal — ownership, managers over acquisitions, and acquisitions agents.
    Everyone else (dispo included) works off sale price, rehab and ARV. */
@@ -3172,23 +3190,17 @@ const ourSpread=p=>(p.arv||0)-(p.acqPrice||0)-(p.rehab||0);
 const propPrice=p=>p.listPrice||(isInvestProp(p)?p.arv:0)||0;
 const PSTATUSES=['Acquisition — Off-Market Lead','Acquisition — Due Diligence','In Inventory — Rehab','In Inventory — Marketed','Under Contract (Dispo)','Sold'];
 function mAddProp(editId){
+  MP_EDIT=editId||null;
   const p=editId?P(editId):null;
   const v=(k,d)=>p?(p[k]??d??''):(d??'');
   modal('<h2>'+(p?'Edit property':'New H2M property')+'</h2>'+
   '<label>Address</label><input id="mp-addr" placeholder="Street, city, state zip" value="'+esc(v('address'))+'">'+
-  '<div class="frow"><div><label>Beds</label><input id="mp-beds" type="number" value="'+v('beds',3)+'"></div><div><label>Baths</label><input id="mp-baths" type="number" value="'+v('baths',1)+'"></div>'+
-  (canSeeAcq()?'<div><label>Acquisition price</label><input id="mp-acq" type="number" value="'+v('acqPrice')+'"></div>':'')+
-  '<div><label>Rehab budget</label><input id="mp-rehab" type="number" value="'+v('rehab')+'"></div></div>'+
-  '<div class="frow"><div><label>ARV</label><input id="mp-arv" type="number" value="'+v('arv')+'"></div>'+
+  '<div class="frow"><div><label>Category — this decides which numbers you fill in</label><select id="mp-cat" onchange="mpMoney()"><option value=""'+(v('category')?'':' selected')+'>— not set —</option>'+PCATS.map(ct=>'<option'+(v('category')===ct?' selected':'')+'>'+ct+'</option>').join('')+'</select></div>'+
   (p?'<div><label>Status</label><select id="mp-status">'+PSTATUSES.map(st=>'<option'+(st===p.status?' selected':'')+'>'+st+'</option>').join('')+(PSTATUSES.includes(p.status)?'':'<option selected>'+esc(p.status)+'</option>')+'</select></div>':'<div></div>')+'</div>'+
-  '<label>Category</label><select id="mp-cat"><option value="">— none —</option>'+PCATS.map(ct=>'<option'+(v('category')===ct?' selected':'')+'>'+ct+'</option>').join('')+'</select>'+
-  '<div class="eyebrow" style="margin:18px 0 2px;padding-top:14px;border-top:1px solid var(--line)">Owner-finance / sale terms — used on Residential and On-market homes</div>'+
-  '<div class="frow"><div><label>Down payment ($)</label><input id="mp-down" type="number" value="'+(v('down')||'')+'"></div>'+
-  '<div><label>Monthly payment ($)</label><input id="mp-monthly" type="number" value="'+(v('monthly')||'')+'"></div>'+
-  '<div><label>Financing</label><input id="mp-terms" value="'+esc(v('terms'))+'" placeholder="e.g. Owner finance, Cash, On-market sale"></div></div>'+
-  '<div class="eyebrow" style="margin:18px 0 2px;padding-top:14px;border-top:1px solid var(--line)">Website marketing — shows on the sites when status is In Inventory — Marketed</div>'+
-  '<div class="frow"><div><label>List / disposition price ($)</label><input id="mp-list" type="number" value="'+(v('listPrice')||'')+'" placeholder="blank = uses ARV"></div>'+
+  '<div class="frow"><div><label>Beds</label><input id="mp-beds" type="number" value="'+v('beds',3)+'"></div><div><label>Baths</label><input id="mp-baths" type="number" value="'+v('baths',1)+'"></div>'+
   '<div><label>Square feet</label><input id="mp-sqft" type="number" value="'+(v('sqft')||'')+'"></div></div>'+
+  '<div id="mp-money"></div>'+
+  '<div class="eyebrow" style="margin:18px 0 2px;padding-top:14px;border-top:1px solid var(--line)">Website marketing — shows on the sites when status is In Inventory — Marketed</div>'+
   '<div class="frow"><div><label>Neighborhood / area</label><input id="mp-area" value="'+esc(v('area'))+'" placeholder="e.g. Historic Northeast, KC MO"></div>'+
   '<div><label>Listing headline</label><input id="mp-title" value="'+esc(v('title'))+'" placeholder="e.g. Fully renovated 3-bed ranch"></div></div>'+
   '<label>Description — English (property page)</label><textarea id="mp-desc" rows="4" placeholder="What makes this home worth seeing…">'+esc(v('desc'))+'</textarea>'+
@@ -3196,14 +3208,63 @@ function mAddProp(editId){
   '<label>Photo URLs — one per line, first is the cover</label><textarea id="mp-photos" rows="4" placeholder="https://…/front.jpg&#10;https://…/kitchen.jpg">'+esc(p&&p.photos?p.photos.join('\n'):(v('photo')||''))+'</textarea>'+
   '<div class="mut" style="font-size:12px;margin-top:8px">'+(p?'Changes go live on the websites within a minute of saving.':'An acquisition deal opens automatically in H2M · Acquisitions.')+'</div>'+
   '<button class="btn" style="margin-top:18px" onclick="saveProp(\''+(editId||'')+'\')">'+(p?'Save changes':'Add property')+'</button>');
+  mpMoney();
 }
 function mEditProp(id){mAddProp(id)}
+/* the money a property has depends on what it is — swap the fields when the category changes */
+function mpMoney(){
+  const box=document.getElementById('mp-money');if(!box)return;
+  const cat=(document.getElementById('mp-cat')||{}).value||'';
+  const p=MP_EDIT?P(MP_EDIT):null;
+  const v=(k)=>{const el=document.getElementById('mp-'+k);if(el)return el.value;return p&&p[MPKEY[k]]!=null?p[MPKEY[k]]:''};
+  const kind=moneyKind(cat);
+  const head=t=>'<div class="eyebrow" style="margin:18px 0 2px;padding-top:14px;border-top:1px solid var(--line)">'+t+'</div>';
+  let h='';
+  if(kind==='invest'){
+    h=head((cat||'Investment')+' — what we buy it for and what it makes')+
+      '<div class="frow">'+
+      (canSeeAcq()?'<div><label>Acquisition price</label><input id="mp-acq" type="number" value="'+esc(v('acq'))+'"></div>':'')+
+      '<div><label>Rehab budget</label><input id="mp-rehab" type="number" value="'+esc(v('rehab'))+'"></div>'+
+      '<div><label>ARV</label><input id="mp-arv" type="number" value="'+esc(v('arv'))+'"></div></div>'+
+      '<label>Price to the buyer ($)</label><input id="mp-list" type="number" value="'+esc(v('list'))+'" placeholder="what an investor pays us — blank uses ARV">';
+  } else if(kind==='of'){
+    h=head('Owner finance — the terms we sell it on')+
+      '<div class="frow"><div><label>Sales price ($)</label><input id="mp-list" type="number" value="'+esc(v('list'))+'"></div>'+
+      '<div><label>Down payment ($)</label><input id="mp-down" type="number" value="'+esc(v('down'))+'"></div>'+
+      '<div><label>Monthly payment ($)</label><input id="mp-monthly" type="number" value="'+esc(v('monthly'))+'"></div></div>'+
+      '<div class="frow"><div><label>Interest rate (%)</label><input id="mp-rate" type="number" step="0.01" value="'+esc(v('rate'))+'"></div>'+
+      '<div><label>Taxes — yearly ($)</label><input id="mp-taxes" type="number" value="'+esc(v('taxes'))+'"></div>'+
+      '<div><label>Insurance — yearly ($)</label><input id="mp-ins" type="number" value="'+esc(v('ins'))+'"></div></div>'+
+      '<label>Financing note</label><input id="mp-terms" value="'+esc(v('terms'))+'" placeholder="e.g. Owner finance, 10 yr balloon">'+
+      '<div class="mut" style="font-size:12px;margin-top:6px" id="mp-piti"></div>';
+  } else {
+    h=head((cat||'Listing')+' — we sell it, we don\'t hold it')+
+      '<div class="frow"><div><label>Sales price ($)</label><input id="mp-list" type="number" value="'+esc(v('list'))+'"></div>'+
+      '<div><label>Note</label><input id="mp-terms" value="'+esc(v('terms'))+'" placeholder="e.g. On-market sale, listed for a client"></div></div>'+
+      '<div class="mut" style="font-size:12px;margin-top:6px">No acquisition, rehab or ARV here — this one is priced, not underwritten.</div>';
+  }
+  box.innerHTML=h;
+  if(kind==='of'){
+    const upd=()=>{
+      const t=+((document.getElementById('mp-taxes')||{}).value)||0, i=+((document.getElementById('mp-ins')||{}).value)||0;
+      const el=document.getElementById('mp-piti');
+      if(el)el.textContent=(t||i)?'Taxes and insurance run '+money(Math.round((t+i)/12))+' a month on top of the payment.':'';
+    };
+    ['mp-taxes','mp-ins'].forEach(id=>{const el=document.getElementById(id);if(el)el.oninput=upd});
+    upd();
+  }
+}
+const MPKEY={acq:'acqPrice',rehab:'rehab',arv:'arv',list:'listPrice',down:'down',monthly:'monthly',rate:'rate',taxes:'taxes',ins:'insurance',terms:'terms'};
+let MP_EDIT=null;
 function readPropForm(p){
   const g=x=>document.getElementById(x).value;
   p.address=g('mp-addr').trim();p.beds=+g('mp-beds')||0;p.baths=+g('mp-baths')||0;
-  const acqEl=document.getElementById('mp-acq');
-  if(acqEl)p.acqPrice=+acqEl.value||0;           /* left untouched when the field is walled off */
-  p.rehab=+g('mp-rehab')||0;p.arv=+g('mp-arv')||0;
+  const num=(id,key)=>{const el=document.getElementById(id);if(el)p[key]=+el.value||0};
+  const txt=(id,key)=>{const el=document.getElementById(id);if(el)p[key]=el.value.trim()||undefined};
+  /* only fields the category actually shows get written — the rest keep whatever they had */
+  num('mp-acq','acqPrice');num('mp-rehab','rehab');num('mp-arv','arv');
+  num('mp-down','down');num('mp-monthly','monthly');num('mp-rate','rate');
+  num('mp-taxes','taxes');num('mp-ins','insurance');txt('mp-terms','terms');
   p.listPrice=+g('mp-list')||0;p.sqft=+g('mp-sqft')||0;
   p.area=g('mp-area').trim();p.title=g('mp-title').trim();
   p.desc=g('mp-desc').trim();p.descEs=g('mp-descEs').trim();
@@ -3211,9 +3272,6 @@ function readPropForm(p){
   p.photo=p.photos[0]||null;
   const st=document.getElementById('mp-status');if(st)p.status=st.value;
   const ct=document.getElementById('mp-cat');if(ct)p.category=ct.value||undefined;
-  const dn=document.getElementById('mp-down');if(dn)p.down=+dn.value||0;
-  const mo=document.getElementById('mp-monthly');if(mo)p.monthly=+mo.value||0;
-  const tm=document.getElementById('mp-terms');if(tm)p.terms=tm.value.trim()||undefined;
   return p;
 }
 function saveProp(editId){
