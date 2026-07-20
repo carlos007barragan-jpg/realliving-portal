@@ -937,7 +937,7 @@ function renderNav(){
   }).join('');
 }
 /* ================= SHELL ================= *//* ================= SHELL ================= *//* ================= SHELL ================= */
-let page='dash', propTab='avail', profFull=false, histFull=false, dormView=false, pageArg=null, pipeSel=null, bizSel=null, boardFilter='', dashFilter='ALL', scAg='ALL', scDays=7, velPipe='h2m_dispo', repTab='perf', trendRange='M', profTab='all', calMode='month', calOff=0, calWOff=0, calBiz='ALL', setTab='general', fuDone=false, commKind='ALL';
+let page='dash', propTab='avail', propCat='', profFull=false, histFull=false, dormView=false, pageArg=null, pipeSel=null, bizSel=null, boardFilter='', dashFilter='ALL', scAg='ALL', scDays=7, velPipe='h2m_dispo', repTab='perf', trendRange='M', profTab='all', calMode='month', calOff=0, calWOff=0, calBiz='ALL', setTab='general', fuDone=false, commKind='ALL';
 function refresh(){go(page,pageArg)}
 (function(){const _go=null})();
 function renderWho(){
@@ -2018,7 +2018,7 @@ function vProps(){
   const avail=all.filter(propAvailable), arch=all.filter(propArchived);
   const pipeline=all.filter(p=>!propArchived(p)&&!propAvailable(p));
   if(!canSeeArchive())propTab='avail';
-  const list=propTab==='arch'?arch:(propTab==='pipe'?pipeline:avail);
+  let list=propTab==='arch'?arch:(propTab==='pipe'?pipeline:avail);
   const sub=propTab==='arch'?'sold &amp; archived files — kept for the record':(propTab==='pipe'?'acquired / in rehab — not yet marketed':'live and marketable right now');
   let h='<div class="sect-head"><h2>H2M Inventory</h2><span class="cnt">'+list.length+' '+(propTab==='arch'?'archived':propTab==='pipe'?'in the works':'available')+' — '+sub+'</span><span class="spacer"></span>'+
     (me.role!=='agent'?'<button class="btn small" onclick="mAddProp()">+ New property</button>':'')+'</div>';
@@ -2026,10 +2026,17 @@ function vProps(){
     '<button class="ttab'+(propTab==='avail'?' on':'')+'" onclick="propTab=\'avail\';go(\'props\')">Available · '+avail.length+'</button>'+
     '<button class="ttab'+(propTab==='pipe'?' on':'')+'" onclick="propTab=\'pipe\';go(\'props\')">In the works · '+pipeline.length+'</button>'+
     '<button class="ttab'+(propTab==='arch'?' on':'')+'" onclick="propTab=\'arch\';go(\'props\')">Archive · '+arch.length+'</button></div>';
+  if(!list.length)return h+'<div class="empty">Nothing here'+(propTab==='avail'?' — mark a property “In Inventory — Marketed” to make it available.':'.')+'</div>';
+  /* category chips — how Carlos groups the book of business */
+  const catsPresent=[...new Set(list.map(p=>p.category).filter(Boolean))];
+  if(catsPresent.length>1)h+='<div class="ttabs" style="margin:0 0 12px">'+
+    '<button class="ttab'+(propCat?'':' on')+'" onclick="propCat=\'\';go(\'props\')">All · '+list.length+'</button>'+
+    catsPresent.map(ct=>'<button class="ttab'+(propCat===ct?' on':'')+'" onclick="propCat=\''+ct+'\';go(\'props\')">'+esc(ct)+' · '+list.filter(p=>p.category===ct).length+'</button>').join('')+'</div>';
+  if(propCat)list=list.filter(p=>p.category===propCat);
   /* what's blocking a marketed home from showing on the websites */
   if(propTab==='avail'&&canSeeArchive()){
-    const noPrice=avail.filter(p=>!((p.listPrice||p.arv)>=20000));
-    const noPhoto=avail.filter(p=>!(p.photos&&p.photos.length)&&!p.photo);
+    const noPrice=list.filter(p=>!((p.listPrice||p.arv)>=20000));
+    const noPhoto=list.filter(p=>!(p.photos&&p.photos.length)&&!p.photo);
     if(noPrice.length||noPhoto.length)h+='<div class="card" style="margin-bottom:14px;border-left:3px solid var(--amber)">'+
       '<div class="eyebrow" style="margin-bottom:6px">Before these show on the websites</div>'+
       (noPrice.length?'<div style="font-size:13px;line-height:1.7"><b style="color:var(--amber)">'+noPrice.length+' held back — no list price:</b> '+
@@ -2038,10 +2045,9 @@ function vProps(){
         noPhoto.slice(0,6).map(p=>'<span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="go(\'prop\',\''+p.id+'\')">'+esc(p.address)+'</span>').join(' · ')+
         (noPhoto.length>6?' <span class="mut">+'+(noPhoto.length-6)+' more</span>':'')+'</div>':'')+'</div>';
   }
-  if(!list.length)return h+'<div class="empty">Nothing here'+(propTab==='avail'?' — mark a property “In Inventory — Marketed” to make it available.':'.')+'</div>';
-  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Address</th><th>Bd/Ba</th>'+(me.role==='agent'?'<th>List price</th>':'<th>Acq price</th><th>Rehab</th>')+'<th>ARV</th><th>Status</th><th>Transactions</th></tr>'+
+  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Address</th><th>Category</th><th>Bd/Ba</th>'+(me.role==='agent'?'<th>List price</th>':'<th>Acq price</th><th>Rehab</th>')+'<th>ARV</th><th>Status</th><th>Transactions</th></tr>'+
     list.map(p=>{const ds=S.deals.filter(d=>d.propertyId===p.id&&d.pipe!=='h2m_acq');
-      return '<tr class="rowlink" onclick="go(\'prop\',\''+p.id+'\')"><td>'+esc(p.address)+(p.photos&&p.photos.length?' <span class="tag" style="font-size:10px">'+p.photos.length+' 📷</span>':'')+'</td><td class="mut">'+p.beds+'/'+p.baths+'</td>'+
+      return '<tr class="rowlink" onclick="go(\'prop\',\''+p.id+'\')"><td>'+esc(p.address)+(p.photos&&p.photos.length?' <span class="tag" style="font-size:10px">'+p.photos.length+' 📷</span>':'')+'</td><td>'+(p.category?'<span class="tag">'+esc(p.category)+'</span>':'<span class="mut">—</span>')+'</td><td class="mut">'+p.beds+'/'+p.baths+'</td>'+
       (me.role==='agent'?'<td class="money">'+money(p.listPrice||p.arv)+'</td>':'<td class="money">'+money(p.acqPrice)+'</td><td class="money">'+money(p.rehab)+'</td>')+
       '<td class="money">'+money(p.arv)+'</td><td><span class="tag'+(propArchived(p)?'':' gr')+'">'+esc(p.status)+'</span></td><td>'+(ds.length?'<span class="tag bl">×'+ds.length+'</span>':'<span class="mut">—</span>')+'</td></tr>'}).join('')+'</table></div>';
   return h;
@@ -2059,7 +2065,7 @@ function vProp(id){
   const ds=S.deals.filter(d=>d.propertyId===id).sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
   let h='<button class="back" onclick="go(\'props\')">← H2M Inventory</button>';
   const live=/inventory — marketed|in inventory/i.test(p.status||'')&&/marketed/i.test(p.status||'');
-  h+='<div class="prof-head"><div style="flex:1"><h1 style="font-size:28px">'+esc(p.address)+'</h1><div class="meta">'+p.beds+' bd / '+p.baths+' ba'+(p.sqft?' · '+p.sqft.toLocaleString()+' sqft':'')+' · <b>'+esc(p.status)+'</b>'+(live?' <span class="tag gr">LIVE on the websites</span>':'')+'</div></div>'+
+  h+='<div class="prof-head"><div style="flex:1"><h1 style="font-size:28px">'+esc(p.address)+'</h1><div class="meta">'+p.beds+' bd / '+p.baths+' ba'+(p.sqft?' · '+p.sqft.toLocaleString()+' sqft':'')+' · <b>'+esc(p.status)+'</b>'+(p.category?' · <span class="tag">'+esc(p.category)+'</span>':'')+(live?' <span class="tag gr">LIVE on the websites</span>':'')+'</div></div>'+
      (canSeeArchive()?'<button class="btn ghost small" onclick="togglePropArchive(\''+p.id+'\')">'+(propArchived(p)?'Restore to inventory':'Archive')+'</button> ':'')+
      (me.role!=='agent'?'<button class="btn small" onclick="mEditProp(\''+p.id+'\')">Edit property</button>':'')+'</div>';
   if(live||p.photos&&p.photos.length||p.desc){
@@ -3005,6 +3011,7 @@ function saveNewDeal(){
     if(cc&&cc.dormant){cc.dormant=false;logAct(null,d.clientId,'Reheated automatically — new deal opened.');}}
   save();closeAll();pipeSel=pipe;go('biz',PIPES[pipe].biz);toast('Deal opened in '+PIPES[pipe].stages[0]);
 }
+const PCATS=['Residential','Wholesale','Commercial','Multifamily','On-market'];
 const PSTATUSES=['Acquisition — Off-Market Lead','Acquisition — Due Diligence','In Inventory — Rehab','In Inventory — Marketed','Under Contract (Dispo)','Sold'];
 function mAddProp(editId){
   const p=editId?P(editId):null;
@@ -3015,6 +3022,7 @@ function mAddProp(editId){
   '<div><label>Acquisition price</label><input id="mp-acq" type="number" value="'+v('acqPrice')+'"></div><div><label>Rehab budget</label><input id="mp-rehab" type="number" value="'+v('rehab')+'"></div></div>'+
   '<div class="frow"><div><label>ARV</label><input id="mp-arv" type="number" value="'+v('arv')+'"></div>'+
   (p?'<div><label>Status</label><select id="mp-status">'+PSTATUSES.map(st=>'<option'+(st===p.status?' selected':'')+'>'+st+'</option>').join('')+(PSTATUSES.includes(p.status)?'':'<option selected>'+esc(p.status)+'</option>')+'</select></div>':'<div></div>')+'</div>'+
+  '<label>Category</label><select id="mp-cat"><option value="">— none —</option>'+PCATS.map(ct=>'<option'+(v('category')===ct?' selected':'')+'>'+ct+'</option>').join('')+'</select>'+
   '<div class="eyebrow" style="margin:18px 0 2px;padding-top:14px;border-top:1px solid var(--line)">Website marketing — shows on the sites when status is In Inventory — Marketed</div>'+
   '<div class="frow"><div><label>List price ($)</label><input id="mp-list" type="number" value="'+(v('listPrice')||'')+'" placeholder="blank = uses ARV"></div>'+
   '<div><label>Square feet</label><input id="mp-sqft" type="number" value="'+(v('sqft')||'')+'"></div></div>'+
@@ -3037,6 +3045,7 @@ function readPropForm(p){
   p.photos=g('mp-photos').split(/\n+/).map(x=>x.trim()).filter(Boolean);
   p.photo=p.photos[0]||null;
   const st=document.getElementById('mp-status');if(st)p.status=st.value;
+  const ct=document.getElementById('mp-cat');if(ct)p.category=ct.value||undefined;
   return p;
 }
 function saveProp(editId){
