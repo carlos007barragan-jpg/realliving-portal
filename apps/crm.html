@@ -2077,6 +2077,67 @@ function rmProp(id){
   logAct(null,null,'Property deleted by '+me.name+' — '+p.address+(ds.length?' ('+ds.length+' transaction(s) unlinked)':'')+'.');
   save();closeAll();go('props');toast('Deleted — '+p.address);
 }
+function vPropPhotos(p){
+  const ph=p.photos||[], can=canEditProps();
+  if(!ph.length&&!can)return '';
+  let h='<div class="card" style="margin-top:16px"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:17px">Photos</h2>'+
+    '<span class="cnt">'+(ph.length?ph.length+' on file · the first one is the cover the websites use':'none yet')+'</span>'+
+    (can?'<span class="spacer"></span><label class="btn small" style="cursor:pointer;margin:0">+ Add photos<input type="file" accept="image/*" multiple style="display:none" onchange="addPhotos(\''+p.id+'\',this)"></label>':'')+'</div>';
+  if(!ph.length)return h+'<div class="empty" style="padding:14px 0">No photos yet. '+(can?'Add them straight from your phone or computer — they go live on the websites as soon as the home is marketed and priced.':'')+'</div></div>';
+  h+='<div style="display:flex;flex-wrap:wrap;gap:12px">'+ph.map((u,i)=>
+    '<div style="width:150px"><div style="position:relative">'+
+    '<img src="'+esc(u)+'" style="width:150px;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer" onclick="window.open(\''+esc(u)+'\',\'_blank\')" onerror="this.src=\'\';this.alt=\'image unavailable\';this.style.background=\'var(--line)\'">'+
+    (i===0?'<span class="tag gr" style="position:absolute;top:6px;left:6px;background:var(--card);font-size:9.5px">COVER</span>':'')+'</div>'+
+    (can?'<div style="display:flex;gap:4px;margin-top:5px;align-items:center">'+
+      '<button class="btn ghost small" style="padding:3px 7px" title="Move earlier" onclick="movePhoto(\''+p.id+'\','+i+',-1)"'+(i===0?' disabled':'')+'>◀</button>'+
+      '<button class="btn ghost small" style="padding:3px 7px" title="Move later" onclick="movePhoto(\''+p.id+'\','+i+',1)"'+(i===ph.length-1?' disabled':'')+'>▶</button>'+
+      (i?'<button class="btn ghost small" style="padding:3px 7px" title="Make this the cover" onclick="coverPhoto(\''+p.id+'\','+i+')">★</button>':'')+
+      '<span class="spacer"></span>'+
+      '<button class="btn ghost small" style="padding:3px 7px;border-color:var(--red);color:var(--red)" title="Remove" onclick="rmPhoto(\''+p.id+'\','+i+')">✕</button></div>':'')+
+    '</div>').join('')+'</div>'+
+    (can?'<div class="mut" style="font-size:12px;margin-top:10px">◀ ▶ reorder · ★ makes a photo the cover · ✕ removes it. You can also paste photo links in Edit property.</div>':'')+'</div>';
+  return h;
+}
+const PHOTO_BUCKET='property-photos';
+async function addPhotos(pid,input){
+  const p=P(pid);if(!p||!canEditProps())return;
+  const files=[...(input.files||[])];if(!files.length)return;
+  if(!CLOUD||!sb){toast('Photo upload needs the cloud CRM — paste image links in Edit instead');return}
+  p.photos=p.photos||[];let done=0,failed=0;
+  for(const f of files){
+    if(!/^image\//.test(f.type||'')){toast(f.name+' is not an image — skipped');failed++;continue}
+    toast('Uploading '+(done+failed+1)+' of '+files.length+'…');
+    const path=pid+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,7)+'-'+f.name.replace(/[^A-Za-z0-9._-]/g,'_').slice(-60);
+    const {error}=await sb.storage.from(PHOTO_BUCKET).upload(path,f,{contentType:f.type,upsert:true});
+    if(error){toast('Upload failed: '+error.message);failed++;continue}
+    const {data}=sb.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+    if(data&&data.publicUrl){p.photos.push(data.publicUrl);done++}
+  }
+  p.photo=p.photos[0]||null;
+  if(done)logAct(null,null,done+' photo'+(done>1?'s':'')+' added to '+p.address+' by '+me.name+'.');
+  input.value='';save();go('prop',pid);
+  toast(done?done+' photo'+(done>1?'s':'')+' added'+(failed?' · '+failed+' skipped':''):'Nothing uploaded');
+}
+function movePhoto(pid,i,dir){
+  const p=P(pid);if(!p||!canEditProps())return;
+  const ph=p.photos||[],j=i+dir;if(j<0||j>=ph.length)return;
+  [ph[i],ph[j]]=[ph[j],ph[i]];p.photo=ph[0]||null;save();go('prop',pid);
+}
+function coverPhoto(pid,i){
+  const p=P(pid);if(!p||!canEditProps())return;
+  const ph=p.photos||[];if(!ph[i])return;
+  ph.unshift(ph.splice(i,1)[0]);p.photo=ph[0];save();go('prop',pid);toast('Cover photo set — this is what the websites lead with');
+}
+async function rmPhoto(pid,i){
+  const p=P(pid);if(!p||!canEditProps())return;
+  const ph=p.photos||[],u=ph[i];if(!u)return;
+  if(!confirm('Remove this photo?'+(i===0&&ph.length>1?' The next one becomes the cover.':'')))return;
+  const mark='/'+PHOTO_BUCKET+'/';
+  if(CLOUD&&sb&&u.indexOf(mark)>-1){try{await sb.storage.from(PHOTO_BUCKET).remove([decodeURIComponent(u.split(mark)[1].split('?')[0])])}catch(e){}}
+  ph.splice(i,1);p.photo=ph[0]||null;
+  logAct(null,null,'Photo removed from '+p.address+' by '+me.name+'.');
+  save();go('prop',pid);toast('Photo removed');
+}
 function togglePropArchive(id){
   const p=P(id);if(!p||!canSeeWholeBook())return;
   const wasArch=propArchived(p);
@@ -2096,10 +2157,11 @@ function vProp(id){
       '<button class="btn small" onclick="mEditProp(\''+p.id+'\')">Edit property</button>':'')+'</div>';
   if(live||p.photos&&p.photos.length||p.desc){
     h+='<div class="card" style="margin-top:16px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Website listing</h2><span class="cnt">'+(live?'visible on reallivingkc + Mi Casa':'not visible — set status to In Inventory — Marketed to publish')+'</span></div>'+
-      '<div class="kv">'+kv('Headline',p.title)+kv('List price',p.listPrice?money(p.listPrice):(p.arv?money(p.arv)+' (from ARV)':'—'))+kv('Area',p.area)+kv('Photos',(p.photos&&p.photos.length?p.photos.length+' attached':'none — add photo URLs via Edit'))+'</div>'+
+      '<div class="kv">'+kv('Headline',p.title)+kv('List price',p.listPrice?money(p.listPrice):(p.arv?money(p.arv)+' (from ARV)':'—'))+kv('Area',p.area)+kv('Photos',(p.photos&&p.photos.length?p.photos.length+' attached':'none yet — add them below'))+'</div>'+
       (p.desc?'<div class="mut" style="font-size:13px;margin-top:10px;line-height:1.7">'+esc(p.desc).slice(0,300)+(p.desc.length>300?'…':'')+'</div>':'')+
-      (p.photos&&p.photos.length?'<div style="display:flex;gap:8px;margin-top:12px;overflow:auto">'+p.photos.slice(0,5).map(u=>'<img src="'+esc(u)+'" style="height:70px;border-radius:7px;border:1px solid var(--line)" onerror="this.style.display=\'none\'">').join('')+'</div>':'')+'</div>';
+      '</div>';
   }
+  h+=vPropPhotos(p);
   if(isInvestProp(p)){
     h+=canSeeAcq()
      ? '<div class="grid cards4" style="margin-top:18px"><div class="card"><div class="eyebrow">Acquisition <span class="tag" style="font-size:9px;border-color:var(--amber);color:var(--amber)">internal</span></div><div class="big">'+money(p.acqPrice)+'</div></div>'+
