@@ -857,6 +857,8 @@ const dealMoneyHidden=d=>hideMoney()||(me.role==='agent'&&d.agentId!==me.id);
 const propArchived=p=>p.archived===true||/^\s*sold\s*$/i.test(p.status||'');
 const propAvailable=p=>!propArchived(p)&&/marketed/i.test(p.status||'');
 const canSeeArchive=()=>me.role==='owner'||me.role==='manager'||me.id==='admin';
+/* only ownership sets what a closed file was worth — everyone else records the sale itself */
+const canSetNumbers=()=>me.role==='owner'||me.id==='admin';
 /* what this user is allowed to see at all in inventory */
 const visibleProps=()=>S.properties.filter(p=>canSeeArchive()?true:propAvailable(p));
 /* dormant: parked leads — kept in full, but out of dashboards, alerts and follow-up until reheated */
@@ -998,7 +1000,7 @@ function vMyDay(){
   if(!myT.length&&!myA.length)h+='<div class="allclear"><span class="sdot g"></span>Clear runway — go generate something.</div>';
   h+=myT.slice(0,6).map(t=>{const c=t.clientId?C(t.clientId):null;
     return '<div class="kpirow"><input type="checkbox" onchange="toggleTask(\''+t.id+'\')" style="width:auto;margin:0 4px 0 0">'+
-    '<span class="lab" style="flex:1">'+esc(t.title)+'<small>'+(c?'<span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+t.clientId+'\')">'+esc(c.name)+'</span> · ':'')+(t.due<today?'<b style="color:var(--red)">overdue</b>':'due today')+'</small></span></div>'}).join('');
+    '<span class="lab" style="flex:1">'+taskLabel(t)+'<small>'+(c?'<span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+t.clientId+'\')">'+esc(c.name)+'</span> · ':'')+(t.due<today?'<b style="color:var(--red)">overdue</b>':'due today')+'</small></span></div>'}).join('');
   h+=myA.map(a=>{const c=C(a.clientId);
     return '<div class="kpirow"><span class="sdot" style="background:'+BIZCOLOR[a.biz||'RL']+'"></span><span class="lab" style="flex:1">'+esc(a.type)+' — '+(c?esc(c.name):'')+
     '<small>'+new Date(a.dt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+' · '+BIZ[a.biz||'RL']+'</small></span>'+
@@ -1260,6 +1262,9 @@ function myTasks(){
   else if(me.role==='marketing')ts=ts.filter(t=>t.agentId===me.id);
   return ts.sort((a,b)=>(a.done?1:0)-(b.done?1:0)||a.due.localeCompare(b.due));
 }
+const taskLabel=t=>(t.plan==='numbers'&&t.dealId&&D(t.dealId)&&canSetNumbers())
+  ? '<span style="cursor:pointer;color:var(--gold2);text-decoration:underline" onclick="mDealNumbers(\''+t.dealId+'\')">'+esc(t.title)+'</span>'
+  : esc(t.title);
 function toggleTask(id){
   const t=S.tasks.find(x=>x.id===id);if(!t)return;
   t.done=!t.done;t.doneAt=t.done?new Date().toISOString():null;
@@ -1620,9 +1625,13 @@ function mCloseOut(id,stage){
     '<div><label>Close date</label><input type="date" id="co-date" value="'+(d.closeDate||new Date().toISOString().slice(0,10))+'"></div></div>'+
     '<label>Property address</label><input id="co-addr" value="'+esc(d.propInterest||(d.propertyId&&P(d.propertyId)?P(d.propertyId).address:''))+'" placeholder="Full address of the property sold">'+
     (props.length?'<label>Link an inventory property (optional)</label><select id="co-prop"><option value="">— none —</option>'+props.map(p=>'<option value="'+p.id+'"'+(d.propertyId===p.id?' selected':'')+'>'+esc(p.address)+'</option>').join('')+'</select>':'')+
-    (hideMoney()?'':'<div class="frow"><div><label>Sale price</label><input type="number" id="co-price" value="'+(d.budget||'')+'" placeholder="0"></div>'+
-      '<div><label>Our revenue / commission</label><input type="number" id="co-rev" value="'+(d.revenue||'')+'" placeholder="0"></div></div>'+
-      '<label>Title company / closing office</label><input id="co-title" value="'+esc(d.titleOffice||'')+'">')+
+    (hideMoney()?'':(canSetNumbers()
+      ?'<div class="frow"><div><label>Sale price</label><input type="number" id="co-price" value="'+(d.budget||'')+'" placeholder="0"></div>'+
+        '<div><label>Our revenue / commission</label><input type="number" id="co-rev" value="'+(d.revenue||'')+'" placeholder="0"></div></div>'+
+        '<label>Title company / closing office</label><input id="co-title" value="'+esc(d.titleOffice||'')+'">'
+      :'<div><label>Sale price <span class="mut" style="text-transform:none;letter-spacing:0">— if you know it</span></label><input type="number" id="co-price" value="'+(d.budget||'')+'" placeholder="0"></div>'+
+        '<label>Title company / closing office</label><input id="co-title" value="'+esc(d.titleOffice||'')+'">'+
+        '<div class="mut" style="font-size:12.5px;margin-top:8px;line-height:1.6;border-left:2px solid var(--gold2);padding-left:10px">Record the sale and ownership takes it from here — a task goes to them to enter the commission, and the split and payout land on this file automatically.</div>'))+
   '</div>'+
   '<div id="co-lost" style="display:none"><label>Why is this file closing out?</label><select id="co-reason">'+LOSTREASONS.map(r=>'<option>'+r+'</option>').join('')+'</select>'+
     '<div class="mut" style="font-size:12px;margin:6px 0 0">The contact is parked as dormant — kept in full so anyone can reheat them later.</div></div>'+
@@ -1650,9 +1659,10 @@ function doCloseOut(id,stage){
     if(g('co-prop'))d.propertyId=g('co-prop');
     if(!hideMoney()){
       if(g('co-price'))d.budget=parseFloat(g('co-price'))||0;
-      if(g('co-rev'))d.revenue=parseFloat(g('co-rev'))||0;
+      if(canSetNumbers()&&g('co-rev'))d.revenue=parseFloat(g('co-rev'))||0;
       d.titleOffice=g('co-title')||d.titleOffice||'';
     }
+    if(!canSetNumbers()){d.needsNumbers=true;d.revenue=d.revenue||0;}
     d.closeDate=g('co-date')||new Date().toISOString().slice(0,10);
     d.outcome='sold';d.lost=false;
     d.closedAt=new Date(d.closeDate+'T16:00:00Z').toISOString();
@@ -1664,7 +1674,14 @@ function doCloseOut(id,stage){
       const stillOpen=S.deals.some(x=>x.clientId===c.id&&x.id!==d.id&&!isFinal(x));
       if(!stillOpen)c.dormant=true;
     }
-    toast('Closed as sold — volume and commission recorded');
+    if(d.needsNumbers){
+      const owner=S.users.find(u=>u.role==='owner')||S.users[0];
+      S.tasks.push({id:uid('t'),title:'💵 Enter the numbers — '+(c?c.name:dealTitle(d))+' · '+(d.soldWhat||d.type),
+        who:owner?owner.id:'u1',agentId:owner?owner.id:'u1',clientId:d.clientId,dealId:d.id,plan:'numbers',
+        due:new Date().toISOString().slice(0,10),done:false,createdAt:new Date().toISOString()});
+      logAct(d.id,d.clientId,'Sale recorded by '+me.name+' — numbers pending from ownership.');
+      toast('Closed as sold — ownership has been asked to enter the numbers');
+    } else toast('Closed as sold — volume and commission recorded');
   } else if(kind==='lost'){
     d.lost=true;d.outcome='lost';d.lostReason=g('co-reason');d.closeNote=notes;
     d.closedAt=new Date().toISOString();d.revenue=0;
@@ -1682,6 +1699,43 @@ function doCloseOut(id,stage){
     toast('Left open — follow-up set for '+fdate(fu));
   }
   save();closeAll();refresh();
+}
+function mDealNumbers(id){
+  const d=D(id);if(!d)return;
+  if(!canSetNumbers()){toast('Only ownership sets the numbers on a closed file');return}
+  const c=d.clientId?C(d.clientId):null;
+  modal('<h2>What was this file worth?</h2>'+
+  '<div class="mut" style="font-size:12.5px;margin:-6px 0 12px">'+(c?esc(c.name)+' · ':'')+esc(d.soldWhat||d.type)+(d.soldAddress?' · '+esc(d.soldAddress):'')+
+    '<br>Closed '+(d.closeDate?fdate(d.closeDate):'—')+' by '+esc(U(d.agentId).name)+'.</div>'+
+  '<div class="frow"><div><label>Sale price</label><input type="number" id="dn-price" value="'+(d.budget||'')+'" placeholder="0" oninput="dnPreview(\''+id+'\')"></div>'+
+  '<div><label>Gross commission / revenue to us</label><input type="number" id="dn-rev" value="'+(d.revenue||'')+'" placeholder="0" oninput="dnPreview(\''+id+'\')"></div></div>'+
+  '<div id="dn-out" class="card" style="margin:12px 0;padding:12px"></div>'+
+  '<label>Note (optional)</label><input id="dn-note" placeholder="e.g. split 60/40 this one, referral fee paid out">'+
+  '<div class="mrow"><button class="btn ghost" onclick="closeAll()">Cancel</button><button class="btn" onclick="saveDealNumbers(\''+id+'\')">Save the numbers</button></div>');
+  dnPreview(id);
+}
+function dnPreview(id){
+  const d=D(id);const el=document.getElementById('dn-out');if(!el||!d)return;
+  const rev=parseFloat((document.getElementById('dn-rev')||{}).value)||0;
+  const pct=splitPct(d.pipe), agent=Math.round(rev*pct/100), house=rev-agent;
+  el.innerHTML='<div class="kv" style="margin:0">'+
+    '<div><small>'+esc(U(d.agentId).name)+' earns ('+pct+'%)</small><span class="money">'+money(agent)+'</span></div>'+
+    '<div><small>The business keeps ('+(100-pct)+'%)</small><span class="money">'+money(house)+'</span></div>'+
+    '<div><small>Counts toward closed volume</small><span class="money">'+money(rev)+'</span></div></div>'+
+    '<div class="mut" style="font-size:11.5px;margin-top:8px">Split comes from Settings → Commission splits for '+esc(PIPES[d.pipe].name)+'. Change it there and every file in that pipeline follows.</div>';
+}
+function saveDealNumbers(id){
+  const d=D(id);if(!d||!canSetNumbers())return;
+  const g=x=>{const e=document.getElementById(x);return e?e.value:''};
+  d.budget=parseFloat(g('dn-price'))||d.budget||0;
+  d.revenue=parseFloat(g('dn-rev'))||0;
+  delete d.needsNumbers;
+  const note=g('dn-note').trim();
+  const pay=agentPay(d);
+  logAct(d.id,d.clientId,'Numbers set by '+me.name+' — revenue '+money(d.revenue)+' · '+U(d.agentId).name+' earns '+money(pay)+' · business keeps '+money(d.revenue-pay)+(note?'. '+note:''));
+  const t=S.tasks.find(x=>x.dealId===d.id&&x.plan==='numbers'&&!x.done);
+  if(t){t.done=true;t.doneAt=new Date().toISOString();}
+  save();closeAll();refresh();toast('Recorded — '+U(d.agentId).name+' is owed '+money(pay));
 }
 function moveStage(d,stage,fromCloseOut){
   if(d.stage===stage)return;
@@ -1829,7 +1883,7 @@ function vClient(id){
         '<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><span class="tag gr">SOLD</span>'+
         '<b style="font-weight:500;cursor:pointer;color:var(--gold2)" onclick="openDeal(\''+d.id+'\')">'+esc(d.soldWhat||d.type)+'</b>'+
         '<span class="mut" style="font-size:12px">'+esc(PIPES[d.pipe].name)+' · '+(d.closeDate?fdate(d.closeDate):'date not set')+' · '+esc(U(d.agentId).name)+'</span>'+
-        (dealMoneyHidden(d)?'':'<span class="spacer"></span><span class="money">'+money(d.revenue)+'</span>')+'</div>'+
+        (dealMoneyHidden(d)?'':'<span class="spacer"></span>'+(d.needsNumbers?'<span class="tag" style="border-color:var(--amber);color:var(--amber)'+(canSetNumbers()?';cursor:pointer':'')+'"'+(canSetNumbers()?' onclick="event.stopPropagation();mDealNumbers(\''+d.id+'\')"':'')+'>numbers pending</span>':'<span class="money">'+money(d.revenue)+'</span>'))+'</div>'+
         (d.soldAddress?'<div style="font-size:13px;margin-top:3px">'+esc(d.soldAddress)+'</div>':'')+
         (d.closeNote?'<div class="mut" style="font-size:12.5px;margin-top:3px;line-height:1.6">'+esc(d.closeNote)+'</div>':'')+'</div>').join('')+
       lost.map(d=>'<div style="padding:9px 0;border-bottom:1px solid var(--line)">'+
@@ -1873,7 +1927,7 @@ function vClient(id){
   /* open tasks */
   const ctasks=S.tasks.filter(t=>t.clientId===id&&!t.done).sort((a,b)=>a.due.localeCompare(b.due));
   h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Tasks</h2></div>'+
-    (ctasks.length?ctasks.map(t=>'<div class="kpirow"><input type="checkbox" onchange="toggleTask(\''+t.id+'\')" style="width:auto;margin:0 4px 0 0"><span class="lab" style="flex:1">'+esc(t.title)+'<small>'+esc(U(t.agentId).name)+' · due '+fdate(t.due)+'</small></span></div>').join(''):'<div class="empty" style="padding:10px 0">No open tasks.</div>')+'</div>';
+    (ctasks.length?ctasks.map(t=>'<div class="kpirow"><input type="checkbox" onchange="toggleTask(\''+t.id+'\')" style="width:auto;margin:0 4px 0 0"><span class="lab" style="flex:1">'+taskLabel(t)+'<small>'+esc(U(t.agentId).name)+' · due '+fdate(t.due)+'</small></span></div>').join(''):'<div class="empty" style="padding:10px 0">No open tasks.</div>')+'</div>';
   /* appointments */
   const cappts=S.appts.filter(a=>a.clientId===id&&!a.done&&(new Date(a.dt)>=new Date(NOW().toDateString())||!a.outcome)).sort((a,b)=>a.dt.localeCompare(b.dt));
   h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Appointments</h2></div>'+
@@ -2388,7 +2442,7 @@ function vCommissions(){
   h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Closed</th><th>Contact</th><th>Business</th><th>Team member</th><th>Split</th><th>Revenue</th><th>Agent pay</th><th>House</th></tr>'+
     ds.map(d=>{const ap=agentPay(d);
       return '<tr class="rowlink" onclick="openDeal(\''+d.id+'\')"><td class="mut">'+fdate(closedDate(d))+'</td><td>'+esc(dealTitle(d))+'</td><td>'+BIZ[PIPES[d.pipe].biz]+'</td><td class="mut">'+esc(U(d.agentId).name)+'</td>'+
-      '<td class="mut">'+splitPct(d.pipe)+'% / '+(100-splitPct(d.pipe))+'%</td><td class="money">'+money(d.revenue)+'</td><td class="money">'+money(ap)+'</td><td class="mut">'+money((d.revenue||0)-ap)+'</td></tr>'}).join('')+'</table></div>'+
+      '<td class="mut">'+splitPct(d.pipe)+'% / '+(100-splitPct(d.pipe))+'%</td><td class="money">'+(d.needsNumbers?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">pending</span>':money(d.revenue))+'</td><td class="money">'+money(ap)+'</td><td class="mut">'+money((d.revenue||0)-ap)+'</td></tr>'}).join('')+'</table></div>'+
     '<div class="mut" style="font-size:12px;margin-top:8px">Splits are set by ownership in Settings → Commission splits and apply per pipeline.</div>';
   return h;
 }
@@ -2410,8 +2464,8 @@ function vFollowups(){
   let h='<div class="sect-head" style="margin-top:4px"><h2>Follow-Ups</h2><span class="cnt">'+open.length+' open'+(me.role==='agent'?' · yours':'')+'</span><span class="spacer"></span><button class="btn small" onclick="mAddTask()">+ Task</button></div>';
   const row=t=>{const c=t.clientId?C(t.clientId):null;
     return '<div class="kpirow"><input type="checkbox" onchange="toggleTask(\''+t.id+'\')" style="width:auto;margin:0 4px 0 0">'+
-    '<span class="lab" style="flex:1;min-width:200px">'+esc(t.title)+
-    '<small>'+(c?'<span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+t.clientId+'\')">'+esc(c.name)+'</span> · ':'')+esc(U(t.agentId).name)+(t.plan?' · auto plan':'')+(t.auto?' · sends itself':'')+'</small></span>'+
+    '<span class="lab" style="flex:1;min-width:200px">'+taskLabel(t)+
+    '<small>'+(c?'<span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+t.clientId+'\')">'+esc(c.name)+'</span> · ':'')+esc(U(t.agentId).name)+(t.plan==='numbers'?' · ownership to set the numbers':(t.plan?' · auto plan':''))+(t.auto?' · sends itself':'')+'</small></span>'+
     '<span class="mut" style="font-size:12px;white-space:nowrap">'+fdate(t.due)+'</span></div>'};
   if(!open.length)h+='<div class="card" style="margin-bottom:16px"><div class="allclear"><span class="sdot g"></span>No open tasks — add one or enjoy it.</div></div>';
   else groups.forEach(([name,list,sev])=>{
