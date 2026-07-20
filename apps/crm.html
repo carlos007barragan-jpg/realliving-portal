@@ -729,6 +729,7 @@ function attentionItems(){
   const items=[];const now=Date.now();
   S.deals.forEach(d=>{
     if(d.pipe==='h2m_acq'||isFinal(d))return;
+    if(isDormant(C(d.clientId)))return;
     const lastMove=new Date((d.hist&&d.hist.length?d.hist[d.hist.length-1].at:d.createdAt)).getTime();
     const lastAct=Math.max(lastMove,...S.acts.filter(a=>a.dealId===d.id).map(a=>new Date(a.ts).getTime()));
     const idle=Math.floor((now-lastAct)/864e5);
@@ -739,7 +740,7 @@ function attentionItems(){
     }
     if(idle>=14)items.push({aid:d.agentId,sev:'am',t:dealTitle(d)+' — no movement in '+idle+' days',s:PIPES[d.pipe].name+' · '+PIPES[d.pipe].stages[d.stage]+' · '+U(d.agentId).name,fn:"openDeal('"+d.id+"')",act:'Open deal'});
   });
-  S.appts.filter(a=>!a.done&&new Date(a.dt).getTime()<now-36e5).forEach(a=>{
+  S.appts.filter(a=>!a.done&&!isDormant(C(a.clientId))&&new Date(a.dt).getTime()<now-36e5).forEach(a=>{
     const c=C(a.clientId);
     items.push({aid:a.agentId,sev:'am',t:(c?c.name:'—')+' — '+a.type+' appointment passed, never closed out',s:fdate(a.dt)+' · '+U(a.agentId).name,fn:"apptDone('"+a.id+"')",act:'Mark done'});
   });
@@ -751,7 +752,7 @@ function attentionItems(){
     if(!touched)items.push({aid:c.genBy,sev:'rd',t:esc(c.name)+' — new lead, zero follow-up',s:'Added '+age+'d ago · '+esc(c.source)+' · credited to '+esc(U(c.genBy).name),fn:"go('client','"+c.id+"')",act:'Open lead'});
   });
   const w={rd:0,am:1};
-  S.tasks.filter(t=>!t.done&&t.due<NOW().toISOString().slice(0,10)).forEach(t=>{
+  S.tasks.filter(t=>!t.done&&!isDormant(C(t.clientId))&&t.due<NOW().toISOString().slice(0,10)).forEach(t=>{
     const c=t.clientId?C(t.clientId):null;
     items.push({aid:t.agentId,sev:'rd',t:esc(t.title)+' — task overdue',s:(c?esc(c.name)+' · ':'')+'due '+fdate(t.due)+' · '+esc(U(t.agentId).name),act:'Done',fn:"toggleTask('"+t.id+"')"});
   });
@@ -1574,7 +1575,7 @@ function renderBoard(pipe,wrapStyle){
         const ast=actState(d);
         return '<div class="dcard" draggable="'+(canEditDeal(d))+'" ondragstart="event.dataTransfer.setData(\'text\',\''+d.id+'\')" onclick="openDeal(\''+d.id+'\')">'+
         '<div class="t">'+esc(dealTitle(d))+'</div><div class="s">'+esc(d.propInterest||d.type)+'</div>'+
-        '<div class="r"><span class="mut"><span class="adot '+ast[0]+'"'+tipAttr('<div class="tt">'+ast[1]+'</div>')+'></span>'+esc(U(d.agentId).name.split(' ')[0])+'</span>'+(hideMoney()?'':'<span class="money">'+money(d.revenue)+'</span>')+'</div>'+
+        '<div class="r"><span class="mut"><span class="adot '+ast[0]+'"'+tipAttr('<div class="tt">'+ast[1]+'</div>')+'></span>'+esc(U(d.agentId).name.split(' ')[0])+(isDormant(C(d.clientId))?' <span class="tag" style="border-color:var(--amber);color:var(--amber);font-size:9.5px;padding:1px 5px">dormant</span>':'')+'</span>'+(hideMoney()?'':'<span class="money">'+money(d.revenue)+'</span>')+'</div>'+
         (lk.length?'<div class="link3">⬡ linked ×'+nbiz+' businesses</div>':'')+'</div>'}).join('')+
       '</div></div>'}).join('')+'</div>';
   return h;
@@ -3251,7 +3252,7 @@ function apptOutcome(id,kind){
   save();refresh();
 }
 function needsOutcome(){
-  return S.appts.filter(a=>!a.done&&!a.outcome&&new Date(a.dt)<NOW());
+  return S.appts.filter(a=>!a.done&&!a.outcome&&!isDormant(C(a.clientId))&&new Date(a.dt)<NOW());
 }
 function playbookCard(){
   return '<div class="card" style="margin-bottom:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">Automated lead workflow</h2><span class="cnt">runs on every new lead</span></div>'+
