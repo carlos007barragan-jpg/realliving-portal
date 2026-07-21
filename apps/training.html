@@ -306,7 +306,7 @@ const TRACKS = {
         "roles": [
           "ALL"
         ],
-        "video": "",
+        "video": "vid/getting_started.mp4",
         "lessons": [
           {
             "t": "What this module covers",
@@ -450,7 +450,7 @@ const TRACKS = {
         "roles": [
           "ALL"
         ],
-        "video": "",
+        "video": "vid/contacts.mp4",
         "lessons": [
           {
             "t": "What this module covers",
@@ -668,7 +668,7 @@ const TRACKS = {
         "roles": [
           "ALL"
         ],
-        "video": "",
+        "video": "vid/properties.mp4",
         "lessons": [
           {
             "t": "What this module covers",
@@ -798,7 +798,7 @@ const TRACKS = {
         "roles": [
           "ALL"
         ],
-        "video": "",
+        "video": "vid/deals.mp4",
         "lessons": [
           {
             "t": "What this module covers",
@@ -1012,7 +1012,7 @@ const TRACKS = {
         "roles": [
           "ALL"
         ],
-        "video": "",
+        "video": "vid/calls.mp4",
         "lessons": [
           {
             "t": "What this module covers",
@@ -1118,7 +1118,7 @@ const TRACKS = {
         "roles": [
           "ALL"
         ],
-        "video": "",
+        "video": "vid/followups.mp4",
         "lessons": [
           {
             "t": "What this module covers",
@@ -4274,7 +4274,19 @@ function openModule(tid,mid){
      here on its own; leave it empty and the module simply has no video box. */
   if(mod.video&&mod.video.trim()){
     const vid=document.createElement('div'); vid.className='video-slot';
-    vid.innerHTML='<iframe src="'+mod.video+'" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>';
+    const src=mod.video.trim();
+    if(/\.(mp4|webm|mov)(\?|$)/i.test(src)){
+      /* a real file — use a proper player rather than an iframe */
+      /* offer webm alongside mp4 so every browser has a format it can play */
+      const alt=src.replace(/\.mp4(\?|$)/i,'.webm$1');
+      vid.innerHTML='<video controls playsinline preload="metadata" '+
+        'style="width:100%;display:block;aspect-ratio:16/10;background:#000">'+
+        '<source src="'+src+'" type="video/mp4">'+
+        '<source src="'+alt+'" type="video/webm">'+
+        '</video>';
+    } else {
+      vid.innerHTML='<iframe src="'+src+'" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>';
+    }
     wrap.appendChild(vid);
   }
 
