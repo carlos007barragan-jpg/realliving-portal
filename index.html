@@ -251,6 +251,34 @@ input{font-family:inherit}
 <script src="apps/onboard.js"></script>
 </head>
 <body>
+  <!-- Team Onboarding Notifications -->
+  <style>
+    .notif-bell { position: fixed; top: 20px; right: 20px; z-index: 99999; width: 48px; height: 48px; border-radius: 50%; background: #C8A44D; color: #fff; border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(200, 164, 77, 0.3); transition: all 0.2s }
+    .notif-bell:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(200, 164, 77, 0.4) }
+    .notif-bell.unseen::after { content: ''; position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; background: #FF6B6B; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 8px rgba(255, 107, 107, 0.5) }
+    .toast-container { position: fixed; top: 80px; right: 20px; z-index: 99998; display: flex; flex-direction: column; gap: 12px; max-width: 380px }
+    .toast { background: #fff; border-left: 4px solid #C8A44D; border-radius: 8px; padding: 16px 18px; box-shadow: 0 4px 16px rgba(20, 27, 38, 0.15); font-size: 14px; color: #2C3E50; line-height: 1.5; animation: slideIn 0.3s ease }
+    .toast strong { font-weight: 600 }
+    @keyframes slideIn { from { transform: translateX(400px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
+    @keyframes slideOut { from { transform: translateX(0); opacity: 1 } to { transform: translateX(400px); opacity: 0 } }
+    .toast.fade { animation: slideOut 0.3s ease forwards }
+    .notif-modal { position: fixed; top: 80px; right: 20px; z-index: 99997; background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(20, 27, 38, 0.2); width: 360px; max-height: 500px; overflow-y: auto; display: none }
+    .notif-modal.open { display: block }
+    .notif-header { padding: 16px; border-bottom: 1px solid #E0DAD1; font-weight: 600; font-size: 15px; color: #2C3E50; display: flex; justify-content: space-between }
+    .notif-item { padding: 14px 16px; border-bottom: 1px solid #F0EDEA; font-size: 13px; color: #5C554D; line-height: 1.5 }
+    .notif-item:last-child { border-bottom: none }
+    .notif-time { font-size: 11px; color: #999; margin-top: 6px }
+  </style>
+  <div class="notif-bell unseen" id="notifBell" title="Team notifications">🔔</div>
+  <div class="toast-container" id="toastContainer"></div>
+  <div class="notif-modal" id="notifModal">
+    <div class="notif-header">
+      <span>Notifications</span>
+      <button onclick="document.getElementById('notifModal').classList.remove('open')" style="background:none;border:none;color:#999;cursor:pointer;font-size:18px">✕</button>
+    </div>
+    <div id="notifList"></div>
+  </div>
+
 
 <!-- ================================================================
      CONFIG — every card on the dashboard.
@@ -862,5 +890,256 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
   });
 })();
 </script>
+
+  <script>
+    const NOTIF_STORAGE = 'rl_notifications';
+    let notifications = [];
+    
+    function getStoredNotifs() {
+      try { return JSON.parse(localStorage.getItem(NOTIF_STORAGE) || '[]') } catch { return [] }
+    }
+    
+    function saveNotif(type, message, name) {
+      const notif = { id: Date.now(), type, message, name, timestamp: new Date().toISOString() };
+      notifications.unshift(notif);
+      notifications = notifications.slice(0, 50);
+      localStorage.setItem(NOTIF_STORAGE, JSON.stringify(notifications));
+      showToast(message);
+      updateBell();
+    }
+    
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = message;
+      document.getElementById('toastContainer').appendChild(toast);
+      setTimeout(() => { toast.classList.add('fade'); setTimeout(() => toast.remove(), 300) }, 5000);
+    }
+    
+    function updateBell() {
+      const bell = document.getElementById('notifBell');
+      const hasUnseen = notifications.some(n => !n.seen);
+      bell.classList.toggle('unseen', hasUnseen);
+      updateNotifModal();
+    }
+    
+    function updateNotifModal() {
+      const list = document.getElementById('notifList');
+      const html = notifications.map(n => {
+        const time = new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        return `<div class="notif-item"><strong>${n.name}</strong> — ${n.message}<div class="notif-time">${time}</div></div>`;
+      }).join('');
+      list.innerHTML = html || '<div style="padding:20px;text-align:center;color:#999">No notifications</div>';
+    }
+    
+    document.getElementById('notifBell').addEventListener('click', function() {
+      document.getElementById('notifModal').classList.toggle('open');
+      notifications.forEach(n => n.seen = true);
+      updateBell();
+    });
+    
+    /* the launcher exposes its Supabase client as `sb`; resolve the signed-in
+       profile ourselves because the shell keeps CU private inside its IIFE */
+    let ME_PROFILE = null;
+    async function resolveMe() {
+      if (typeof sb === 'undefined' || !sb) return null;
+      try {
+        const {data:{user}} = await sb.auth.getUser();
+        if (!user) return null;
+        const {data: prof} = await sb.from('profiles')
+          .select('id,role,full_name,email').eq('id', user.id).single();
+        return prof || null;
+      } catch (e) { return null }
+    }
+
+    async function watchOnboarding() {
+      if (!ME_PROFILE || ME_PROFILE.role !== 'owner') return;
+      const seen = new Set();
+      
+      async function checkTeam() {
+        try {
+          const {data: seats} = await sb.from('profiles').select('id,full_name,email').neq('role', 'admin');
+          if (!seats) return;
+          const {data: onboarding} = await sb.from('records').select('id,data').eq('collection', 'onboarding').in('id', seats.map(s => s.id));
+          
+          onboarding?.forEach(ob => {
+            const seat = seats.find(s => s.id === ob.id);
+            if (!seat) return;
+            const d = ob.data || {};
+            const key = ob.id;
+            
+            if (!seen.has(key)) {
+              seen.add(key);
+              if (!d.docsDoneAt && !d.trainingDoneAt) {
+                saveNotif('added', `<strong>New team member:</strong> ${seat.full_name || seat.email}`, seat.full_name || seat.email);
+              }
+            }
+            
+            if (d.docsDoneAt && !localStorage.getItem(`notif_docs_${key}`)) {
+              localStorage.setItem(`notif_docs_${key}`, '1');
+              saveNotif('docs', `<strong>Documents complete:</strong> ${seat.full_name || seat.email}`, seat.full_name || seat.email);
+            }
+            
+            if (d.trainingDoneAt && !localStorage.getItem(`notif_train_${key}`)) {
+              localStorage.setItem(`notif_train_${key}`, '1');
+              saveNotif('training', `<strong>Training complete:</strong> ${seat.full_name || seat.email}`, seat.full_name || seat.email);
+            }
+            
+            if (d.docsDoneAt && d.trainingDoneAt && !localStorage.getItem(`notif_done_${key}`)) {
+              localStorage.setItem(`notif_done_${key}`, '1');
+              saveNotif('done', `<strong>Fully onboarded:</strong> ${seat.full_name || seat.email}`, seat.full_name || seat.email);
+            }
+          });
+        } catch(e) { console.error('Watch:', e.message) }
+      }
+      
+      await checkTeam();
+      setInterval(checkTeam, 10000);
+    }
+    
+    /* wait for the shell to finish signing in before deciding whether to show
+       the bell — the client may not have a session on first paint */
+    (async function initBell(){
+      for (let i = 0; i < 20 && !ME_PROFILE; i++) {
+        ME_PROFILE = await resolveMe();
+        if (!ME_PROFILE) await new Promise(r => setTimeout(r, 500));
+      }
+      const bell = document.getElementById('notifBell');
+      if (!ME_PROFILE || ME_PROFILE.role !== 'owner') {
+        if (bell) bell.style.display = 'none';
+        return;
+      }
+      notifications = getStoredNotifs();
+      updateBell();
+      watchOnboarding();
+    })();
+  </script>
+
+
+  <!-- Offboarding Modal -->
+  <div id="offboardModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div style="background:#fff;border-radius:12px;padding:32px;max-width:480px;width:100%;
+      box-shadow:0 20px 60px rgba(20,27,38,.3)">
+      <h2 style="margin:0 0 8px 0;font-size:18px;color:#2C3E50;font-weight:600">Remove Team Member</h2>
+      <p id="offboardName" style="margin:0 0 24px 0;font-size:14px;color:#5C554D;font-weight:600">
+        <!-- Name will be injected here -->
+      </p>
+      
+      <div style="background:#FFF3CD;border:1px solid #FFE69C;border-radius:8px;padding:12px;
+        margin-bottom:24px;font-size:13px;color:#856404;line-height:1.6">
+        <strong>⚠ Warning:</strong> This person will be removed from the system. All their deals, clients, tasks, and appointments will be reassigned to the selected owner. This action cannot be undone.
+      </div>
+      
+      <div style="margin-bottom:24px">
+        <label style="display:block;font-size:13px;font-weight:600;color:#2C3E50;margin-bottom:8px">
+          Reassign all data to:
+        </label>
+        <select id="offboardOwner" style="width:100%;padding:10px;border:1px solid #D0CCC5;border-radius:6px;
+          font-size:14px;background:#fff;color:#2C3E50">
+          <option value="">-- Select Owner --</option>
+        </select>
+      </div>
+      
+      <div style="background:#F5F3F0;border-radius:6px;padding:12px;margin-bottom:24px;font-size:12px;color:#5C554D;line-height:1.6">
+        <strong>What gets reassigned:</strong><br>
+        • All open and closed deals<br>
+        • All client relationships<br>
+        • All tasks and follow-ups<br>
+        • All appointments and calendar items
+      </div>
+      
+      <div style="display:flex;gap:12px;justify-content:flex-end">
+        <button onclick="cancelOffboard()" style="padding:11px 20px;background:#E0DAD1;color:#2C3E50;
+          border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;transition:all .2s">
+          Cancel
+        </button>
+        <button onclick="confirmOffboard()" style="padding:11px 20px;background:#FF6B6B;color:#fff;
+          border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;transition:all .2s">
+          Remove & Reassign
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .remove-btn { padding:6px 12px;background:#FF6B6B;color:#fff;border:none;border-radius:4px;
+      cursor:pointer;font-size:12px;font-weight:600;transition:all .2s }
+    .remove-btn:hover { background:#E55555;box-shadow:0 2px 8px rgba(255,107,107,.3) }
+  </style>
+
+  <script>
+
+    let pendingOffboardUserId = null;
+    
+    async function openOffboardModal(userId, userName) {
+      pendingOffboardUserId = userId;
+      document.getElementById('offboardName').textContent = 'Remove: ' + userName;
+      
+      // Populate owner dropdown
+      try {
+        const {data: owners} = await sb.from('profiles').select('id,full_name,email').eq('role', 'owner');
+        const select = document.getElementById('offboardOwner');
+        select.innerHTML = '<option value="">-- Select Owner --</option>';
+        owners?.forEach(o => {
+          const opt = document.createElement('option');
+          opt.value = o.id;
+          opt.textContent = o.full_name || o.email;
+          select.appendChild(opt);
+        });
+      } catch(e) { console.error('Load owners:', e.message) }
+      
+      document.getElementById('offboardModal').style.display = 'flex';
+    }
+    
+    function cancelOffboard() {
+      document.getElementById('offboardModal').style.display = 'none';
+      pendingOffboardUserId = null;
+    }
+    
+    async function confirmOffboard() {
+      const reassignTo = document.getElementById('offboardOwner').value;
+      if (!reassignTo) {
+        alert('Please select an owner to reassign data to');
+        return;
+      }
+      
+      const confirmed = confirm('Are you absolutely certain? This will remove the team member and reassign all their data. This cannot be undone.');
+      if (!confirmed) return;
+      
+      try {
+        const session = await sb.auth.getSession();
+        const response = await fetch('https://zfflgvjnkcjnbwydurlp.supabase.co/functions/v1/team-admin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + session.data.session.access_token
+          },
+          body: JSON.stringify({
+            action: 'offboard',
+            userId: pendingOffboardUserId,
+            reassignTo: reassignTo
+          })
+        });
+        
+        const result = await response.json();
+        if (result.error) {
+          alert('Error: ' + result.error);
+          return;
+        }
+        
+        alert('Success! Team member removed and data reassigned.');
+        cancelOffboard();
+        location.reload();
+      } catch(e) {
+        alert('Failed: ' + e.message);
+      }
+    }
+    
+    window.openOffboardModal = openOffboardModal;
+    window.cancelOffboard = cancelOffboard;
+    window.confirmOffboard = confirmOffboard;
+    
+  </script>
 </body>
 </html>
