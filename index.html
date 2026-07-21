@@ -925,7 +925,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     function updateBell() {
       const bell = document.getElementById('notifBell');
       const hasUnseen = notifications.some(n => !n.seen);
-      bell.classList.toggle('unseen', hasUnseen);
+      if (bell) bell.classList.toggle('unseen', hasUnseen);
       updateNotifModal();
     }
     
@@ -938,13 +938,15 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
       list.innerHTML = html || '<div style="padding:20px;text-align:center;color:#999">No notifications</div>';
     }
     
-    document.getElementById('notifBell').addEventListener('click', function(e) {
+    const _bellEl = document.getElementById('notifBell');
+    if (_bellEl) _bellEl.addEventListener('click', function(e) {
       e.stopPropagation();
       document.getElementById('notifModal').classList.toggle('open');
       notifications.forEach(n => n.seen = true);
       updateBell();
     });
-    document.getElementById('notifClose').addEventListener('click', function(e) {
+    const _closeEl = document.getElementById('notifClose');
+    if (_closeEl) _closeEl.addEventListener('click', function(e) {
       e.stopPropagation();
       document.getElementById('notifModal').classList.remove('open');
     });
@@ -971,7 +973,6 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     }
 
     async function watchOnboarding() {
-      if (!ME_PROFILE || String(ME_PROFILE.role||'').toLowerCase() !== 'owner') return;
       const seen = new Set();
       
       async function checkTeam() {
@@ -1015,40 +1016,40 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
       setInterval(checkTeam, 10000);
     }
     
-    /* The page opens on the login screen, so there is no session to read yet.
-       Waiting a fixed number of tries just times out before sign-in finishes and
-       hides the bell for good — so react to the auth state instead of racing it. */
+    /* Read the role the shell has already rendered into the header rather than
+       re-deriving it from auth. The shell owns that state and keeps CU private,
+       so a second getUser()/profiles round-trip was just another thing to fail
+       silently — this cannot disagree with what the user is actually looking at. */
+    function ownerFromHeader(){
+      const el = document.getElementById('uRole');
+      const txt = el ? String(el.textContent || '').trim().toLowerCase() : '';
+      return txt === 'owner' || txt === 'admin';
+    }
+
     let BELL_STARTED = false;
     async function initBell(){
       if (BELL_STARTED) return;
       const wrap = document.getElementById('notifWrap');
-      ME_PROFILE = await resolveMe();
-      console.info('[bell] profile:', ME_PROFILE ? ME_PROFILE.role : 'no session');
-      if (!ME_PROFILE || String(ME_PROFILE.role||'').toLowerCase() !== 'owner') {
-        if (wrap) wrap.style.display = 'none';
-        return;
-      }
+      if (!wrap) return;
+      if (!ownerFromHeader()) { wrap.style.display = 'none'; return; }
+      if (typeof sb === 'undefined' || !sb) return;
       BELL_STARTED = true;
-      if (wrap) wrap.style.display = 'inline-flex';
+      wrap.style.display = 'inline-flex';
       notifications = getStoredNotifs();
       updateBell();
       watchOnboarding();
     }
 
+    /* the header fills in after sign-in, so keep looking until it does */
     initBell();
-    if (typeof sb !== 'undefined' && sb) {
-      sb.auth.onAuthStateChange((evt) => {
-        if (evt === 'SIGNED_OUT') {
-          BELL_STARTED = false; ME_PROFILE = null;
-          const w = document.getElementById('notifWrap');
-          if (w) w.style.display = 'none';
-        } else {
-          initBell();
-        }
-      });
-    }
-    /* belt and braces: a slow session restore still gets picked up */
-    setInterval(() => { if (!BELL_STARTED) initBell(); }, 4000);
+    setInterval(initBell, 1500);
+    window.__bellDebug = () => ({
+      role: (document.getElementById('uRole')||{}).textContent,
+      owner: ownerFromHeader(),
+      sb: typeof sb !== 'undefined' && !!sb,
+      started: BELL_STARTED,
+      stored: notifications.length
+    });
   </script>
 
 </body>
