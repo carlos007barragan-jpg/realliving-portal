@@ -909,128 +909,142 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
 </script>
 
   <script>
-    const NOTIF_STORAGE = 'rl_notifications';
-    let notifications = [];
-    
-    function getStoredNotifs() {
-      try { return JSON.parse(localStorage.getItem(NOTIF_STORAGE) || '[]') } catch { return [] }
+    /* ------------------------------------------------------------------
+       Team activity feed.
+       Every signature and every finished track is timestamped on the
+       onboarding record, so the feed is rebuilt from those stamps rather
+       than from the two "everything done" flags — otherwise someone
+       halfway through their paperwork shows up as no activity at all.
+    ------------------------------------------------------------------ */
+    const SEEN_KEY = 'rl_notif_seen_ts';
+    let FEED = [];
+
+    function docTitles(){
+      const m = {};
+      const eat = arr => (arr||[]).forEach(d => { if(d && d.id) m[d.id] = d.t || d.id; });
+      const O = window.RLOnboard;
+      if (O) {
+        eat(O.COMPANY);
+        Object.keys(O.BIZ_DOCS||{}).forEach(k => eat(O.BIZ_DOCS[k]));
+        Object.keys(O.ROLE_DOCS||{}).forEach(k => eat(O.ROLE_DOCS[k]));
+      }
+      return m;
     }
-    
-    function saveNotif(type, message, name) {
-      const notif = { id: Date.now(), type, message, name, timestamp: new Date().toISOString() };
-      notifications.unshift(notif);
-      notifications = notifications.slice(0, 50);
-      localStorage.setItem(NOTIF_STORAGE, JSON.stringify(notifications));
-      showToast(message);
-      updateBell();
+
+    function buildFeed(seats, rows){
+      const titles = docTitles();
+      const TL = (window.RLOnboard && window.RLOnboard.TRACK_LABEL) || {};
+      const byId = {}; seats.forEach(s => { byId[s.id] = s; });
+      const out = [];
+      (rows||[]).forEach(row => {
+        const seat = byId[row.id];
+        const who = seat ? (seat.full_name || seat.email) : 'A team member';
+        const d = row.data || {};
+        Object.keys(d.sigs||{}).forEach(id => {
+          const v = d.sigs[id];
+          if (v && v.ts) out.push({ ts: v.ts, who: who, what: 'signed ' + (titles[id] || id) });
+        });
+        Object.keys(d.tracks||{}).forEach(id => {
+          const ts = d.tracks[id];
+          if (ts) out.push({ ts: ts, who: who, what: 'finished ' + (TL[id] || id) + ' training' });
+        });
+        if (d.docsDoneAt)     out.push({ ts: d.docsDoneAt,     who: who, what: 'completed all paperwork', big: true });
+        if (d.trainingDoneAt) out.push({ ts: d.trainingDoneAt, who: who, what: 'completed all training',  big: true });
+      });
+      out.sort((a,b) => String(b.ts).localeCompare(String(a.ts)));
+      return out.slice(0, 60);
     }
-    
-    function showToast(message) {
-      const toast = document.createElement('div');
-      toast.className = 'toast';
-      toast.innerHTML = message;
-      document.getElementById('toastContainer').appendChild(toast);
-      setTimeout(() => { toast.classList.add('fade'); setTimeout(() => toast.remove(), 300) }, 5000);
+
+    function whenText(ts){
+      const t = new Date(ts), now = new Date();
+      const mins = Math.round((now - t) / 60000);
+      if (mins < 1) return 'just now';
+      if (mins < 60) return mins + (mins===1?' minute ago':' minutes ago');
+      const hrs = Math.round(mins/60);
+      if (hrs < 24) return hrs + (hrs===1?' hour ago':' hours ago');
+      if (t.toDateString() === new Date(now-864e5).toDateString()) return 'yesterday';
+      return t.toLocaleDateString([], {month:'short', day:'numeric'});
     }
-    
-    function updateBell() {
-      const bell = document.getElementById('notifBell');
-      const hasUnseen = notifications.some(n => !n.seen);
-      if (bell) bell.classList.toggle('unseen', hasUnseen);
-      updateNotifModal();
+
+    function showToast(html){
+      const c = document.getElementById('toastContainer'); if(!c) return;
+      const el = document.createElement('div');
+      el.className = 'toast'; el.innerHTML = html;
+      c.appendChild(el);
+      setTimeout(() => { el.classList.add('fade'); setTimeout(() => el.remove(), 300); }, 6000);
     }
-    
-    function updateNotifModal() {
-      const list = document.getElementById('notifList');
-      const html = notifications.map(n => {
-        const time = new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-        return `<div class="notif-item"><strong>${n.name}</strong> — ${n.message}<div class="notif-time">${time}</div></div>`;
-      }).join('');
-      list.innerHTML = html || '<div style="padding:20px;text-align:center;color:#999">No notifications</div>';
+
+    function renderFeed(){
+      const list = document.getElementById('notifList'); if(!list) return;
+      if (!FEED.length) {
+        list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No activity yet.</div>';
+        return;
+      }
+      list.innerHTML = FEED.map(e =>
+        '<div class="notif-item"><strong>' + esc(e.who) + '</strong> ' + esc(e.what) +
+        '<div class="notif-time">' + esc(whenText(e.ts)) + '</div></div>'
+      ).join('');
     }
-    
+
+    function unseenCount(){
+      const mark = localStorage.getItem(SEEN_KEY) || '';
+      return FEED.filter(e => String(e.ts) > mark).length;
+    }
+
+    function updateBell(){
+      const bell = document.getElementById('notifBell'); if(!bell) return;
+      bell.classList.toggle('unseen', unseenCount() > 0);
+      renderFeed();
+    }
+
+    function esc(v){
+      return String(v==null?'':v).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    }
+
     const _bellEl = document.getElementById('notifBell');
-    if (_bellEl) _bellEl.addEventListener('click', function(e) {
+    if (_bellEl) _bellEl.addEventListener('click', function(e){
       e.stopPropagation();
       document.getElementById('notifModal').classList.toggle('open');
-      notifications.forEach(n => n.seen = true);
+      if (FEED.length) localStorage.setItem(SEEN_KEY, FEED[0].ts);
       updateBell();
     });
     const _closeEl = document.getElementById('notifClose');
-    if (_closeEl) _closeEl.addEventListener('click', function(e) {
+    if (_closeEl) _closeEl.addEventListener('click', function(e){
       e.stopPropagation();
       document.getElementById('notifModal').classList.remove('open');
     });
-    /* clicking anywhere else closes it, the way a dropdown should behave */
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function(e){
       const wrap = document.getElementById('notifWrap');
       if (wrap && !wrap.contains(e.target)) {
-        document.getElementById('notifModal').classList.remove('open');
+        const m = document.getElementById('notifModal'); if(m) m.classList.remove('open');
       }
     });
-    
-    /* the launcher exposes its Supabase client as `sb`; resolve the signed-in
-       profile ourselves because the shell keeps CU private inside its IIFE */
-    let ME_PROFILE = null;
-    async function resolveMe() {
-      if (typeof sb === 'undefined' || !sb) return null;
+
+    async function pollTeam(){
       try {
-        const {data:{user}} = await sb.auth.getUser();
-        if (!user) return null;
-        const {data: prof} = await sb.from('profiles')
-          .select('id,role,full_name,email').eq('id', user.id).single();
-        return prof || null;
-      } catch (e) { return null }
+        const {data: seats} = await sb.from('profiles').select('id,full_name,email');
+        if (!seats || !seats.length) return;
+        const {data: rows} = await sb.from('records').select('id,data')
+          .eq('collection','onboarding').in('id', seats.map(s => s.id));
+        const next = buildFeed(seats, rows||[]);
+
+        /* first run only records a watermark, so opening the suite after a busy
+           week shows the history in the panel without a wall of pop-ups */
+        const firstRun = !localStorage.getItem(SEEN_KEY);
+        if (firstRun) localStorage.setItem(SEEN_KEY, next.length ? next[0].ts : new Date().toISOString());
+        else {
+          const mark = localStorage.getItem(SEEN_KEY) || '';
+          const fresh = next.filter(e => String(e.ts) > mark);
+          const known = {}; FEED.forEach(e => { known[e.ts + e.who + e.what] = 1; });
+          fresh.filter(e => !known[e.ts + e.who + e.what]).slice(0,3).forEach(e => {
+            showToast('<strong>' + esc(e.who) + '</strong> ' + esc(e.what));
+          });
+        }
+        FEED = next;
+        updateBell();
+      } catch(err) { console.error('[bell]', err && err.message); }
     }
 
-    async function watchOnboarding() {
-      const seen = new Set();
-      
-      async function checkTeam() {
-        try {
-          const {data: seats} = await sb.from('profiles').select('id,full_name,email').neq('role', 'admin');
-          if (!seats) return;
-          const {data: onboarding} = await sb.from('records').select('id,data').eq('collection', 'onboarding').in('id', seats.map(s => s.id));
-          
-          onboarding?.forEach(ob => {
-            const seat = seats.find(s => s.id === ob.id);
-            if (!seat) return;
-            const d = ob.data || {};
-            const key = ob.id;
-            
-            if (!seen.has(key)) {
-              seen.add(key);
-              if (!d.docsDoneAt && !d.trainingDoneAt) {
-                saveNotif('added', `<strong>New team member:</strong> ${seat.full_name || seat.email}`, seat.full_name || seat.email);
-              }
-            }
-            
-            if (d.docsDoneAt && !localStorage.getItem(`notif_docs_${key}`)) {
-              localStorage.setItem(`notif_docs_${key}`, '1');
-              saveNotif('docs', `<strong>Documents complete:</strong> ${seat.full_name || seat.email}`, seat.full_name || seat.email);
-            }
-            
-            if (d.trainingDoneAt && !localStorage.getItem(`notif_train_${key}`)) {
-              localStorage.setItem(`notif_train_${key}`, '1');
-              saveNotif('training', `<strong>Training complete:</strong> ${seat.full_name || seat.email}`, seat.full_name || seat.email);
-            }
-            
-            if (d.docsDoneAt && d.trainingDoneAt && !localStorage.getItem(`notif_done_${key}`)) {
-              localStorage.setItem(`notif_done_${key}`, '1');
-              saveNotif('done', `<strong>Fully onboarded:</strong> ${seat.full_name || seat.email}`, seat.full_name || seat.email);
-            }
-          });
-        } catch(e) { console.error('Watch:', e.message) }
-      }
-      
-      await checkTeam();
-      setInterval(checkTeam, 10000);
-    }
-    
-    /* Read the role the shell has already rendered into the header rather than
-       re-deriving it from auth. The shell owns that state and keeps CU private,
-       so a second getUser()/profiles round-trip was just another thing to fail
-       silently — this cannot disagree with what the user is actually looking at. */
     function ownerFromHeader(){
       const el = document.getElementById('uRole');
       const txt = el ? String(el.textContent || '').trim().toLowerCase() : '';
@@ -1040,18 +1054,15 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     let BELL_STARTED = false;
     async function initBell(){
       if (BELL_STARTED) return;
-      const wrap = document.getElementById('notifWrap');
-      if (!wrap) return;
+      const wrap = document.getElementById('notifWrap'); if(!wrap) return;
       if (!ownerFromHeader()) { wrap.style.display = 'none'; return; }
       if (typeof sb === 'undefined' || !sb) return;
       BELL_STARTED = true;
       wrap.style.display = 'inline-flex';
-      notifications = getStoredNotifs();
-      updateBell();
-      watchOnboarding();
+      await pollTeam();
+      setInterval(pollTeam, 10000);
     }
 
-    /* the header fills in after sign-in, so keep looking until it does */
     initBell();
     setInterval(initBell, 1500);
     window.__bellDebug = () => ({
@@ -1059,7 +1070,9 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
       owner: ownerFromHeader(),
       sb: typeof sb !== 'undefined' && !!sb,
       started: BELL_STARTED,
-      stored: notifications.length
+      events: FEED.length,
+      newest: FEED[0] || null,
+      unseen: unseenCount()
     });
   </script>
 
