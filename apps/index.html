@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Real Living Companies — Business Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F8FAFC;
+  --bg-2:#EEF2F7;
+  --card:#FFFFFF;
+  --ink:#0F172A;
+  --ink-2:#1E293B;
+  --muted:#64748B;
+  --muted-2:#94A3B8;
+  --line:#E2E8F0;
+  --line-2:#F1F5F9;
+  --brand:#3B5BFF;
+  --radius:16px;
+  --radius-tile:14px;
+  --shadow-card:0 1px 2px rgba(15,23,42,.04);
+  --shadow-hover:0 12px 32px -12px rgba(15,23,42,.18), 0 2px 6px rgba(15,23,42,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:linear-gradient(180deg,var(--bg) 0%,var(--bg-2) 100%);
+  background-attachment:fixed;
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.5;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input{font-family:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:6px}
+
+/* ============ LOGIN ============ */
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-card{
+  width:min(420px,100%);
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:40px 36px 32px;
+  box-shadow:0 20px 50px -20px rgba(15,23,42,.15);
+}
+.login-brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.brand-tile{
+  width:44px;height:44px;border-radius:12px;
+  background:linear-gradient(135deg,#3B5BFF 0%,#5B7BFF 100%);
+  display:grid;place-items:center;color:#fff;
+  box-shadow:0 4px 12px rgba(59,91,255,.3);
+}
+.brand-tile svg{width:22px;height:22px}
+.brand-text .n{font-size:16px;font-weight:700;color:var(--ink);line-height:1.15}
+.brand-text .s{font-size:13px;color:var(--muted);line-height:1.15}
+
+.login-card h1{font-size:22px;font-weight:700;margin-bottom:6px}
+.login-card .sub{color:var(--muted);font-size:14px;margin-bottom:24px}
+.lf{margin-bottom:14px}
+.lf label{display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
+.lf input{
+  width:100%;padding:11px 14px;
+  border:1px solid var(--line);border-radius:10px;
+  background:#fff;font-size:14px;color:var(--ink);
+  transition:border-color .15s, box-shadow .15s;
+}
+.lf input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(59,91,255,.12)}
+.lerr{display:none;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:14px}
+.lerr.show{display:block}
+.lbtn{
+  width:100%;padding:12px;
+  background:var(--ink);color:#fff;
+  border-radius:10px;font-size:14px;font-weight:600;
+  transition:background .15s;
+}
+.lbtn:hover{background:var(--ink-2)}
+.login-hint{margin-top:22px;padding-top:18px;border-top:1px solid var(--line-2);font-size:12px;color:var(--muted-2);text-align:center}
+.login-hint b{color:var(--muted)}
+
+/* ============ SHELL ============ */
+.shell{display:none}
+.shell.on{display:block}
+.login.off{display:none}
+
+.topbar{
+  background:rgba(255,255,255,.85);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+  padding:16px 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:40;
+}
+.brand-block{display:flex;align-items:center;gap:14px}
+.brand-block .brand-text .n{font-size:17px}
+.brand-block .brand-text .s{font-size:13px}
+
+.top-right{display:flex;align-items:center;gap:14px}
+.icon-btn{
+  width:40px;height:40px;border-radius:10px;
+  background:#fff;border:1px solid var(--line);
+  display:grid;place-items:center;color:var(--ink-2);
+  transition:all .15s;
+}
+.icon-btn:hover{border-color:var(--muted-2);color:var(--ink)}
+.icon-btn svg{width:18px;height:18px}
+.user-block{
+  display:flex;align-items:center;gap:10px;
+  background:#fff;border:1px solid var(--line);
+  border-radius:12px;padding:6px 8px 6px 14px;
+}
+.user-meta .name{font-size:14px;font-weight:600;color:var(--ink);line-height:1.15}
+.user-meta .role{font-size:12px;color:var(--muted);line-height:1.15}
+.avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--ink);color:#fff;
+  display:grid;place-items:center;
+  font-weight:600;font-size:14px;
+}
+
+/* ============ DASHBOARD ============ */
+.wrap{max-width:1240px;margin:0 auto;padding:56px 40px 100px}
+.hero h1{font-size:34px;font-weight:700;color:var(--ink);letter-spacing:-.02em;margin-bottom:8px}
+.hero .sub{font-size:16px;color:var(--muted);margin-bottom:44px}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:24px;
+}
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:28px 26px 24px;
+  text-align:left;
+  display:flex;flex-direction:column;gap:16px;
+  min-height:200px;
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  box-shadow:var(--shadow-card);
+  position:relative;
+  width:100%;
+}
+.card:hover{
+  transform:translateY(-3px);
+  box-shadow:var(--shadow-hover);
+  border-color:var(--muted-2);
+}
+.tile{
+  width:56px;height:56px;border-radius:var(--radius-tile);
+  display:grid;place-items:center;color:#fff;
+  box-shadow:0 4px 10px -2px rgba(15,23,42,.15);
+}
+.tile svg{width:28px;height:28px;stroke-width:2}
+
+.card h3{
+  font-size:18px;font-weight:700;color:var(--ink);
+  letter-spacing:-.01em;
+  display:flex;align-items:center;gap:6px;
+}
+.ext-icon{color:var(--muted-2);display:inline-flex}
+.ext-icon svg{width:14px;height:14px}
+.card p{font-size:14px;color:var(--muted);line-height:1.55}
+
+/* Icon tile colors */
+.t-blue    {background:linear-gradient(135deg,#3B5BFF 0%,#5B7BFF 100%)}
+.t-green   {background:linear-gradient(135deg,#0F7A4A 0%,#1FA365 100%)}
+.t-purple  {background:linear-gradient(135deg,#6B21A8 0%,#9333EA 100%)}
+.t-orange  {background:linear-gradient(135deg,#B8471A 0%,#E86A2E 100%)}
+.t-red     {background:linear-gradient(135deg,#B91C1C 0%,#DC2626 100%)}
+.t-indigo  {background:linear-gradient(135deg,#3730A3 0%,#4F46E5 100%)}
+.t-emerald {background:linear-gradient(135deg,#065F46 0%,#059669 100%)}
+.t-amber   {background:linear-gradient(135deg,#B45309 0%,#D97706 100%)}
+.t-sky     {background:linear-gradient(135deg,#0369A1 0%,#0EA5E9 100%)}
+.t-slate   {background:linear-gradient(135deg,#334155 0%,#64748B 100%)}
+.t-teal    {background:linear-gradient(135deg,#0F766E 0%,#14B8A6 100%)}
+.t-rose    {background:linear-gradient(135deg,#9F1239 0%,#E11D48 100%)}
+
+/* ============ APP VIEW (embedded) ============ */
+.app-view{display:none;position:fixed;inset:0;z-index:60;background:var(--bg)}
+.app-view.on{display:flex;flex-direction:column}
+.app-bar{
+  background:#fff;border-bottom:1px solid var(--line);
+  padding:12px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.app-bar-left{display:flex;align-items:center;gap:14px}
+.back-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:8px;
+  border:1px solid var(--line);background:#fff;
+  font-size:13px;font-weight:500;color:var(--ink-2);
+  transition:all .15s;
+}
+.back-btn:hover{border-color:var(--muted-2);color:var(--ink)}
+.app-bar h2{font-size:15px;font-weight:600;color:var(--ink)}
+.app-frame{flex:1;border:none;width:100%;background:#fff}
+
+/* ============ MODAL ============ */
+.modal{display:none;position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:20px}
+.modal.on{display:flex}
+.mbox{background:#fff;border-radius:16px;width:min(520px,100%);max-height:88vh;overflow:auto;padding:28px}
+.mbox h2{font-size:20px;font-weight:700;margin-bottom:4px}
+.mbox .msub{font-size:14px;color:var(--muted);margin-bottom:18px}
+.mrow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-2);font-size:14px}
+.mrow:last-of-type{border-bottom:none}
+.mrow .k{color:var(--muted)}
+.mrow .v{font-weight:500;color:var(--ink)}
+.mfoot{margin-top:20px;display:flex;justify-content:flex-end;gap:8px}
+.btn-secondary{padding:10px 18px;border-radius:10px;background:var(--line-2);color:var(--ink-2);font-size:14px;font-weight:500}
+.btn-secondary:hover{background:var(--line)}
+.btn-danger{padding:10px 18px;border-radius:10px;background:#FEE2E2;color:#B91C1C;font-size:14px;font-weight:500}
+.btn-danger:hover{background:#FECACA}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width:1080px){
+  .grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:720px){
+  .wrap{padding:36px 20px 80px}
+  .grid{grid-template-columns:1fr;gap:16px}
+  .topbar{padding:12px 20px}
+  .hero h1{font-size:26px}
+  .user-meta{display:none}
+  .user-block{padding:4px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.card.locked{opacity:.55;cursor:not-allowed;position:relative}
+.card.locked .tile{filter:grayscale(1)}
+.lockpill{position:absolute;top:12px;right:12px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#E2E8F0;color:#475569;padding:4px 9px;border-radius:999px}
+.ob-banner{background:linear-gradient(135deg,#0F1A2B,#16243A);color:#E9EEF7;border-radius:16px;padding:22px 24px;margin-bottom:22px}
+.ob-h{font-size:17px;font-weight:800;margin-bottom:5px}
+.ob-s{font-size:13.5px;color:#9FB0CA;line-height:1.65;max-width:760px}
+.ob-s b{color:#C8A44D}
+.ob-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:18px}
+.ob-step{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:13px 15px}
+.ob-step b{display:block;font-size:13px;font-weight:700}
+.ob-step span{display:block;font-size:11.5px;color:#9FB0CA;margin-top:2px}
+.ob-step.now{border-color:#C8A44D}
+.ob-step.ok b:after{content:' \2713';color:#4ADE80}
+.ob-bar{height:5px;background:rgba(255,255,255,.10);border-radius:999px;margin-top:9px;overflow:hidden}
+.ob-bar i{display:block;height:100%;background:#C8A44D}
+</style>
+<script src="apps/onboard.js"></script>
+</head>
+<body>
+  <!-- Team Onboarding Notifications -->
+  <style>
+    .notif-bell { position: fixed; top: 20px; right: 20px; z-index: 99999; width: 48px; height: 48px; border-radius: 50%; background: #C8A44D; color: #fff; border: none; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(200, 164, 77, 0.3); transition: all 0.2s }
+    .notif-bell:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(200, 164, 77, 0.4) }
+    .notif-bell.unseen::after { content: ''; position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; background: #FF6B6B; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 8px rgba(255, 107, 107, 0.5) }
+    .toast-container { position: fixed; top: 80px; right: 20px; z-index: 99998; display: flex; flex-direction: column; gap: 12px; max-width: 380px }
+    .toast { background: #fff; border-left: 4px solid #C8A44D; border-radius: 8px; padding: 16px 18px; box-shadow: 0 4px 16px rgba(20, 27, 38, 0.15); font-size: 14px; color: #2C3E50; line-height: 1.5; animation: slideIn 0.3s ease }
+    .toast strong { font-weight: 600 }
+    @keyframes slideIn { from { transform: translateX(400px); opacity: 0 } to { transform: translateX(0); opacity: 1 } }
+    @keyframes slideOut { from { transform: translateX(0); opacity: 1 } to { transform: translateX(400px); opacity: 0 } }
+    .toast.fade { animation: slideOut 0.3s ease forwards }
+    .notif-modal { position: fixed; top: 80px; right: 20px; z-index: 99997; background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(20, 27, 38, 0.2); width: 360px; max-height: 500px; overflow-y: auto; display: none }
+    .notif-modal.open { display: block }
+    .notif-header { padding: 16px; border-bottom: 1px solid #E0DAD1; font-weight: 600; font-size: 15px; color: #2C3E50; display: flex; justify-content: space-between }
+    .notif-item { padding: 14px 16px; border-bottom: 1px solid #F0EDEA; font-size: 13px; color: #5C554D; line-height: 1.5 }
+    .notif-item:last-child { border-bottom: none }
+    .notif-time { font-size: 11px; color: #999; margin-top: 6px }
+  </style>
+  <div class="notif-bell unseen" id="notifBell" title="Team notifications">🔔</div>
+  <div class="toast-container" id="toastContainer"></div>
+  <div class="notif-modal" id="notifModal">
+    <div class="notif-header">
+      <span>Notifications</span>
+      <button onclick="document.getElementById('notifModal').classList.remove('open')" style="background:none;border:none;color:#999;cursor:pointer;font-size:18px">✕</button>
+    </div>
+    <div id="notifList"></div>
+  </div>
+
+
+<!-- ================================================================
+     CONFIG — every card on the dashboard.
+     type "app"      → opens an embedded HTML file in-suite
+     type "external" → opens a URL in a new tab (shows ↗ icon)
+     src             → filename (must sit next to this file on your host)
+                       or full URL for external cards
+================================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://zfflgvjnkcjnbwydurlp.supabase.co';
+const SUPABASE_ANON='sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf';
+let sb=null;try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON);}catch(e){console.error('supabase init',e)}
+const CARDS = [
+  {
+    id:"crm", url:"apps/crm.html", name:"CRM", type:"app", tile:"t-blue", icon:"building",
+    desc:"Manage deals, contacts, and pipelines across all verticals."
+  },
+  {
+    id:"inventory", url:"apps/inventory.html", name:"Inventory Check", type:"app", tile:"t-green", icon:"box",
+    desc:"View and share active property inventory with your team."
+  },
+  {
+    id:"deal_analyzer", url:"apps/deal_analyzer.html", name:"Deal Analyzer", type:"app", tile:"t-purple", icon:"chart",
+    desc:"Analyze potential deals with detailed financial projections."
+  },
+  {
+    id:"documents", url:"apps/documents.html", name:"Documents", type:"app", tile:"t-orange", icon:"doc",
+    desc:"Access and manage contracts, LOIs, and transaction documents."
+  },
+  {
+    id:"amortization", url:"apps/amortization.html", name:"Amortization Calculator", type:"app", tile:"t-red", icon:"calc",
+    desc:"Calculate loan payments, interest, and amortization schedules."
+  },
+  {
+    id:"training", url:"apps/training.html", name:"Training Center", type:"app", tile:"t-indigo", icon:"cap",
+    desc:"Access training materials, onboarding guides, and team resources."
+  },
+  {
+    id:"asap_site", name:"ASAP Lending Website", type:"external", tile:"t-emerald", icon:"dollar",
+    desc:"Public marketing site for hard money and fix-and-flip lending.",
+    src:"https://www.asapcapital.com"
+  },
+  {
+    id:"ownerfin_site", name:"Owner Finance Website", type:"external", tile:"t-amber", icon:"globe",
+    desc:"Public marketing site for owner-financed home sales.",
+    src:"https://ownerfinance.example.com"
+  },
+  {
+    id:"rl_site", name:"Real Living Website", type:"external", tile:"t-sky", icon:"home",
+    desc:"Public marketing site for Real Living Companies.",
+    src:"https://reallivingkc.com"
+  },
+  {
+    id:"opportunity", name:"Agent Opportunity Map", type:"app", tile:"t-teal", icon:"map",
+    desc:"All four income streams with full compensation tables."
+  }
+];
+
+/* ================================================================
+   APP_SOURCES — the actual HTML of each uploaded app card.
+   When you upload a new app, its source gets injected here and
+   the matching card in CARDS becomes clickable.
+================================================================ */
+const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app files there and add url: to its card */
+
+/* Real auth — Supabase accounts shared with the CRM (single sign-on across the suite) */
+</script>
+
+<!-- ============ ICONS ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
+    </symbol>
+    <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+    </symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/>
+    </symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>
+    </symbol>
+    <symbol id="i-calc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/><line x1="16" y1="18" x2="16" y2="18"/>
+    </symbol>
+    <symbol id="i-cap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+    </symbol>
+    <symbol id="i-dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+    </symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    </symbol>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+    </symbol>
+    <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
+    </symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+    </symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </symbol>
+    <symbol id="i-suite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+      <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ================ LOGIN ================ -->
+<div class="login" id="loginView">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-tile"><svg><use href="#i-suite"/></svg></div>
+      <div class="brand-text"><div class="n">Real Living Companies</div><div class="s">Business Suite</div></div>
+    </div>
+    <h1>Sign in</h1>
+    <p class="sub">Enter your credentials to access the suite.</p>
+    <div class="lerr" id="lerr">That email or password doesn't match.</div>
+    <div class="lf">
+      <label for="lemail">Email</label>
+      <input id="lemail" type="email" autocomplete="username" placeholder="you@realliving.com" placeholder-kept="1">
+    </div>
+    <div class="lf">
+      <label for="lpass">Password</label>
+      <input id="lpass" type="password" autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <button class="lbtn" id="lbtn">Sign in</button>
+    <div class="login-hint">Use your Real Living account — the same sign-in works in every app here.</div>
+  </div>
+</div>
+
+<!-- ================ SHELL ================ -->
+<div class="shell" id="shellView">
+  <header class="topbar">
+    <div class="brand-block">
+      <div class="brand-tile"><svg><use href="#i-suite"/></svg></div>
+      <div class="brand-text"><div class="n">Real Living Companies</div><div class="s">Business Suite</div></div>
+    </div>
+    <div class="top-right">
+      <button class="icon-btn" id="settingsBtn" title="Settings"><svg><use href="#i-gear"/></svg></button>
+      <div class="user-block">
+        <div class="user-meta">
+          <div class="name" id="uName"></div>
+          <div class="role" id="uRole"></div>
+        </div>
+        <div class="avatar" id="uAvatar"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="hero">
+      <h1 id="greeting"></h1>
+      <p class="sub">Select an application to get started</p>
+    </div>
+    <div class="grid" id="cardGrid"></div>
+  </main>
+</div>
+
+<!-- ================ APP VIEW ================ -->
+<div class="app-view" id="appView">
+  <div class="app-bar">
+    <div class="app-bar-left">
+      <button class="back-btn" id="backBtn">← Back to Suite</button>
+      <h2 id="appTitle"></h2>
+    </div>
+  </div>
+  <iframe class="app-frame" id="appFrame" title="Application"></iframe>
+</div>
+
+<!-- ================ SETTINGS MODAL ================ -->
+<div class="modal" id="settingsModal">
+  <div class="mbox">
+    <h2>Settings</h2>
+    <p class="msub">Your account and session details.</p>
+    <div class="mrow"><span class="k">Signed in as</span><span class="v" id="sName"></span></div>
+    <div class="mrow"><span class="k">Role</span><span class="v" id="sRole"></span></div>
+    <div class="mrow"><span class="k">Applications visible</span><span class="v" id="sApps"></span></div>
+
+    <div id="teamSect" style="display:none;margin-top:22px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <h2 style="font-size:16px;margin:0">Team</h2>
+        <span id="teamCnt" style="font-size:12px;color:var(--muted)"></span>
+        <span style="flex:1"></span>
+        <button class="btn-secondary" id="inviteBtn" style="padding:8px 14px;font-size:13px">+ Invite member</button>
+      </div>
+      <p class="msub" style="margin-bottom:10px">One login for every app. Positions set here carry into the CRM, Training, Documents and Deal Analyzer automatically.</p>
+      <div id="teamList"></div>
+
+      <div id="inviteForm" style="display:none;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:10px;background:var(--bg)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <input id="tm-name" placeholder="Full name" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px">
+          <input id="tm-email" placeholder="Email" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px">
+          <input id="tm-phone" placeholder="Cell (optional)" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px">
+          <select id="tm-pos" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff">
+            <option value="owner">Owner</option>
+            <option value="manager">Manager</option>
+            <option value="agent" selected>Agent</option>
+            <option value="marketing">Marketing</option>
+            <option value="assistant">Assistant</option>
+          </select>
+          <select id="tm-biz" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff">
+            <option value="">Sees all businesses</option>
+            <option value="ASAP">ASAP Lending only</option>
+            <option value="H2M">H2M only</option>
+            <option value="RL">Real Living Licensed only</option>
+            <option value="TC">TC only</option>
+          </select>
+        </div>
+        <div id="tm-err" style="display:none;color:#DC2626;font-size:12.5px;margin-top:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn-secondary" id="tm-go" style="padding:9px 16px;font-size:13px;background:var(--brand);color:#fff;border:none">Create login & invite</button>
+          <button class="btn-secondary" id="tm-cancel" style="padding:9px 16px;font-size:13px">Cancel</button>
+        </div>
+      </div>
+
+      <div id="inviteReady" style="display:none;border:1px solid #E7C86B;border-radius:12px;padding:14px;margin-top:10px;background:#FFFDF5">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:6px">Invite ready — send it however you like</div>
+        <div id="ir-detail" style="font-size:13px;line-height:1.7"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <a class="btn-secondary" id="ir-mail" style="padding:8px 14px;font-size:12.5px;text-decoration:none">📧 Email invite</a>
+          <a class="btn-secondary" id="ir-sms" style="padding:8px 14px;font-size:12.5px;text-decoration:none">💬 Text invite</a>
+          <button class="btn-secondary" id="ir-copy" style="padding:8px 14px;font-size:12.5px">📋 Copy</button>
+          <button class="btn-secondary" id="ir-done" style="padding:8px 14px;font-size:12.5px">Done</button>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:8px">They'll set their own password the first time they sign in.</div>
+      </div>
+    </div>
+
+    <div class="mfoot">
+      <button class="btn-danger" id="logoutBtn">Sign out</button>
+      <button class="btn-secondary" id="closeSettings">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  let CU = null;
+
+  /* ---------- LOGIN ---------- */
+  async function profileToCU(userId,email){
+    const {data:prof}=await sb.from('profiles').select('*').eq('id',userId).single();
+    const name=(prof&&prof.full_name)||email;
+    const role=prof?(prof.role.charAt(0).toUpperCase()+prof.role.slice(1)):'Member';
+    return {name,role,initial:(name[0]||'?').toUpperCase()};
+  }
+  function showShell(){
+    $("loginView").classList.add("off");
+    $("shellView").classList.add("on");
+    renderDashboard();
+    loadOnboarding();
+  }
+  async function needsFirstPassword(){
+    try{const {data:{user}}=await sb.auth.getUser();return !!(user&&user.user_metadata&&user.user_metadata.must_set_password);}catch(e){return false}
+  }
+  function showFirstPassword(){
+    const card=document.querySelector('.login-card');
+    card.querySelectorAll('.lf,.login-hint,#lbtn').forEach(el=>el.style.display='none');
+    let box=$("fpBox");
+    if(!box){
+      box=document.createElement('div');box.id='fpBox';
+      box.innerHTML='<div style="font-size:13px;color:var(--muted);margin:4px 0 14px">Welcome! You signed in with a temporary password — set your own to finish up. It works in every app here.</div>'+
+      '<input id="fp1" type="password" placeholder="New password (8+ characters)" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;font-size:14px">'+
+      '<input id="fp2" type="password" placeholder="Type it again" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;font-size:14px">'+
+      '<div id="fperr" style="display:none;color:#DC2626;font-size:13px;margin-bottom:10px"></div>'+
+      '<button id="fpgo" style="width:100%;padding:13px;background:var(--brand);color:#fff;border-radius:10px;font-weight:600;font-size:14px">Set password & continue</button>';
+      card.appendChild(box);
+      $("fpgo").addEventListener('click',async()=>{
+        const a=$("fp1").value,b=$("fp2").value,err=$("fperr");
+        if(a.length<8){err.textContent='Use at least 8 characters.';err.style.display='block';return}
+        if(a!==b){err.textContent="Those don't match.";err.style.display='block';return}
+        $("fpgo").disabled=true;$("fpgo").textContent='Saving…';
+        try{
+          const {error}=await sb.auth.updateUser({password:a,data:{must_set_password:false}});
+          if(error)throw new Error(error.message);
+          const {data:{session}}=await sb.auth.getSession();
+          CU=await profileToCU(session.user.id,session.user.email);
+          box.remove();
+          card.querySelectorAll('.lf,.login-hint,#lbtn').forEach(el=>el.style.display='');
+          showShell();
+        }catch(e){err.textContent=String(e.message||e);err.style.display='block';$("fpgo").disabled=false;$("fpgo").textContent='Set password & continue';}
+      });
+    }
+    box.style.display='block';
+  }
+  async function attemptLogin(){
+    const email = $("lemail").value.trim().toLowerCase();
+    const pass = $("lpass").value;
+    const btn=$("lbtn");btn.disabled=true;btn.textContent="Signing in…";
+    try{
+      const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+      if(error)throw new Error(error.message||"That email or password doesn't match.");
+      $("lerr").classList.remove("show");
+      if(await needsFirstPassword()){showFirstPassword();return}
+      CU = await profileToCU(data.user.id,email);
+      showShell();
+    }catch(e){
+      $("lerr").textContent=String(e.message||e);
+      $("lerr").classList.add("show");
+    }finally{btn.disabled=false;btn.textContent="Sign in";}
+  }
+  /* session restore: one sign-in covers the suite and every embedded app */
+  (async()=>{
+    try{
+      if(!sb)return;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session)return;
+      if(await needsFirstPassword()){showFirstPassword();return}
+      CU = await profileToCU(session.user.id,session.user.email);
+      showShell();
+    }catch(e){console.error('[resume]',e);}
+  })();
+  $("lbtn").addEventListener("click", attemptLogin);
+  ["lemail","lpass"].forEach(id => $(id).addEventListener("keydown", e => { if(e.key==="Enter") attemptLogin(); }));
+
+  function openCard(id){
+    const c = CARDS.find(x=>x.id===id); if(!c||!c.url) return;
+    const f=$("appFrame"); f.removeAttribute("srcdoc"); f.src=c.url;
+    $("appTitle").textContent=c.name; $("appView").classList.add("on");
+  }
+
+  /* ---------- DASHBOARD ---------- */
+  function renderDashboard(){
+    $("uName").textContent = CU.name;
+    $("uRole").textContent = CU.role;
+    $("uAvatar").textContent = CU.initial;
+    const first = CU.name.split(" ")[0];
+    $("greeting").textContent = "Welcome back, " + first;
+
+    $("cardGrid").innerHTML = CARDS.map(c => {
+      const lock = lockReason(c.id);
+      return `
+      <button class="card${lock?' locked':''}" data-id="${c.id}">
+        <div class="tile ${c.tile}"><svg><use href="#i-${c.icon}"/></svg></div>
+        <div>
+          <h3>${c.name}${c.type==="external" ? '<span class="ext-icon"><svg><use href="#i-ext"/></svg></span>' : ""}</h3>
+        </div>
+        <p>${lock ? lock : c.desc}</p>
+        ${lock?'<span class="lockpill">Locked</span>':''}
+      </button>`;
+    }).join("");
+    renderOnboardBanner();
+  }
+
+  /* ---------- onboarding gate ----------
+     A new person signs their paperwork, then trains, then everything opens. */
+  let OB = null;
+  function lockReason(id){
+    if(!OB || OB.stage==='done') return '';
+    if(OB.stage==='docs')
+      return id==='documents' ? '' : 'Sign your paperwork in Documents first.';
+    if(OB.stage==='training')
+      return (id==='documents'||id==='training') ? '' : 'Finish your training first.';
+    return '';
+  }
+  function renderOnboardBanner(){
+    let b=$("obBanner");
+    if(!OB || OB.stage==='done'){ if(b)b.remove(); return; }
+    if(!b){
+      b=document.createElement('div'); b.id='obBanner';
+      const grid=$("cardGrid"); grid.parentNode.insertBefore(b,grid);
+    }
+    const docsPct=Math.round(OB.signed/Math.max(1,OB.docs.length)*100);
+    const trPct=Math.round(OB.trained/Math.max(1,OB.tracks.length)*100);
+    b.className='ob-banner';
+    b.innerHTML=
+      '<div class="ob-h">Finish setting up your access</div>'+
+      '<div class="ob-s">'+(OB.stage==='docs'
+        ? 'Your paperwork comes first. Open <b>Documents</b>, read each item and sign it — that unlocks your training, and training unlocks the rest of the suite.'
+        : 'Paperwork is done. Now finish the training for your role in the <b>Training Center</b> and everything else opens.')+'</div>'+
+      '<div class="ob-steps">'+
+        '<div class="ob-step'+(OB.docsDone?' ok':' now')+'"><b>1 · Paperwork</b><span>'+OB.signed+' of '+OB.docs.length+' signed</span>'+
+          '<div class="ob-bar"><i style="width:'+docsPct+'%"></i></div></div>'+
+        '<div class="ob-step'+(OB.trainDone?' ok':(OB.docsDone?' now':''))+'"><b>2 · Training</b><span>'+OB.trained+' of '+OB.tracks.length+' tracks</span>'+
+          '<div class="ob-bar"><i style="width:'+trPct+'%"></i></div></div>'+
+        '<div class="ob-step"><b>3 · Full access</b><span>CRM, inventory and the rest</span><div class="ob-bar"><i style="width:0%"></i></div></div>'+
+      '</div>';
+  }
+  async function loadOnboarding(){
+    try{
+      if(!window.RLOnboard) return;
+      OB = await window.RLOnboard.load(sb);
+      renderDashboard();
+    }catch(e){ console.error('[onboarding]',e); }
+  }
+  window.addEventListener('message', e => {
+    if(e.data && e.data.rl==='onboarding'){
+      if(e.data.go==='training'){ loadOnboarding().then(()=>openCard('training')); return; }
+      if(e.data.go==='home'){ $("appView").classList.remove("on"); $("appFrame").src='about:blank'; }
+      loadOnboarding();
+    }
+  });
+
+  $("cardGrid").addEventListener("click", e => {
+    const card = e.target.closest(".card"); if(!card) return;
+    const c = CARDS.find(x => x.id === card.dataset.id); if(!c) return;
+    const lock = lockReason(c.id);
+    if(lock){ alert(c.name + " is locked.\n\n" + lock.replace(/<[^>]+>/g,'')); return; }
+    if(c.type === "external"){
+      window.open(c.src, "_blank", "noopener");
+      return;
+    }
+    const f = $("appFrame");
+    if(c.url){
+      /* live URL loading — the suite always serves the latest version of each app */
+      f.removeAttribute("srcdoc");
+      f.src = c.url;
+      $("appTitle").textContent = c.name;
+      $("appView").classList.add("on");
+      return;
+    }
+    const src = APP_SOURCES[c.id];
+    if(!src){
+      alert(c.name + " isn't wired up yet.\n\nDrop its HTML file in /apps and add url:\"apps/<file>.html\" to its card.");
+      return;
+    }
+    $("appTitle").textContent = c.name;
+    f.removeAttribute("src");
+    f.srcdoc = src;
+    $("appView").classList.add("on");
+  });
+
+  $("backBtn").addEventListener("click", () => {
+    $("appView").classList.remove("on");
+    const f = $("appFrame");
+    f.removeAttribute("srcdoc");
+    f.src = "about:blank";
+  });
+
+  /* ---------- SETTINGS ---------- */
+  $("settingsBtn").addEventListener("click", async () => {
+    $("sName").textContent = CU.name;
+    $("sRole").textContent = CU.role;
+    $("sApps").textContent = CARDS.length;
+    $("settingsModal").classList.add("on");
+    const isOwner=(CU.role||'').toLowerCase()==='owner';
+    $("teamSect").style.display=isOwner?'block':'none';
+    if(isOwner){try{await loadTeam();renderTeam();}catch(e){console.error('[team]',e);}}
+  });
+  $("closeSettings").addEventListener("click", () => $("settingsModal").classList.remove("on"));
+  /* ---------- TEAM MANAGER (owners only) ---------- */
+  const POS_LABEL={owner:'Owner',manager:'Manager',agent:'Agent',marketing:'Marketing',assistant:'Assistant'};
+  let MY_ROLE=null, TEAM=[];
+  async function loadTeam(){
+    const [{data:profs},{data:seats}]=await Promise.all([
+      sb.from('profiles').select('*'),
+      sb.from('records').select('id,data').eq('collection','users').eq('deleted',false)
+    ]);
+    const seatMap={};(seats||[]).forEach(r=>seatMap[r.id]=r.data);
+    TEAM=(profs||[]).map(p=>({...p, seat:seatMap[p.seat_id]||null}));
+    return TEAM;
+  }
+  function posOf(m){ if(m.seat&&m.seat.title==='Assistant')return 'assistant'; return m.role; }
+  function renderTeam(){
+    $("teamCnt").textContent=TEAM.length+' members';
+    $("teamList").innerHTML=TEAM.map(m=>{
+      const pos=posOf(m);
+      const opts=Object.keys(POS_LABEL).map(k=>'<option value="'+k+'"'+(k===pos?' selected':'')+'>'+POS_LABEL[k]+'</option>').join('');
+      const bizzes=[['','All'],['ASAP','ASAP'],['H2M','H2M'],['RL','RL'],['TC','TC']];
+      const bops=bizzes.map(b=>'<option value="'+b[0]+'"'+((m.business||'')===b[0]?' selected':'')+'>'+b[1]+'</option>').join('');
+      const noSeat = !m.seat;
+      const isMe = m.id===(CU&&CU.authId);
+      const canRemove = m.role!=='owner' && !isMe;
+      return '<div class="mrow" style="gap:8px;flex-wrap:wrap">'+
+        '<span class="v" style="min-width:150px">'+(m.full_name||'—')+(m.seat&&m.seat.ext?' <span style="color:var(--muted);font-weight:400">ext '+m.seat.ext+'</span>':'')+
+          (noSeat?' <span style="color:#B4341F;font-weight:700;font-size:11px">NO SEAT</span>':'')+'</span>'+
+        '<select data-uid="'+m.id+'" class="tm-role" style="padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:12.5px;background:#fff">'+opts+'</select>'+
+        '<select data-uid="'+m.id+'" class="tm-bizsel" style="padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:12.5px;background:#fff">'+bops+'</select>'+
+        (noSeat?'<button class="tm-repair" data-uid="'+m.id+'" style="padding:6px 10px;border:1px solid #B4341F;background:#fff;color:#B4341F;border-radius:7px;font-size:12px;cursor:pointer;font-weight:700">Fix seat</button>':'')+
+        (canRemove?'<button class="tm-remove" data-uid="'+m.id+'" data-seat="'+(m.seat_id||'')+'" data-name="'+(m.full_name||'').replace(/"/g,'')+'" style="padding:6px 10px;border:1px solid #D9C7C4;background:#fff;color:#B4341F;border-radius:7px;font-size:12px;cursor:pointer">Remove</button>':'')+
+      '</div>';
+    }).join('')||'<div style="color:var(--muted);font-size:13px;padding:8px 0">No members yet.</div>';
+    $("teamList").querySelectorAll('.tm-role').forEach(el=>el.addEventListener('change',()=>changePos(el.dataset.uid,el.value)));
+    $("teamList").querySelectorAll('.tm-bizsel').forEach(el=>el.addEventListener('change',()=>changeBiz(el.dataset.uid,el.value)));
+    $("teamList").querySelectorAll('.tm-repair').forEach(el=>el.addEventListener('click',()=>repairSeat(el.dataset.uid)));
+    $("teamList").querySelectorAll('.tm-remove').forEach(el=>el.addEventListener('click',()=>askRemove(el.dataset.uid,el.dataset.seat,el.dataset.name)));
+  }
+  async function changePos(uid,pos){
+    const m=TEAM.find(x=>x.id===uid); if(!m)return;
+    const role=(pos==='assistant')?'marketing':pos, title=(pos==='assistant')?'Assistant':null;
+    await sb.from('profiles').update({role}).eq('id',uid);
+    if(m.seat_id){
+      const {data:row}=await sb.from('records').select('data').eq('collection','users').eq('id',m.seat_id).single();
+      if(row){const d=row.data;d.role=role;if(title)d.title=title;else delete d.title;
+        await sb.from('records').update({data:d,updated_at:new Date().toISOString()}).eq('collection','users').eq('id',m.seat_id);}
+    }
+    m.role=role; if(m.seat){if(title)m.seat.title=title;else delete m.seat.title;}
+  }
+  async function changeBiz(uid,biz){
+    const m=TEAM.find(x=>x.id===uid); if(!m)return;
+    await sb.from('profiles').update({business:biz||null}).eq('id',uid);
+    if(m.seat_id){
+      const {data:row}=await sb.from('records').select('data').eq('collection','users').eq('id',m.seat_id).single();
+      if(row){const d=row.data;d.business=biz||null;
+        await sb.from('records').update({data:d,updated_at:new Date().toISOString()}).eq('collection','users').eq('id',m.seat_id);}
+    }
+    m.business=biz||null;
+  }
+  function nextSeat(seats){
+    let n=1;while(seats.some(s=>s.id==='u'+n))n++;
+    let ext=101;while(seats.some(s=>(s.data&&s.data.ext)===String(ext)))ext++;
+    return {id:'u'+n,ext:String(ext)};
+  }
+  $("inviteBtn").addEventListener('click',()=>{$("inviteForm").style.display='block';$("inviteReady").style.display='none';});
+  $("tm-cancel").addEventListener('click',()=>{$("inviteForm").style.display='none';});
+  $("ir-done").addEventListener('click',()=>{$("inviteReady").style.display='none';loadTeam().then(renderTeam);});
+  $("tm-go").addEventListener('click',async()=>{
+    const name=$("tm-name").value.trim(),email=$("tm-email").value.trim().toLowerCase(),phone=$("tm-phone").value.trim();
+    const pos=$("tm-pos").value,biz=$("tm-biz").value||null,err=$("tm-err");
+    err.style.display='none';
+    if(!name||!email){err.textContent='Name and email are required.';err.style.display='block';return;}
+    $("tm-go").disabled=true;$("tm-go").textContent='Creating…';
+    try{
+      const {data:seats}=await sb.from('records').select('id,data').eq('collection','users').eq('deleted',false);
+      const slot=nextSeat(seats||[]);
+      const role=(pos==='assistant')?'marketing':pos;
+      const {data:{session}}=await sb.auth.getSession();
+      const res=await fetch(SUPABASE_URL+'/functions/v1/admin-create-user',{method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({email,name,role,business:biz,seat_id:slot.id})});
+      const out=await res.json();
+      if(!res.ok||out.error)throw new Error(out.error||'Could not create the login');
+      const seatData={id:slot.id,name,email,phone,ext:slot.ext,role,business:biz};
+      if(pos==='assistant')seatData.title='Assistant';
+      await sb.from('records').upsert({collection:'users',id:slot.id,data:seatData,updated_at:new Date().toISOString(),deleted:false});
+      const portal=location.origin+location.pathname.replace(/[^/]*$/,'');
+      const msg="You're set up on the Real Living Business Suite!\n\nSign in here: "+portal+"\nEmail: "+out.email+"\nTemporary password: "+out.tempPass+"\n\nYou'll set your own password the first time you sign in. One login covers every app.";
+      $("ir-detail").innerHTML='<b>'+name+'</b> · '+out.email+'<br>Temp password: <b style="color:#B8860B">'+out.tempPass+'</b>';
+      $("ir-mail").href='mailto:'+encodeURIComponent(out.email)+'?subject='+encodeURIComponent('Your Real Living Business Suite login')+'&body='+encodeURIComponent(msg);
+      const smsA=$("ir-sms");
+      if(phone){smsA.style.display='';smsA.href='sms:'+encodeURIComponent(phone)+'?&body='+encodeURIComponent(msg);}else smsA.style.display='none';
+      $("ir-copy").onclick=()=>{try{navigator.clipboard.writeText(msg);$("ir-copy").textContent='✓ Copied';setTimeout(()=>$("ir-copy").textContent='📋 Copy',1500);}catch(e){}};
+      $("inviteForm").style.display='none';$("inviteReady").style.display='block';
+      $("tm-name").value='';$("tm-email").value='';$("tm-phone").value='';
+      await loadTeam();renderTeam();
+    }catch(e){err.textContent=String(e.message||e);err.style.display='block';}
+    finally{$("tm-go").disabled=false;$("tm-go").textContent='Create login & invite';}
+  });
+
+  /* ---------- REMOVE A TEAM MEMBER ---------- */
+  async function teamApi(payload){
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch(SUPABASE_URL+'/functions/v1/team-admin',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify(payload)});
+    const j=await r.json().catch(()=>({error:'bad response'}));
+    if(!r.ok||j.error)throw new Error(j.error||('HTTP '+r.status));
+    return j;
+  }
+  async function repairSeat(uid){
+    try{ const r=await teamApi({action:'repairSeat',authUid:uid});
+      alert('Seat '+r.seat.id+' created for '+r.seat.name+'.');
+      await loadTeam(); renderTeam();
+    }catch(e){ alert(e.message); }
+  }
+  function askRemove(authUid,seatId,name){
+    if(!seatId){alert('This person has no seat yet. Use "Fix seat" first, then remove them.');return;}
+    const others=TEAM.filter(m=>m.seat_id&&m.seat_id!==seatId);
+    if(!others.length){alert('There is nobody to hand their work to.');return;}
+    const back=document.createElement('div');
+    back.style.cssText='position:fixed;inset:0;background:rgba(20,16,14,.55);display:grid;place-items:center;z-index:9999;padding:18px';
+    back.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:430px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
+      '<div style="font-weight:800;font-size:18px">Remove '+name+'</div>'+
+      '<div style="background:#FBF0EE;border:1px solid #E7CFCB;border-radius:10px;padding:12px;font-size:13px;color:#8A2B1A;margin:14px 0;line-height:1.5">'+
+        'Their login is deleted immediately and they lose access to every app. '+
+        'Everything they own &mdash; deals, appointments, contacts, activity, tasks &mdash; moves to the person you choose. Nothing is erased.</div>'+
+      '<div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A7F76;margin-bottom:6px">Hand their work to</div>'+
+      '<select id="rmHeir" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff">'+
+        others.map(m=>'<option value="'+m.seat_id+'">'+(m.full_name||m.seat_id)+' &mdash; '+(m.role||'')+'</option>').join('')+'</select>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">'+
+        '<button id="rmCancel" style="padding:9px 14px;border:1px solid var(--line);background:#fff;border-radius:9px;cursor:pointer;font-size:14px">Cancel</button>'+
+        '<button id="rmGo" style="padding:9px 14px;border:0;background:#B4341F;color:#fff;border-radius:9px;cursor:pointer;font-weight:700;font-size:14px">Remove and transfer</button>'+
+      '</div></div>';
+    document.body.appendChild(back);
+    back.querySelector('#rmCancel').onclick=()=>back.remove();
+    back.querySelector('#rmGo').onclick=async()=>{
+      const btn=back.querySelector('#rmGo'); btn.disabled=true; btn.textContent='Transferring…';
+      try{
+        const r=await teamApi({action:'remove',seatId,toSeatId:back.querySelector('#rmHeir').value,authUid});
+        const by=(r.moved&&r.moved.byCollection)||{};
+        back.remove();
+        alert('Moved '+((r.moved&&r.moved.total)||0)+' records from '+r.from+' to '+r.to+'.\n\n'+
+          Object.keys(by).map(k=>'  '+k+': '+by[k]).join('\n')+
+          '\n\nLogin '+(r.loginRemoved?'deleted.':'could NOT be deleted \u2014 check manually.'));
+        await loadTeam(); renderTeam();
+      }catch(e){ alert(e.message); btn.disabled=false; btn.textContent='Remove and transfer'; }
+    };
+  }
+
+  $("logoutBtn").addEventListener("click", async () => {
+    try{ if(sb) await sb.auth.signOut(); }catch(e){}
+    $("settingsModal").classList.remove("on");
+    $("appView").classList.remove("on");
+    const f = $("appFrame");
+    f.removeAttribute("srcdoc");
+    f.src = "about:blank";
+    $("shellView").classList.remove("on");
+    $("loginView").classList.remove("off");
+    $("lpass").value = "";
+    CU = null;
+  });
+})();
+</script>
+
+  <script>
+    const NOTIF_STORAGE = 'rl_notifications';
+    let notifications = [];
+    
+    function getStoredNotifs() {
+      try { return JSON.parse(localStorage.getItem(NOTIF_STORAGE) || '[]') } catch { return [] }
+    }
+    
+    function saveNotif(type, message, name) {
+      const notif = { id: Date.now(), type, message, name, timestamp: new Date().toISOString() };
+      notifications.unshift(notif);
+      notifications = notifications.slice(0, 50);
+      localStorage.setItem(NOTIF_STORAGE, JSON.stringify(notifications));
+      showToast(message);
+      updateBell();
+    }
+    
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = message;
+      document.getElementById('toastContainer').appendChild(toast);
+      setTimeout(() => { toast.classList.add('fade'); setTimeout(() => toast.remove(), 300) }, 5000);
+    }
+    
+    function updateBell() {
+      const bell = document.getElementById('notifBell');
+      const hasUnseen = notifications.some(n => !n.seen);
+      bell.classList.toggle('unseen', hasUnseen);
+      updateNotifModal();
+    }
+    
+    function updateNotifModal() {
+      const list = document.getElementById('notifList');
+      const html = notifications.map(n => {
+        const time = new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        return `<div class="notif-item"><strong>${n.name}</strong> — ${n.message}<div class="notif-time">${time}</div></div>`;
+      }).join('');
+      list.innerHTML = html || '<div style="padding:20px;text-align:center;color:#999">No notifications</div>';
+    }
+    
+    document.getElementById('notifBell').addEventListener('click', function() {
+      document.getElementById('notifModal').classList.toggle('open');
+      notifications.forEach(n => n.seen = true);
+      updateBell();
+    });
+    
+    async function watchOnboarding() {
+      if (!PROF || PROF.role !== 'owner') return;
+      const seen = new Set();
+      
+      async function checkTeam() {
+        try {
+          const {data: seats} = await SB.from('profiles').select('id,name,email').neq('role', 'admin');
+          if (!seats) return;
+          const {data: onboarding} = await SB.from('records').select('id,data').eq('collection', 'onboarding').in('id', seats.map(s => s.id));
+          
+          onboarding?.forEach(ob => {
+            const seat = seats.find(s => s.id === ob.id);
+            if (!seat) return;
+            const d = ob.data || {};
+            const key = ob.id;
+            
+            if (!seen.has(key)) {
+              seen.add(key);
+              if (!d.docsDoneAt && !d.trainingDoneAt) {
+                saveNotif('added', `<strong>New team member:</strong> ${seat.name || seat.email}`, seat.name || seat.email);
+              }
+            }
+            
+            if (d.docsDoneAt && !localStorage.getItem(`notif_docs_${key}`)) {
+              localStorage.setItem(`notif_docs_${key}`, '1');
+              saveNotif('docs', `<strong>Documents complete:</strong> ${seat.name || seat.email}`, seat.name || seat.email);
+            }
+            
+            if (d.trainingDoneAt && !localStorage.getItem(`notif_train_${key}`)) {
+              localStorage.setItem(`notif_train_${key}`, '1');
+              saveNotif('training', `<strong>Training complete:</strong> ${seat.name || seat.email}`, seat.name || seat.email);
+            }
+            
+            if (d.docsDoneAt && d.trainingDoneAt && !localStorage.getItem(`notif_done_${key}`)) {
+              localStorage.setItem(`notif_done_${key}`, '1');
+              saveNotif('done', `<strong>Fully onboarded:</strong> ${seat.name || seat.email}`, seat.name || seat.email);
+            }
+          });
+        } catch(e) { console.error('Watch:', e.message) }
+      }
+      
+      await checkTeam();
+      setInterval(checkTeam, 10000);
+    }
+    
+    if (PROF?.role === 'owner') {
+      notifications = getStoredNotifs();
+      updateBell();
+      setTimeout(watchOnboarding, 1000);
+    }
+  </script>
+
+</body>
+</html>
