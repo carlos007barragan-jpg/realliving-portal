@@ -137,7 +137,7 @@ let _sb=null;
 function client(){
   if(_sb)return _sb;
   if(!global.supabase)return null;
-  _sb=global.supabase.createClient(SB_URL,SB_KEY);
+  _sb=global.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});
   return _sb;
 }
 async function load(sb){
