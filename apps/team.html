@@ -1,0 +1,218 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Team &amp; Access — Real Living</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:15px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+     background:#0B1220;color:#E8EEF7;padding:22px 16px 80px}
+.wrap{max-width:1000px;margin:0 auto}
+h1{font-size:23px;font-weight:800;letter-spacing:-.02em}
+.sub{color:#8FA3BF;font-size:13.5px;margin-top:5px}
+.card{background:#111C2E;border:1px solid #1E2C44;border-radius:14px;padding:16px;margin-top:14px}
+.person{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.avatar{width:40px;height:40px;border-radius:11px;background:#1B2A44;display:grid;place-items:center;
+        font-weight:800;color:#C8A44D;flex:none}
+.nm{font-weight:700}
+.meta{color:#8FA3BF;font-size:12.5px}
+.spacer{flex:1}
+.pill{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+      padding:4px 9px;border-radius:999px;white-space:nowrap}
+.p-docs{background:#3A2A10;color:#E5B23C}
+.p-train{background:#12314A;color:#5FB0E8}
+.p-done{background:#123526;color:#4ED08A}
+.p-warn{background:#3D1A1A;color:#F08080}
+.bar{height:5px;background:#1B2A44;border-radius:99px;overflow:hidden;margin-top:10px;width:100%}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#C8A44D,#E5C87A)}
+button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid #2A3B58;
+       background:#182742;color:#E8EEF7;padding:7px 13px;font-weight:600}
+button:hover{background:#1F3153}
+button.gold{background:#C8A44D;color:#10161F;border-color:#C8A44D;font-weight:800}
+button.danger{background:#3D1A1A;border-color:#5A2626;color:#F0A0A0}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #1B2A44;flex-wrap:wrap}
+.row:first-of-type{border-top:0}
+.tick{width:20px;flex:none;font-weight:800}
+.ok{color:#4ED08A}.wv{color:#E5B23C}.no{color:#5A6B85}
+.docname{flex:1;min-width:170px}
+.why{font-size:11.5px;color:#7E8FA8}
+.grp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#C8A44D;font-weight:800;margin:16px 0 6px}
+.hide{display:none}
+select,input[type=text]{font:inherit;background:#0E1828;border:1px solid #2A3B58;color:#E8EEF7;
+       padding:8px 10px;border-radius:9px;width:100%}
+.modal{position:fixed;inset:0;background:rgba(6,10,18,.8);display:grid;place-items:center;padding:18px;z-index:50}
+.modal .box{background:#111C2E;border:1px solid #2A3B58;border-radius:16px;padding:20px;max-width:460px;width:100%}
+.warn{background:#2A1414;border:1px solid #5A2626;border-radius:10px;padding:11px;font-size:13px;color:#F0B0B0;margin:12px 0}
+.note{background:#0E1828;border:1px solid #1E2C44;border-radius:10px;padding:11px;font-size:13px;color:#9FB2CC;margin-top:10px}
+a{color:#C8A44D}
+</style></head><body>
+<div class="wrap">
+  <h1>Team &amp; Access</h1>
+  <div class="sub">Everyone with a login, where they are in onboarding, and what they still owe.</div>
+  <div id="out"><div class="card">Loading…</div></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="onboard.js"></script>
+<script>
+const FN='https://zfflgvjnkcjnbwydurlp.supabase.co/functions/v1/team-admin';
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let SB,ROSTER=null,TOKEN=null;
+
+async function api(payload){
+  const r=await fetch(FN,{method:'POST',headers:{'Content-Type':'application/json',
+    'Authorization':'Bearer '+TOKEN},body:JSON.stringify(payload)});
+  const j=await r.json().catch(()=>({error:'bad response'}));
+  if(!r.ok||j.error)throw new Error(j.error||('HTTP '+r.status));
+  return j;
+}
+function initials(n){return String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase()}
+
+/* work out what one person owes, using the same rules the gate uses */
+function assess(seat,ob){
+  const biz=RLOnboard.bizFromSeat(seat), role=RLOnboard.roleFromSeat(seat);
+  const docs=RLOnboard.requirements(biz,role), tracks=RLOnboard.tracksFor(biz);
+  const sigs=(ob&&ob.sigs)||{}, waived=(ob&&ob.waived)||{}, done=(ob&&ob.tracks)||{};
+  docs.forEach(d=>{d._signed=!!sigs[d.id];d._waived=!!waived[d.id];d._waiver=waived[d.id]||null});
+  const settled=docs.filter(d=>d._signed||d._waived).length;
+  const trained=tracks.filter(t=>done[t]).length;
+  const docsDone=settled>=docs.length, trainDone=docsDone&&trained>=tracks.length;
+  return {biz,role,docs,tracks,settled,trained,docsDone,trainDone,
+    stage:!ob?'never':(!docsDone?'docs':(!trainDone?'training':'done'))};
+}
+
+async function render(){
+  const seats=ROSTER.seats, obs=ROSTER.onboarding, logins=ROSTER.logins;
+  const obByEmail={}; obs.forEach(o=>{if(o.email)obByEmail[String(o.email).toLowerCase()]=o});
+  let html='';
+
+  /* logins with no seat — the failure mode that bit us */
+  const seatEmails=seats.map(s=>(s.email||'').toLowerCase());
+  const orphans=logins.filter(l=>seatEmails.indexOf(l.email)<0);
+  if(orphans.length){
+    html+='<div class="card"><div class="grp" style="margin-top:0">Logins with no seat</div>'+
+      '<div class="warn">These people can sign in but have no role or pipelines, so the gate treats them as unassigned. '+
+      'Give them a seat or remove the login.</div>'+
+      orphans.map(o=>'<div class="row"><span class="tick no">!</span><div class="docname">'+esc(o.email)+
+        '<div class="why">first seen '+esc(String(o.createdAt||'').slice(0,10))+
+        (o.lastSignIn?' · last signed in '+esc(String(o.lastSignIn).slice(0,10)):' · never signed in')+'</div></div></div>').join('')+
+      '</div>';
+  }
+
+  seats.forEach(seat=>{
+    const ob=obByEmail[(seat.email||'').toLowerCase()]||null;
+    const a=assess(seat,ob);
+    const login=logins.filter(l=>l.email===(seat.email||'').toLowerCase())[0];
+    const pill=a.stage==='never'?['p-warn','Never signed in']:
+               a.stage==='docs'?['p-docs','Signing paperwork']:
+               a.stage==='training'?['p-train','In training']:['p-done','Full access'];
+    const pct=Math.round(100*(a.settled+a.trained)/Math.max(1,a.docs.length+a.tracks.length));
+    html+='<div class="card"><div class="person">'+
+      '<div class="avatar">'+esc(initials(seat.name))+'</div>'+
+      '<div><div class="nm">'+esc(seat.name||seat.email)+'</div>'+
+        '<div class="meta">'+esc(seat.email)+' · '+esc(RLOnboard.ROLE_LABEL[a.role]||a.role)+
+        (a.biz.length?' · '+esc(a.biz.map(b=>RLOnboard.BIZ_LABEL[b]).join(', ')):'')+'</div></div>'+
+      '<div class="spacer"></div><span class="pill '+pill[0]+'">'+pill[1]+'</span></div>'+
+      '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
+      '<div class="meta" style="margin-top:7px">'+a.settled+' of '+a.docs.length+' documents · '+
+        a.trained+' of '+a.tracks.length+' training tracks'+
+        (login&&login.lastSignIn?' · last signed in '+esc(String(login.lastSignIn).slice(0,10)):'')+'</div>'+
+      '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+        '<button onclick="toggle(\''+seat.id+'\')">Paperwork detail</button>'+
+        (seat.role!=='owner'?'<button class="danger" onclick="askRemove(\''+seat.id+'\')">Remove from platform</button>':'')+
+      '</div>'+
+      '<div id="d_'+seat.id+'" class="hide">'+detail(seat,ob,a)+'</div></div>';
+  });
+  document.getElementById('out').innerHTML=html;
+}
+
+function detail(seat,ob,a){
+  const uid=ob?ob.uid:null;
+  let h='';
+  const groups=[['company','Everyone at Real Living']];
+  a.biz.forEach(b=>groups.push([b,RLOnboard.BIZ_LABEL[b]||b]));
+  groups.push(['role:'+a.role,'Because of their role']);
+  groups.forEach(([key,label])=>{
+    const items=a.docs.filter(d=>d.why===key);
+    if(!items.length)return;
+    h+='<div class="grp">'+esc(label)+'</div>';
+    items.forEach(d=>{
+      const state=d._signed?['ok','✓']:(d._waived?['wv','—']:['no','○']);
+      h+='<div class="row"><span class="tick '+state[0]+'">'+state[1]+'</span>'+
+        '<div class="docname">'+esc(d.t)+
+          '<div class="why">'+(d._signed?'signed':(d._waived?
+            'waived by '+esc(d._waiver.by)+(d._waiver.reason?' — '+esc(d._waiver.reason):''):
+            'not signed yet'))+'</div></div>'+
+        (uid?(d._signed?'':(d._waived?
+          '<button onclick="unwaive(\''+uid+'\',\''+d.id+'\')">Undo waiver</button>':
+          '<button onclick="askWaive(\''+uid+'\',\''+d.id+'\',\''+esc(d.t).replace(/'/g,"")+'\')">Not applicable</button>')):'')+
+        '</div>';
+    });
+  });
+  if(!uid)h+='<div class="note">They have not signed in yet, so there is nothing to waive. Waivers become available on first login.</div>';
+  return h;
+}
+function toggle(id){const e=document.getElementById('d_'+id);e.classList.toggle('hide')}
+
+/* ---- waive ---- */
+function askWaive(uid,docId,title){
+  const m=document.createElement('div');m.className='modal';
+  m.innerHTML='<div class="box"><div style="font-weight:800;font-size:17px">Waive this document</div>'+
+    '<div class="sub" style="margin-top:6px">'+esc(title)+'</div>'+
+    '<div class="note">The person will never be asked for this. A note of who waived it and why stays on their record.</div>'+
+    '<div style="margin-top:12px"><input type="text" id="wr" placeholder="Why does this not apply? e.g. licensed under eXp"></div>'+
+    '<div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">'+
+      '<button onclick="this.closest(\'.modal\').remove()">Cancel</button>'+
+      '<button class="gold" id="wgo">Waive it</button></div></div>';
+  document.body.appendChild(m);
+  m.querySelector('#wgo').onclick=async()=>{
+    const reason=m.querySelector('#wr').value.trim();
+    if(!reason){m.querySelector('#wr').style.borderColor='#8A3B3B';return}
+    m.querySelector('#wgo').disabled=true;m.querySelector('#wgo').textContent='Saving…';
+    try{await api({action:'waive',uid,docId,reason});m.remove();await reload()}
+    catch(e){alert(e.message);m.querySelector('#wgo').disabled=false;m.querySelector('#wgo').textContent='Waive it'}
+  };
+}
+async function unwaive(uid,docId){
+  try{await api({action:'unwaive',uid,docId});await reload()}catch(e){alert(e.message)}
+}
+
+/* ---- remove ---- */
+function askRemove(seatId){
+  const seat=ROSTER.seats.filter(s=>s.id===seatId)[0];
+  const others=ROSTER.seats.filter(s=>s.id!==seatId);
+  const m=document.createElement('div');m.className='modal';
+  m.innerHTML='<div class="box"><div style="font-weight:800;font-size:17px">Remove '+esc(seat.name||seat.email)+'</div>'+
+    '<div class="warn">Their login is revoked immediately. Every deal, appointment, contact, activity and task they own '+
+    'moves to the person you pick — nothing is deleted, and their history stays intact.</div>'+
+    '<div class="grp" style="margin-top:4px">Hand their work to</div>'+
+    '<select id="heir">'+others.map(s=>'<option value="'+s.id+'">'+esc(s.name||s.email)+' — '+esc(s.role)+'</option>').join('')+'</select>'+
+    '<div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">'+
+      '<button onclick="this.closest(\'.modal\').remove()">Cancel</button>'+
+      '<button class="danger" id="rgo">Remove and transfer</button></div></div>';
+  document.body.appendChild(m);
+  m.querySelector('#rgo').onclick=async()=>{
+    const to=m.querySelector('#heir').value;
+    m.querySelector('#rgo').disabled=true;m.querySelector('#rgo').textContent='Transferring…';
+    try{
+      const r=await api({action:'remove',seatId,toSeatId:to});
+      m.remove();
+      const by=r.moved&&r.moved.byCollection||{};
+      alert('Moved '+((r.moved&&r.moved.total)||0)+' records from '+r.from+' to '+r.to+'.\n\n'+
+        Object.keys(by).map(k=>'  '+k+': '+by[k]).join('\n')+
+        '\n\nLogin '+(r.loginRemoved?'revoked.':'could not be revoked — check manually.'));
+      await reload();
+    }catch(e){alert(e.message);m.querySelector('#rgo').disabled=false;m.querySelector('#rgo').textContent='Remove and transfer'}
+  };
+}
+
+async function reload(){ROSTER=await api({action:'roster'});await render()}
+
+(async function(){
+  SB=supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf');
+  const {data:{session}}=await SB.auth.getSession();
+  if(!session){document.getElementById('out').innerHTML=
+    '<div class="card">Please <a href="../index.html">sign in to the Business Suite</a> first.</div>';return}
+  TOKEN=session.access_token;
+  try{await reload()}
+  catch(e){document.getElementById('out').innerHTML='<div class="card"><div class="warn">'+esc(e.message)+'</div></div>'}
+})();
+</script></body></html>
