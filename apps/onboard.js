@@ -108,10 +108,16 @@ function requirements(biz,role){
   return list;
 }
 function docsFor(biz,role){ return requirements(biz,role||'agent'); }
+/* Only tracks that actually exist in the Training Center may be required here.
+   The hub currently ships: fundamentals, asap, h2m, rl.
+   'crm' and 'suite' are written but NOT YET BUILT — requiring them would leave
+   every new hire permanently stuck at the training stage with nothing to finish.
+   Put them back in this list the moment those modules exist in training.html. */
+const LIVE_TRACKS=['fundamentals','asap','h2m','rl'];
 function tracksFor(biz){
-  const out=['fundamentals','crm','suite'];  /* everyone learns the platform first */
+  const out=['fundamentals'];
   biz.forEach(b=>{const t=BIZ_TRACK[b];if(t&&out.indexOf(t)<0)out.push(t)});
-  return out;
+  return out.filter(t=>LIVE_TRACKS.indexOf(t)>-1);
 }
 
 /* ---------- state ---------- */
