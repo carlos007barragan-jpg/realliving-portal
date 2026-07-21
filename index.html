@@ -971,7 +971,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     }
 
     async function watchOnboarding() {
-      if (!ME_PROFILE || ME_PROFILE.role !== 'owner') return;
+      if (!ME_PROFILE || String(ME_PROFILE.role||'').toLowerCase() !== 'owner') return;
       const seen = new Set();
       
       async function checkTeam() {
@@ -1015,23 +1015,40 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
       setInterval(checkTeam, 10000);
     }
     
-    /* wait for the shell to finish signing in before deciding whether to show
-       the bell — the client may not have a session on first paint */
-    (async function initBell(){
-      for (let i = 0; i < 20 && !ME_PROFILE; i++) {
-        ME_PROFILE = await resolveMe();
-        if (!ME_PROFILE) await new Promise(r => setTimeout(r, 500));
-      }
+    /* The page opens on the login screen, so there is no session to read yet.
+       Waiting a fixed number of tries just times out before sign-in finishes and
+       hides the bell for good — so react to the auth state instead of racing it. */
+    let BELL_STARTED = false;
+    async function initBell(){
+      if (BELL_STARTED) return;
       const wrap = document.getElementById('notifWrap');
-      if (!ME_PROFILE || ME_PROFILE.role !== 'owner') {
+      ME_PROFILE = await resolveMe();
+      console.info('[bell] profile:', ME_PROFILE ? ME_PROFILE.role : 'no session');
+      if (!ME_PROFILE || String(ME_PROFILE.role||'').toLowerCase() !== 'owner') {
         if (wrap) wrap.style.display = 'none';
         return;
       }
+      BELL_STARTED = true;
       if (wrap) wrap.style.display = 'inline-flex';
       notifications = getStoredNotifs();
       updateBell();
       watchOnboarding();
-    })();
+    }
+
+    initBell();
+    if (typeof sb !== 'undefined' && sb) {
+      sb.auth.onAuthStateChange((evt) => {
+        if (evt === 'SIGNED_OUT') {
+          BELL_STARTED = false; ME_PROFILE = null;
+          const w = document.getElementById('notifWrap');
+          if (w) w.style.display = 'none';
+        } else {
+          initBell();
+        }
+      });
+    }
+    /* belt and braces: a slow session restore still gets picked up */
+    setInterval(() => { if (!BELL_STARTED) initBell(); }, 4000);
   </script>
 
 </body>
