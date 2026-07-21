@@ -176,10 +176,29 @@ async function load(sb){
     stage: !docsDone ? 'docs' : (!trainDone ? 'training' : 'done')
   };
 }
+/* Recount from the state we are about to write. save() used to read ctx.docsDone,
+   which load() computed before the signature in hand was added — so the person who
+   signed their last document had it stored but was never stamped as finished, and
+   stayed stuck on the paperwork step until some later action happened to save again. */
+function tally(ctx){
+  const st=ctx.state||{};
+  const isWaived=id=>!!(st.waived&&st.waived[id]);
+  const isSigned=id=>!!(st.sigs&&st.sigs[id]);
+  const docs=ctx.docs||[], tracks=ctx.tracks||[];
+  const signed=docs.filter(d=>isSigned(d.id)||isWaived(d.id)).length;
+  const trained=tracks.filter(t=>st.tracks&&st.tracks[t]).length;
+  const docsDone=signed>=docs.length;
+  return {signed,trained,docsDone,trainDone:docsDone&&trained>=tracks.length};
+}
 async function save(ctx){
   const st=ctx.state;
-  if(ctx.docsDone&&!st.docsDoneAt)st.docsDoneAt=new Date().toISOString();
-  if(ctx.trainDone&&!st.trainingDoneAt)st.trainingDoneAt=new Date().toISOString();
+  const now=tally(ctx);
+  /* keep the caller's context honest too, so the page it came from can re-render */
+  ctx.signed=now.signed; ctx.trained=now.trained;
+  ctx.docsDone=now.docsDone; ctx.trainDone=now.trainDone;
+  ctx.stage=!now.docsDone?'docs':(!now.trainDone?'training':'done');
+  if(now.docsDone&&!st.docsDoneAt)st.docsDoneAt=new Date().toISOString();
+  if(now.trainDone&&!st.trainingDoneAt)st.trainingDoneAt=new Date().toISOString();
   const {error}=await ctx.sb.from('records').upsert({
     collection:'onboarding', id:ctx.uid, data:st, updated_at:new Date().toISOString(), deleted:false
   },{onConflict:'collection,id'});
