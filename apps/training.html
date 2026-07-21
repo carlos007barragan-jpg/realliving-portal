@@ -300,9 +300,9 @@ const TRACKS = {
     "modules": [
       {
         "id": "crm_1",
-        "title": "Finding your way around",
-        "desc": "The layout, the left rail, and how one CRM serves four businesses",
-        "minutes": 10,
+        "title": "Getting started",
+        "desc": "The layout, your dashboard, and one login for everything",
+        "minutes": 22,
         "roles": [
           "ALL"
         ],
@@ -310,11 +310,27 @@ const TRACKS = {
         "lessons": [
           {
             "t": "One system, four businesses",
-            "c": "<p>ASAP Lending, H2M, the licensed RL team and Transaction Coordination all run in this one CRM. The buttons, the screens and the way everything works are <strong>identical</strong> no matter which side you are on. What changes is only which pipelines appear in your left rail.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/dash.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:0.00%;top:0.00%;width:15.42%;height:100.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div><div style=\"position:absolute;left:17.22%;top:17.67%;width:80.97%;height:29.33%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">2</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">The left rail is the whole CRM, grouped by business \u2014 you only see the pipelines you actually work.</li><li style=\"margin:6px 0\">The top of the dashboard is what needs you today, before anything else.</li></ol><p>That is deliberate. It means someone who starts on ASAP and later picks up owner-finance deals has nothing new to learn about the tool \u2014 only about the work.</p>"
+            "c": "<p>ASAP Lending, H2M, the licensed RL team and Transaction Coordination all run in this one CRM. The buttons and the screens are <strong>identical</strong> whichever side you work \u2014 only your pipelines differ.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/dash.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:0.00%;top:0.00%;width:15.42%;height:100.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div><div style=\"position:absolute;left:17.22%;top:17.67%;width:80.97%;height:29.33%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div><div style=\"font-size:.8rem;color:#7a7269;margin-top:8px;text-align:center\">The dashboard as an owner sees it</div></div><p>That is deliberate. Someone who starts on ASAP and later picks up owner-finance deals has nothing new to learn about the tool, only about the work.</p>"
           },
           {
             "t": "The left rail",
-            "c": "<p>The rail is grouped by business, and under those, a shared section that everyone gets: Contacts, Properties, Calendar, Communications, Reports, Commissions, Follow-Ups and Settings.</p><div class=\"callout-box info\"><div class=\"cb-title\">If something looks missing</div><p>If a whole section is not there, that is almost always your access rather than a fault. Your seat controls which pipelines you see. Ask an owner to check it rather than assuming the CRM is broken.</p></div>"
+            "c": "<p>The rail is grouped by business, with a shared section everyone gets underneath.</p><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_rail.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Grouped by business. If you only work ASAP you only see ASAP \u2014 and everyone gets the shared section at the bottom: Contacts, Properties, Calendar, Reports, Commissions, Follow-Ups and Settings.</div></div><div class=\"callout-box info\"><div class=\"cb-title\">If a whole section is missing</div><p>That is your access, not a fault. Your seat controls which pipelines appear. Ask an owner to check it.</p></div>"
+          },
+          {
+            "t": "Needs attention comes first",
+            "c": "<p>The top of the dashboard is not decoration. It is overdue tasks and deals that have stopped moving.</p><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_needs.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">A deal that goes quiet never announces itself. This panel is the system telling you where money is leaking. Work it before anything else.</div></div>"
+          },
+          {
+            "t": "Your counters",
+            "c": "<p>Underneath are the numbers that describe your month.</p><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_counters.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Appointments in the next seven days, closings this month, active deals with how many opened, active properties, and revenue against pace.</div></div>"
+          },
+          {
+            "t": "Filtering, and adding on the fly",
+            "c": "<p>If you work more than one side of the business, look at one at a time rather than reading a blended number that describes neither.</p><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_vertfilter.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">The vertical filter narrows the entire dashboard to one business.</div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_quickadd.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">A contact, a deal, an appointment or a logged call can be started from anywhere without losing your place.</div></div>"
+          },
+          {
+            "t": "One login for everything",
+            "c": "<p>You sign in once through the Business Suite and that carries you into every app \u2014 CRM, documents, training, inventory. Reset your password from the Suite sign-in screen, not from inside an app.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/settings.png\" style=\"width:100%;display:block\" alt=\"\"/></div><div style=\"font-size:.8rem;color:#7a7269;margin-top:8px;text-align:center\">Settings, where your own details live</div></div>"
           }
         ],
         "quiz": [
@@ -324,38 +340,12 @@ const TRACKS = {
               "The buttons and screens",
               "Which pipelines appear in their rail",
               "The colours",
-              "Nothing at all"
+              "Nothing"
             ],
             "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_2",
-        "title": "Reading your dashboard",
-        "desc": "What it is telling you, in the order it wants to be read",
-        "minutes": 12,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Needs attention comes first",
-            "c": "<p>The very top of the dashboard is <strong>Needs attention</strong>: overdue tasks and deals that have stopped moving. It is at the top because a deal that goes quiet is the most common way money is lost, and it never announces itself.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/dash.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:0.00%;top:0.00%;width:15.42%;height:100.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div><div style=\"position:absolute;left:17.22%;top:17.67%;width:80.97%;height:29.33%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">2</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">The left rail is the whole CRM, grouped by business \u2014 you only see the pipelines you actually work.</li><li style=\"margin:6px 0\">The top of the dashboard is what needs you today, before anything else.</li></ol>"
           },
           {
-            "t": "The counters, and what they actually count",
-            "c": "<p>Appointments in the next seven days. Closings this month. Active deals, with how many opened this month. Active properties. Revenue generated month-to-date against pace.</p><p>Then <strong>multi-product clients</strong> \u2014 people buying from more than one of our businesses at once. Those relationships are the hardest to replace, and the panel exists to make sure they are never taken for granted.</p>"
-          },
-          {
-            "t": "Filtering by vertical",
-            "c": "<p>The dropdown under the dashboard title narrows everything to one business. If you work two sides, use it to think about one at a time rather than reading a blended number that describes neither.</p>"
-          }
-        ],
-        "quiz": [
-          {
-            "q": "Why is 'Needs attention' placed at the very top?",
+            "q": "Why is 'Needs attention' at the very top?",
             "opts": [
               "Alphabetical",
               "Deals that stop moving are how money is quietly lost",
@@ -365,22 +355,22 @@ const TRACKS = {
             "ans": 1
           },
           {
-            "q": "What is a multi-product client?",
+            "q": "How many logins do you need across the apps?",
             "opts": [
-              "Someone who bought twice",
-              "Someone buying from more than one of our businesses",
-              "A referral",
-              "A past client"
+              "One per app",
+              "One for everything",
+              "Two",
+              "It varies"
             ],
             "ans": 1
           }
         ]
       },
       {
-        "id": "crm_3",
-        "title": "Contacts \u2014 one person, one record",
-        "desc": "Why duplicates are the most expensive mistake in the system",
-        "minutes": 12,
+        "id": "crm_2",
+        "title": "Contacts \u2014 the people",
+        "desc": "One record per person, adding them properly, and the guided intake",
+        "minutes": 28,
         "roles": [
           "ALL"
         ],
@@ -388,25 +378,37 @@ const TRACKS = {
         "lessons": [
           {
             "t": "A person is created once",
-            "c": "<p>Every buyer, seller, investor and lender lives in Contacts, and each gets <strong>one record for life</strong>. A buyer who later sells through us is the same contact with a second deal attached.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/contacts.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:66.04%;top:9.11%;width:15.28%;height:4.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div><div style=\"position:absolute;left:17.22%;top:22.44%;width:80.97%;height:76.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">2</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Search by name, phone, email or address.</li><li style=\"margin:6px 0\">Everyone you work with lives here \u2014 buyers, sellers, investors, lenders.</li></ol>"
+            "c": "<p>Every buyer, seller, investor and lender lives in Contacts, and each gets <strong>one record for life</strong>. A buyer who later sells through us is the same contact with a second deal attached.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/contacts.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:66.04%;top:9.11%;width:15.28%;height:4.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div><div style=\"position:absolute;left:17.22%;top:22.44%;width:80.97%;height:76.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div>"
           },
           {
-            "t": "Why a duplicate hurts",
-            "c": "<p>Split a person into two records and you split their history. Half the calls sit on one, half on the other, and the follow-up list thinks both have gone quiet. Worse, two people on the team can work the same person without either realising.</p><div class=\"callout-box critical\"><div class=\"cb-title\">Before you create anyone</div><p>Search first. Name, phone, or email. It takes three seconds and it is the single easiest way to keep the database trustworthy.</p></div>"
+            "t": "Why a duplicate is the most expensive mistake here",
+            "c": "<p>Split a person into two records and you split their history. Half the calls sit on one, half on the other, the follow-up list thinks both have gone quiet, and two people can work the same person without either realising.</p><div class=\"callout-box critical\"><div class=\"cb-title\">Before you create anyone</div><p>Search first \u2014 name, phone or email. Three seconds, and it is the single easiest way to keep the database worth trusting.</p></div><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/contact_detail.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:15.42%;top:6.44%;width:84.58%;height:93.56%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div><div style=\"font-size:.8rem;color:#7a7269;margin-top:8px;text-align:center\">Open someone and you get their whole history in one timeline</div></div>"
           },
           {
-            "t": "Inside a contact",
-            "c": "<p>Open someone and you get everything: their deals, calls, texts, appointments and tasks in one timeline.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/contact_detail.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:15.42%;top:6.44%;width:84.58%;height:93.56%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">One person, with every deal, call and appointment attached to them.</li></ol>"
+            "t": "Adding someone \u2014 what actually matters",
+            "c": "<p>Only two fields are truly required.</p><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_name.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Full name. Required.</div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_phone.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Phone. Required. Between these two you can save and keep talking \u2014 fill the rest as you learn it.</div></div><p>Getting someone into the system <em>during</em> the call beats a perfect record you never create because the call ended.</p>"
+          },
+          {
+            "t": "Source is optional in theory, essential in practice",
+            "c": "<div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_source.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Lead source is how we learn which advertising actually works. A contact saved with no source makes the whole marketing picture slightly less true.</div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_route.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Routing to a vertical puts the person in front of the right pipeline from the start.</div></div>"
+          },
+          {
+            "t": "Spouses and co-buyers",
+            "c": "<p>A married couple buying together is one household, not two unrelated contacts.</p><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_spouse.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Add the second person here so the household stays together and either partner can be reached from the same record.</div></div>"
+          },
+          {
+            "t": "The guided intake",
+            "c": "<p>Intake walks the qualifying questions in order so nothing is skipped while you are talking. The most common cause of a dead deal is a question nobody asked at the start.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_intake.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:29.56%;width:36.11%;height:40.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div><div style=\"font-size:.8rem;color:#7a7269;margin-top:8px;text-align:center\">Open this as the call begins, not afterwards</div></div><div class=\"callout-box highlight\"><div class=\"cb-title\">The green light</div><p>A property in mind, a clear exit or plan, and money available to close. When all three are true, you have a real deal \u2014 move it the same day.</p></div>"
           }
         ],
         "quiz": [
           {
             "q": "A past buyer now wants to sell. What is correct?",
             "opts": [
-              "New contact",
+              "Create a second contact",
               "Add a deal to their existing contact",
               "Email admin",
-              "Edit over the old one"
+              "Overwrite the old record"
             ],
             "ans": 1
           },
@@ -419,33 +421,7 @@ const TRACKS = {
               "Log a call"
             ],
             "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_4",
-        "title": "Adding someone new",
-        "desc": "The fields, which ones matter, and adding a spouse or co-buyer",
-        "minutes": 12,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Only two things are truly required",
-            "c": "<p>Name and phone. Everything else can be filled as you learn it. Getting someone into the system <em>during</em> the call beats a perfect record you never create because you ran out of time.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/new_contact.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:14.44%;width:36.11%;height:71.11%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Everything a new person needs. Name and phone are the only things truly required \u2014 you can fill the rest as you learn it.</li></ol>"
           },
-          {
-            "t": "Source is not optional in practice",
-            "c": "<p>Lead source is technically optional and practically essential. It is how we learn which advertising works. A contact with no source makes the whole marketing report slightly less true.</p>"
-          },
-          {
-            "t": "Spouses and co-buyers",
-            "c": "<p>A married couple buying together is one household. Add the second person to the <strong>same deal</strong> rather than creating a disconnected contact, so the household stays together and either partner can be reached from the same place.</p>"
-          }
-        ],
-        "quiz": [
           {
             "q": "What is genuinely required to save a contact?",
             "opts": [
@@ -457,39 +433,7 @@ const TRACKS = {
             "ans": 1
           },
           {
-            "q": "Why does lead source matter?",
-            "opts": [
-              "It does not",
-              "It tells us which advertising actually works",
-              "It sets commission",
-              "It is legally required"
-            ],
-            "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_5",
-        "title": "The guided intake",
-        "desc": "Asking the qualifying questions in the right order, live on a call",
-        "minutes": 13,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "What intake is for",
-            "c": "<p>Intake walks you through the qualifying questions in order so nothing gets skipped while you are talking. It exists because the most common cause of a dead deal is a question nobody asked at the start.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_intake.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:29.56%;width:36.11%;height:40.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">The guided intake \u2014 it asks the qualifying questions in order so nothing gets skipped on a live call.</li></ol>"
-          },
-          {
-            "t": "Use it live, not afterwards",
-            "c": "<p>Open intake as the call begins. Typing while they talk feels awkward for about two calls and then becomes the reason your files are cleaner than everyone else's.</p><div class=\"callout-box highlight\"><div class=\"cb-title\">The green light</div><p>A property in mind, a clear exit or plan, and money available to close. When all three are true you have a real deal \u2014 move it forward the same day.</p></div>"
-          }
-        ],
-        "quiz": [
-          {
-            "q": "When should intake be used?",
+            "q": "When should the guided intake be used?",
             "opts": [
               "After the call",
               "Live, during the call",
@@ -501,10 +445,10 @@ const TRACKS = {
         ]
       },
       {
-        "id": "crm_6",
-        "title": "Importing leads in bulk",
-        "desc": "Bringing in a list without creating a mess",
-        "minutes": 14,
+        "id": "crm_3",
+        "title": "Bringing leads in at scale",
+        "desc": "Importing a list, saving searches, and finding anything fast",
+        "minutes": 20,
         "roles": [
           "ALL"
         ],
@@ -512,15 +456,19 @@ const TRACKS = {
         "lessons": [
           {
             "t": "When to import",
-            "c": "<p>A list from a campaign, a purchased list, an export from somewhere else. Anything more than a handful of people belongs here rather than typed in by hand.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_import.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:15.42%;top:6.44%;width:84.58%;height:93.56%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Bring a whole list in at once instead of typing them one by one.</li></ol>"
+            "c": "<p>A campaign list, a purchased list, an export from somewhere else. Anything beyond a handful of people belongs here rather than typed by hand.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_import.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:15.42%;top:6.44%;width:84.58%;height:93.56%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div>"
           },
           {
             "t": "The column mapping is the whole job",
-            "c": "<p>Import asks you to say which column is the name, which is the phone, which is the email. <strong>Get this right before you confirm.</strong> A bad mapping puts phone numbers in the name field across hundreds of records, and unpicking that costs far more than the import saved.</p><div class=\"callout-box critical\"><div class=\"cb-title\">Check a few rows first</div><p>After mapping, look at the preview and read three or four rows properly. If those three are right, the rest almost certainly are. If any one is wrong, fix the mapping and look again.</p></div>"
+            "c": "<p>Import asks which column is the name, which is the phone, which is the email. Get this right <strong>before</strong> you confirm.</p><div class=\"callout-box critical\"><div class=\"cb-title\">Read three rows before you commit</div><p>A bad mapping puts phone numbers in the name field across hundreds of records, and unpicking that costs far more than the import ever saved. After mapping, read three or four preview rows properly. If those are right, the rest almost certainly are.</p></div><p>Imported people are contacts like any other \u2014 they can be sourced, assigned and worked. An import nobody then works is just a bigger database.</p>"
           },
           {
-            "t": "What happens after",
-            "c": "<p>Imported people are contacts like any other \u2014 they can be worked, assigned a source, and put on a follow-up cadence. An import that nobody then works is just a bigger database.</p>"
+            "t": "Saving the searches you repeat",
+            "c": "<p>A search you run often becomes a list you return to in one click \u2014 everyone untouched in thirty days, everyone new this week, everyone with no active deal.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_smartlist.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:25.67%;width:36.11%;height:48.67%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_savelist.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Name it and save it, and it is waiting for you tomorrow.</div></div>"
+          },
+          {
+            "t": "Cross-search",
+            "c": "<p>When you only half remember a name or an address, search everything at once rather than guessing which screen it was on.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/xsearch.png\" style=\"width:100%;display:block\" alt=\"\"/></div></div>"
           }
         ],
         "quiz": [
@@ -543,35 +491,13 @@ const TRACKS = {
               "Nothing"
             ],
             "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_7",
-        "title": "Smart lists and cross-search",
-        "desc": "Finding people fast, and saving the searches you repeat",
-        "minutes": 10,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Cross-search",
-            "c": "<p>When you only half remember a name or an address, search everything at once instead of guessing which screen it was on.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/xsearch.png\" style=\"width:100%;display:block\" alt=\"\"/></div>"
           },
-          {
-            "t": "Smart lists",
-            "c": "<p>A search you run often can be saved as a list you return to in one click \u2014 everyone untouched in thirty days, everyone new this week, everyone with no active deal.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_smartlist.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:25.67%;width:36.11%;height:48.67%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Save a filter you use often as a list you can return to in one click.</li></ol>"
-          }
-        ],
-        "quiz": [
           {
             "q": "What is a smart list?",
             "opts": [
               "A saved search you reuse",
               "A printed report",
-              "A contact group you type out",
+              "A typed-out group",
               "A pipeline"
             ],
             "ans": 0
@@ -579,58 +505,42 @@ const TRACKS = {
         ]
       },
       {
-        "id": "crm_8",
+        "id": "crm_4",
         "title": "Properties",
-        "desc": "Why the house is kept separate from the deal",
-        "minutes": 10,
+        "desc": "Categories, the numbers each one asks for, photos, and matching buyers",
+        "minutes": 35,
         "roles": [
           "ALL"
         ],
         "video": "",
         "lessons": [
           {
-            "t": "Properties stand alone",
-            "c": "<p>One house can pass through several deals over its life \u2014 acquired, then owner-financed, then refinanced. Keeping the property separate means its history survives all of that.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/props.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:17.89%;width:80.97%;height:8.67%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Each property carries its own numbers, photos and status.</li></ol>"
+            "t": "A property stands on its own",
+            "c": "<p>One house can pass through several deals over its life \u2014 acquired, then owner-financed, then refinanced. Keeping the property separate means its history survives all of that.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/props.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:17.89%;width:80.97%;height:8.67%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/property_detail.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:15.42%;top:6.44%;width:84.58%;height:93.56%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div><div style=\"font-size:.8rem;color:#7a7269;margin-top:8px;text-align:center\">Inside a property: photos, numbers, status and its deals</div></div>"
           },
           {
-            "t": "Inside a property",
-            "c": "<p>Photos, numbers, status, and the deals attached to it.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/property_detail.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:15.42%;top:6.44%;width:84.58%;height:93.56%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">A property carries its own numbers, photos and status, separate from any deal.</li></ol>"
-          }
-        ],
-        "quiz": [
-          {
-            "q": "Why are properties separate from deals?",
-            "opts": [
-              "To save space",
-              "One property can run through several deals",
-              "A legal rule",
-              "They are not"
-            ],
-            "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_9",
-        "title": "Adding a property, and why category comes first",
-        "desc": "The one choice that changes every field you see",
-        "minutes": 14,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Category decides the form",
-            "c": "<p>Pick the category before anything else. It changes which money fields you are even shown, because the numbers that matter are genuinely different.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_prop.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:5.00%;width:36.11%;height:90.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Category first \u2014 it decides which numbers you are asked for.</li></ol>"
+            "t": "Category first \u2014 it decides the whole form",
+            "c": "<p>Pick the category before anything else. It changes which money fields you are even shown, because the numbers that matter genuinely differ.</p><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_category.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">This one choice re-shapes the rest of the form. If the fields look wrong, you have picked the wrong category \u2014 change it here and the form rebuilds.</div></div>"
           },
           {
-            "t": "What each category asks for",
-            "c": "<p><strong>Wholesale and multifamily</strong> ask for acquisition price, rehab budget, ARV and the price to the buyer \u2014 investor maths.</p><p><strong>Residential owner-finance</strong> asks for sales price, down payment, monthly payment, rate, taxes and insurance, and shows the taxes-and-insurance figure live as you type.</p><p><strong>Commercial and on-market</strong> ask for a sales price and a note, and nothing more.</p><div class=\"callout-box info\"><div class=\"cb-title\">If the fields look wrong</div><p>You have almost certainly picked the wrong category. Change it at the top and the form re-shapes itself.</p></div>"
+            "t": "Wholesale and multifamily \u2014 investor maths",
+            "c": "<div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_acq.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Acquisition price \u2014 what we paid.</div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_rehab.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Rehab budget.</div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_arv.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">ARV, the after-repair value.</div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_buyerprice.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">And the price to the buyer. Those four together are what the investor spread is calculated from.</div></div><div class=\"callout-box info\"><div class=\"cb-title\">Acquisition is walled off</div><p>What we paid is not shown to everyone. That is deliberate \u2014 it sits behind the investor side rather than on the general property record.</p></div>"
           },
           {
-            "t": "Acquisition price is protected",
-            "c": "<p>What we paid is not shown to everyone. That is deliberate, and it is why acquisition sits behind the investor side rather than on the general property record.</p>"
+            "t": "Owner-finance and on-market",
+            "c": "<p><strong>Residential owner-finance</strong> asks for sales price, down payment, monthly payment, rate, taxes and insurance \u2014 and shows the taxes-and-insurance figure live as you type.</p><p><strong>Commercial and on-market</strong> ask for a sales price and a note, and nothing more. If you are being asked for a rehab budget on an on-market listing, the category is wrong.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_prop.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:5.00%;width:36.11%;height:90.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div><div style=\"font-size:.8rem;color:#7a7269;margin-top:8px;text-align:center\">The property form, category at the top</div></div>"
+          },
+          {
+            "t": "Photos, and the one that does the work",
+            "c": "<p>Upload as many as you like, then set one as the cover.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_photos.png\" style=\"width:100%;display:block\" alt=\"\"/></div></div><p>That cover appears everywhere else \u2014 inventory, shared sheets, what a buyer sees. Choose the shot that sells, not the first one you took. Lead with the exterior, then kitchen and living space, then bedrooms.</p>"
+          },
+          {
+            "t": "Writing the listing",
+            "c": "<div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_headline.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">The headline and description feed the public inventory and anything you share. There is a button that will draft both for you in English and Spanish if you would rather edit than write.</div></div>"
+          },
+          {
+            "t": "Matching a property to a buyer",
+            "c": "<p>When a buyer wants a specific property from inventory, attach it to them so the interest is a fact in the system rather than something you remember.</p><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_interestprop.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Pick the property they want.</div></div><p>Now when that property's price drops or a deal falls through, you know exactly who was waiting on it. Without the link, that is an opportunity nobody acts on.</p>"
           }
         ],
         "quiz": [
@@ -650,32 +560,10 @@ const TRACKS = {
               "Residential owner-finance",
               "Wholesale and multifamily",
               "Commercial",
-              "All of them"
+              "All"
             ],
             "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_10",
-        "title": "Property photos",
-        "desc": "Getting a house looking like it is worth buying",
-        "minutes": 9,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "The cover photo does the work",
-            "c": "<p>Upload as many as you like, then set one as the cover. That cover is what appears everywhere else \u2014 in inventory, on shared sheets, in the app a buyer sees. Choose the shot that sells, not the first one you took.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_photos.png\" style=\"width:100%;display:block\" alt=\"\"/></div>"
           },
-          {
-            "t": "Order matters",
-            "c": "<p>Photos can be reordered. Lead with the exterior, then the kitchen and living space, then bedrooms, then the rest. Buyers scroll in order and decide early.</p>"
-          }
-        ],
-        "quiz": [
           {
             "q": "What is the cover photo used for?",
             "opts": [
@@ -685,34 +573,12 @@ const TRACKS = {
               "Internal reference"
             ],
             "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_11",
-        "title": "Matching a property to a buyer",
-        "desc": "Tying inventory to the person who wants it",
-        "minutes": 10,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Recording interest",
-            "c": "<p>When a buyer wants a specific property from our inventory, attach it to them. Now the interest is a fact in the system rather than something you remember.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_interest.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:34.89%;width:36.11%;height:30.22%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Tie a property from inventory to a buyer who wants it.</li></ol>"
           },
-          {
-            "t": "Why this matters more than it looks",
-            "c": "<p>When that property's status changes, you know exactly who was waiting on it. Without the link, a price drop or a fall-through is an opportunity nobody acts on.</p>"
-          }
-        ],
-        "quiz": [
           {
             "q": "Why attach a property to an interested buyer?",
             "opts": [
-              "It looks tidy",
-              "So you know who to contact when the property changes",
+              "Tidiness",
+              "So you know who to call when that property changes",
               "It is required",
               "It sets the price"
             ],
@@ -721,10 +587,10 @@ const TRACKS = {
         ]
       },
       {
-        "id": "crm_12",
-        "title": "Creating a deal",
-        "desc": "The screen that decides everything downstream",
-        "minutes": 13,
+        "id": "crm_5",
+        "title": "Deals \u2014 creating and working them",
+        "desc": "The choice that drives everything, and all eight pipelines",
+        "minutes": 30,
         "roles": [
           "ALL"
         ],
@@ -732,11 +598,23 @@ const TRACKS = {
         "lessons": [
           {
             "t": "Business and pipeline first",
-            "c": "<p>That first choice decides the fields you see, the stages that exist, and how commission is worked out.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/new_deal.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:19.78%;width:36.11%;height:60.44%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Pick the business and pipeline first \u2014 that decides every other field you are shown.</li></ol>"
+            "c": "<p>That first choice decides the fields you see, the stages that exist, and how commission is worked out.</p><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_pipeline.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Choose this before anything else. Get it right and the form fits the work; get it wrong and you will be asked for numbers that make no sense.</div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_dealclient.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Then the person it belongs to.</div></div>"
           },
           {
             "t": "What makes a deal useful",
-            "c": "<p>A person it belongs to, a property if there is one, and a stage that reflects reality. A deal parked in the wrong stage is worse than no deal, because the whole team reads stages to know what is happening.</p>"
+            "c": "<p>A person, a property if there is one, and a stage that reflects reality. A deal parked in the wrong stage is worse than no deal, because the whole team reads stages to know what is happening.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/new_deal.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:19.78%;width:36.11%;height:60.44%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div>"
+          },
+          {
+            "t": "Deals move left to right",
+            "c": "<p>Your job is to move things right. ASAP runs new lead, application, underwriting, term sheet, approved, funded.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/pipeline_asap.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:57.44%;width:80.97%;height:16.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div>"
+          },
+          {
+            "t": "H2M runs four pipelines",
+            "c": "<p>Acquisitions, wholesale, dispositions and owner finance, each with its own stages because the work genuinely differs.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/pipeline_h2m.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:66.67%;width:80.97%;height:21.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/pipeline_of.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:42.56%;width:80.97%;height:12.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div>"
+          },
+          {
+            "t": "The licensed side and TC",
+            "c": "<p>RL covers buy side and list side. Transaction coordination runs a file from opened through to fee collected.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/pipeline_rl.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:54.89%;width:80.97%;height:21.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/tc.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:61.11%;width:80.97%;height:10.11%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div class=\"callout-box info\"><div class=\"cb-title\">Stage honesty</div><p>Move a deal when the work has actually happened, not when you hope it will. Everyone downstream plans off your stages.</p></div>"
           }
         ],
         "quiz": [
@@ -749,33 +627,7 @@ const TRACKS = {
               "Nothing"
             ],
             "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_13",
-        "title": "Working a pipeline",
-        "desc": "Stages across all eight pipelines, and what moving means",
-        "minutes": 16,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Deals move left to right",
-            "c": "<p>Your job is to move things to the right. ASAP runs new lead, application, underwriting, term sheet, approved, funded.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/pipeline_asap.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:57.44%;width:80.97%;height:16.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Deals sit in stages. Moving a deal forward is how work progresses.</li></ol>"
           },
-          {
-            "t": "H2M runs four pipelines",
-            "c": "<p>Acquisitions, wholesale, dispositions and owner finance \u2014 each with its own stages, because the work genuinely differs.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/pipeline_h2m.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:66.67%;width:80.97%;height:21.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">H2M runs four pipelines \u2014 acquisitions, wholesale, dispositions and owner finance.</li></ol><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/pipeline_of.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:42.56%;width:80.97%;height:12.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Owner finance tracks the buyer from pre-qualified through to servicing.</li></ol>"
-          },
-          {
-            "t": "The licensed side and TC",
-            "c": "<p>RL covers buy side and list side. Transaction coordination runs a file from opened through to fee collected.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/pipeline_rl.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:54.89%;width:80.97%;height:21.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">The licensed side, buy and list.</li></ol><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/tc.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:61.11%;width:80.97%;height:10.11%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Transaction coordination \u2014 the file from open to fee collected.</li></ol><div class=\"callout-box info\"><div class=\"cb-title\">Stage honesty</div><p>Move a deal when the work has actually happened, not when you hope it will. Everyone downstream plans off your stages.</p></div>"
-          }
-        ],
-        "quiz": [
           {
             "q": "How many pipelines does H2M run?",
             "opts": [
@@ -787,7 +639,7 @@ const TRACKS = {
             "ans": 2
           },
           {
-            "q": "When should you move a deal to the next stage?",
+            "q": "When should you move a deal forward a stage?",
             "opts": [
               "When you hope it will happen",
               "When the work has actually happened",
@@ -799,22 +651,30 @@ const TRACKS = {
         ]
       },
       {
-        "id": "crm_14",
+        "id": "crm_6",
         "title": "The money on a deal",
-        "desc": "Deal numbers and what they feed",
-        "minutes": 12,
+        "desc": "Deal numbers, closing out, and what an outcome is for",
+        "minutes": 22,
         "roles": [
           "ALL"
         ],
         "video": "",
         "lessons": [
           {
-            "t": "Where the numbers live",
-            "c": "<p>Each deal carries its own figures, and they feed the reports, the commission calculation and the investor maths.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_numbers.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:23.00%;width:36.11%;height:54.11%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">The money on a deal, and what it means for the split.</li></ol>"
+            "t": "Where a deal's figures live",
+            "c": "<p>Each deal carries its own numbers, and they feed the reports, the commission calculation and the investor maths.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_numbers.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:23.00%;width:36.11%;height:54.11%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_savenumbers.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Saving here is what pushes those figures into everything downstream.</div></div>"
           },
           {
-            "t": "Wrong numbers are worse than none",
-            "c": "<p>A guessed figure becomes a real line in a real report that someone makes a decision on. If you do not know a number yet, leave it rather than estimate it.</p>"
+            "t": "A guessed number becomes a real decision",
+            "c": "<p>An estimate you typed to fill a box becomes a line in a report someone acts on. If you do not know a figure yet, leave it blank rather than approximate it.</p>"
+          },
+          {
+            "t": "Closing captures what happened",
+            "c": "<p>Closing a deal records the outcome \u2014 what it closed at and why \u2014 not just a change of status. That is what makes a quarter's reporting mean anything.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_closeout.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:11.56%;width:36.11%;height:77.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div>"
+          },
+          {
+            "t": "Dead deals count too",
+            "c": "<p>A deal that dies should be closed out honestly with the reason. Lost deals with reasons are how we learn what to fix. Deals abandoned in a stage teach nobody anything and quietly inflate the pipeline.</p>"
           }
         ],
         "quiz": [
@@ -827,97 +687,57 @@ const TRACKS = {
               "Ask the client to guess"
             ],
             "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_15",
-        "title": "Closing a deal",
-        "desc": "Capturing the outcome, not just changing a status",
-        "minutes": 12,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Closing asks what happened",
-            "c": "<p>Closing a deal captures the outcome \u2014 what it closed at, and why. That is what makes the reports mean anything at the end of a quarter.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_closeout.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:11.56%;width:36.11%;height:77.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Closing a deal captures the outcome, not just a status change.</li></ol>"
           },
-          {
-            "t": "Dead deals count too",
-            "c": "<p>A deal that dies should be closed out honestly with the reason. Lost deals with reasons are how we learn what to fix. Deals abandoned in a stage teach nobody anything and quietly inflate the pipeline.</p>"
-          }
-        ],
-        "quiz": [
           {
             "q": "What should you do with a deal that dies?",
             "opts": [
               "Leave it in its stage",
               "Delete it",
               "Close it out with the reason",
-              "Move it to closed and say nothing"
+              "Mark closed and say nothing"
             ],
             "ans": 2
           }
         ]
       },
       {
-        "id": "crm_16",
-        "title": "Calls, texts and logging",
-        "desc": "Connecting your phone, and the habit that carries the most weight",
-        "minutes": 14,
+        "id": "crm_7",
+        "title": "Talking to people",
+        "desc": "Calls, texts, logging, appointments and your calendar",
+        "minutes": 26,
         "roles": [
           "ALL"
         ],
         "video": "",
         "lessons": [
           {
-            "t": "Calling from the CRM",
-            "c": "<p>Dial from inside the CRM and the call logs itself against the right person, with duration and your notes.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_call.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:31.11%;width:36.11%;height:37.78%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Dial from inside the CRM so the call logs itself against the right person.</li></ol>"
+            "t": "Calling from inside the CRM",
+            "c": "<p>Dial from the CRM and the call logs itself against the right person.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_call.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:31.11%;width:36.11%;height:37.78%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_direction.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Whether you called them or they called you.</div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_duration.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">How long it ran.</div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_callnote.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">And what was said \u2014 this is the part your future self will thank you for.</div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_logit.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Then log it.</div></div>"
           },
           {
             "t": "Texting",
-            "c": "<p>Texts send from the business line and thread onto the contact, so the next person to pick up that file can see the whole conversation.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_text.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:31.11%;width:36.11%;height:37.78%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Texts send from the business line and thread onto the contact.</li></ol>"
+            "c": "<p>Texts send from the business line and thread onto the contact, so whoever picks the file up next sees the whole conversation.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_text.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:31.11%;width:36.11%;height:37.78%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_textclient.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Pick who it goes to; the thread lives on their record.</div></div>"
           },
           {
             "t": "Logging what happened elsewhere",
-            "c": "<p>Spoke to them in person or on your mobile? Log it. The follow-up list reads your logged contact to work out who has gone quiet, so an unlogged conversation is invisible to the system that is trying to protect your pipeline.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_touch.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:31.11%;width:36.11%;height:37.78%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Log a conversation that happened elsewhere so the follow-up clock resets.</li></ol><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/comms.png\" style=\"width:100%;display:block\" alt=\"\"/></div>"
+            "c": "<p>Spoke to them in person, or from your mobile? Log it.</p><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_touchclient.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">The follow-up list reads your logged contact to work out who has gone quiet. An unlogged conversation is invisible to the system trying to protect your pipeline.</div></div><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/comms.png\" style=\"width:100%;display:block\" alt=\"\"/></div><div style=\"font-size:.8rem;color:#7a7269;margin-top:8px;text-align:center\">Everything in one thread per person</div></div>"
+          },
+          {
+            "t": "Appointments and your calendar",
+            "c": "<p>Book against the person and it lands on their record and your calendar at once.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/new_appt.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:27.11%;width:36.11%;height:45.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/calendar.png\" style=\"width:100%;display:block\" alt=\"\"/></div></div>"
           }
         ],
         "quiz": [
           {
             "q": "Why log a conversation that happened off-system?",
             "opts": [
-              "For appearances",
+              "Appearances",
               "The follow-up list reads it to know who has gone quiet",
               "It pays commission",
-              "It is not needed"
+              "Not needed"
             ],
             "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_17",
-        "title": "Appointments and the calendar",
-        "desc": "Booking against a person so it lands in both places",
-        "minutes": 9,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Appointments hang off a contact",
-            "c": "<p>Book against the person and it appears on their record and on your calendar at the same time.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/new_appt.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:27.11%;width:36.11%;height:45.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Appointments attach to a person, so they show on that contact and on your calendar.</li></ol>"
           },
-          {
-            "t": "Your calendar",
-            "c": "<p>Everything across every deal you own, in one view.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/calendar.png\" style=\"width:100%;display:block\" alt=\"\"/></div>"
-          }
-        ],
-        "quiz": [
           {
             "q": "Where does an appointment appear?",
             "opts": [
@@ -931,10 +751,10 @@ const TRACKS = {
         ]
       },
       {
-        "id": "crm_18",
-        "title": "Tasks and follow-ups",
-        "desc": "The two systems that stop people going cold",
-        "minutes": 12,
+        "id": "crm_8",
+        "title": "Staying on top",
+        "desc": "Tasks, automatic follow-ups, and the targets you set yourself",
+        "minutes": 22,
         "roles": [
           "ALL"
         ],
@@ -942,11 +762,19 @@ const TRACKS = {
         "lessons": [
           {
             "t": "Tasks chase you",
-            "c": "<p>A task attaches to a person and stays in your face until it is done. Use it for anything with a date attached.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_task.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:31.11%;width:36.11%;height:37.78%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Tasks attach to a person and chase you until they are done.</li></ol>"
+            "c": "<p>A task attaches to a person and stays in your face until it is done. Use it for anything with a date attached.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_task.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:31.11%;width:36.11%;height:37.78%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_taskclient.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Tasks belong to a person, which is why they show on that contact as well as your list.</div></div>"
           },
           {
-            "t": "Follow-ups are automatic",
-            "c": "<p>The CRM watches who has not been touched recently and surfaces them without being asked. On a slow day this is the list to work \u2014 it is built from real neglect, not guesswork.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/followups.png\" style=\"width:100%;display:block\" alt=\"\"/></div>"
+            "t": "Follow-ups happen without being asked",
+            "c": "<p>The CRM watches who has not been touched recently and surfaces them. On a slow day this is the list to work \u2014 it is built from real neglect rather than guesswork.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/followups.png\" style=\"width:100%;display:block\" alt=\"\"/></div></div>"
+          },
+          {
+            "t": "Setting your targets",
+            "c": "<p>Set what you are aiming at and the dashboard measures you against it instead of against nothing.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_targets.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:29.56%;width:36.11%;height:40.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div><div style=\"margin:16px 0;background:#FAF8F5;border:1px solid #E6E1D9;border-radius:12px;padding:12px\"><img src=\"shots/zoom/z_savetargets.png\" style=\"width:100%;display:block;border-radius:8px\" alt=\"\"/><div style=\"font-size:.82rem;color:#5c554d;margin-top:10px;line-height:1.5\">Save, and your dashboard starts scoring you.</div></div><div class=\"callout-box info\"><div class=\"cb-title\">Targets are yours</div><p>A target you did not choose is a number you will ignore. Set them honestly \u2014 slightly beyond comfortable is where they do their job.</p></div>"
+          },
+          {
+            "t": "Team KPIs",
+            "c": "<p>What the team is producing, for those who manage one.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/kpis.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:46.56%;width:80.97%;height:39.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div>"
           }
         ],
         "quiz": [
@@ -959,34 +787,12 @@ const TRACKS = {
               "Alphabetical"
             ],
             "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_19",
-        "title": "Your targets and KPIs",
-        "desc": "Setting the numbers you are working toward",
-        "minutes": 11,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Setting targets",
-            "c": "<p>Set what you are aiming at and the dashboard measures you against it rather than against nothing.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_targets.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:31.94%;top:29.56%;width:36.11%;height:40.89%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Set the numbers you are working toward. The dashboard then measures you against these.</li></ol>"
           },
           {
-            "t": "Team KPIs",
-            "c": "<p>What the team is producing.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/kpis.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:46.56%;width:80.97%;height:39.00%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">What the team is producing.</li></ol><div class=\"callout-box info\"><div class=\"cb-title\">Targets are yours</div><p>A target you did not choose is a number you will ignore. Set them honestly \u2014 slightly beyond comfortable is where they do their job.</p></div>"
-          }
-        ],
-        "quiz": [
-          {
-            "q": "What do targets change on the dashboard?",
+            "q": "What do targets change?",
             "opts": [
               "Nothing",
-              "Your figures get measured against them",
+              "Your dashboard measures you against them",
               "The colours",
               "Your commission rate"
             ],
@@ -995,10 +801,10 @@ const TRACKS = {
         ]
       },
       {
-        "id": "crm_20",
-        "title": "Commissions and splits",
-        "desc": "What you earn, when, and how it is worked out",
-        "minutes": 12,
+        "id": "crm_9",
+        "title": "Money and visibility",
+        "desc": "Commissions, splits, reports \u2014 and who sees what, and why",
+        "minutes": 24,
         "roles": [
           "ALL"
         ],
@@ -1006,11 +812,19 @@ const TRACKS = {
         "lessons": [
           {
             "t": "Your commissions",
-            "c": "<p>What you have earned, what is pending and what has been paid.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/f_commissions.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:15.42%;top:6.44%;width:84.58%;height:93.56%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Splits, what is pending and what has been paid.</li></ol>"
+            "c": "<p>What you have earned, what is pending, and what has been paid.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/f_commissions.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:15.42%;top:6.44%;width:84.58%;height:93.56%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div>"
           },
           {
             "t": "Splits and flat fees",
-            "c": "<p>Different pipelines pay differently \u2014 some on a percentage split, some as a flat fee per deal. The split applied comes from the pipeline the deal sits in, which is one more reason the pipeline choice at creation matters.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/commissions.png\" style=\"width:100%;display:block\" alt=\"\"/></div>"
+            "c": "<p>Different pipelines pay differently \u2014 some on a percentage split, some a flat fee per deal. The split applied comes from the pipeline the deal sits in, which is one more reason the choice at creation matters.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/commissions.png\" style=\"width:100%;display:block\" alt=\"\"/></div></div>"
+          },
+          {
+            "t": "Reports",
+            "c": "<p>Where everything totals up.</p><div style=\"margin:18px 0\"><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0\"><img src=\"shots/reports.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:42.22%;width:80.97%;height:42.11%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"></div></div></div>"
+          },
+          {
+            "t": "Your role decides your view",
+            "c": "<p>An <strong>agent</strong> sees their own production. A <strong>manager</strong> sees their team's sales volume, total closed, and what their people are owed \u2014 what they need to run a team and know what they are paid on. <strong>Company-wide net profit is an ownership view.</strong></p><div class=\"callout-box highlight\"><div class=\"cb-title\">This is design, not oversight</div><p>Managers are measured on production and volume. Company profitability includes costs a manager does not control and is not accountable for. If you need a number you cannot see, ask \u2014 usually the answer is that a different number is the right one for the decision in front of you.</p></div>"
           }
         ],
         "quiz": [
@@ -1023,29 +837,7 @@ const TRACKS = {
               "The month"
             ],
             "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_21",
-        "title": "Reports, and who sees what",
-        "desc": "Visibility by role \u2014 and why it is designed that way",
-        "minutes": 12,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Where the numbers total up",
-            "c": "<p>Reports pull everything together.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/reports.png\" style=\"width:100%;display:block\" alt=\"\"/><div style=\"position:absolute;left:17.22%;top:42.22%;width:80.97%;height:42.11%;border:2.5px solid #B8972A;border-radius:8px;pointer-events:none\"><span style=\"position:absolute;top:-13px;left:-13px;width:26px;height:26px;border-radius:50%;background:#B8972A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center\">1</span></div></div><ol style=\"margin:12px 0 0 0;padding-left:20px\"><li style=\"margin:6px 0\">Where the numbers get totalled up.</li></ol>"
           },
-          {
-            "t": "Your role decides your view",
-            "c": "<p>An <strong>agent</strong> sees their own production. A <strong>manager</strong> sees their team's sales volume, total closed and what their people are owed \u2014 the numbers they need to run a team and know what they are being paid on. <strong>Company-wide net profit is an ownership view.</strong></p><div class=\"callout-box highlight\"><div class=\"cb-title\">This is design, not oversight</div><p>Managers are measured on production and volume. Company profitability includes costs a manager does not control and is not accountable for. If you need a number you cannot see, ask \u2014 the answer is usually that a different number is the right one for the decision.</p></div>"
-          }
-        ],
-        "quiz": [
           {
             "q": "Who can see company-wide net profit?",
             "opts": [
@@ -1057,44 +849,12 @@ const TRACKS = {
             "ans": 2
           },
           {
-            "q": "What does a manager see?",
+            "q": "What does a manager see in reports?",
             "opts": [
               "Nothing",
               "Team sales volume and closings",
               "Only their own deals",
               "Company net profit"
-            ],
-            "ans": 1
-          }
-        ]
-      },
-      {
-        "id": "crm_22",
-        "title": "Settings and your account",
-        "desc": "One login, and what to do when you cannot get in",
-        "minutes": 8,
-        "roles": [
-          "ALL"
-        ],
-        "video": "",
-        "lessons": [
-          {
-            "t": "Your settings",
-            "c": "<p>Your own details and the switches that control how the CRM behaves for you.</p><div style=\"position:relative;border-radius:12px;overflow:hidden;border:1px solid #E0DAD1;box-shadow:0 8px 26px rgba(20,27,38,.12);line-height:0;margin:14px 0\"><img src=\"shots/settings.png\" style=\"width:100%;display:block\" alt=\"\"/></div>"
-          },
-          {
-            "t": "One login for everything",
-            "c": "<p>You sign in once through the Business Suite and that carries you into every app \u2014 CRM, documents, training, inventory. Reset your password from the Suite sign-in screen, not from inside an app.</p><div class=\"callout-box info\"><div class=\"cb-title\">A whole app missing?</div><p>That is access, not a fault. Your seat controls what you can open. Ask an owner to check it.</p></div>"
-          }
-        ],
-        "quiz": [
-          {
-            "q": "How many logins do you need across the apps?",
-            "opts": [
-              "One per app",
-              "One for everything",
-              "Two",
-              "It varies"
             ],
             "ans": 1
           }
@@ -3995,8 +3755,8 @@ function renderDash(){
   const roleInfo=ROLES[CU.role]||{label:CU.role};
   const head=document.createElement('div'); head.className='page-head';
   const reviewNote = isAdminViewer()
-    ? '<div class="page-sub">You\'re viewing as <strong>'+roleInfo.label+'</strong>. All modules across every track are unlocked — click into any module to review its content, audio, video, and quiz. You don\'t need to complete them in order.</div>'
-    : '<div class="page-sub">Your training as a <strong>'+roleInfo.label+'</strong>. Complete each module in order — read or listen to the material, watch the video, then pass the knowledge check to unlock the next. Pass the final exam to earn your certification.</div>';
+    ? '<div class="page-sub">You\'re viewing as <strong>'+roleInfo.label+'</strong>. All modules across every track are unlocked — click into any module to review its content, audio and quiz. You don\'t need to complete them in order.</div>'
+    : '<div class="page-sub">Your training as a <strong>'+roleInfo.label+'</strong>. Complete each module in order — read or listen to the material, then pass the knowledge check to unlock the next. Pass the final exam to earn your certification.</div>';
   head.innerHTML='<div class="page-title">Welcome, '+CU.name+'</div>'+reviewNote;
   wrap.appendChild(head);
   const tracks=getMyTracks();
@@ -4065,13 +3825,14 @@ function openModule(tid,mid){
   wrap.appendChild(hdr);
 
   // VIDEO SLOT
-  const vid=document.createElement('div'); vid.className='video-slot';
+  /* Only render a video slot when this module actually has a video.
+     Add a URL to the module's "video" field in TRACKS and the player appears
+     here on its own; leave it empty and the module simply has no video box. */
   if(mod.video&&mod.video.trim()){
+    const vid=document.createElement('div'); vid.className='video-slot';
     vid.innerHTML='<iframe src="'+mod.video+'" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>';
-  } else {
-    vid.innerHTML='<div class="video-placeholder"><div class="vp-icon">▶</div><div class="vp-text">Training Video</div><div class="vp-sub">Video coming soon for this module</div></div>';
+    wrap.appendChild(vid);
   }
-  wrap.appendChild(vid);
 
   // AUDIO BAR
   const abar=document.createElement('div'); abar.className='audio-bar';
