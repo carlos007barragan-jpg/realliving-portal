@@ -73,9 +73,21 @@ function bizFromSeat(seat){
   const out=[];
   const pipes=(seat&&seat.pipes)||[];
   const role=(seat&&seat.role)||'';
-  /* ownership sees the whole company; a manager only covers the pipelines they actually hold */
-  if(role==='owner'||role==='admin')return ['asap','h2m','rl','tc'];
-  if(role==='manager'&&!pipes.length)return ['asap','h2m','rl','tc'];
+  const ALL=['asap','h2m','rl','tc'];
+  /* ownership sees the whole company, always */
+  if(role==='owner'||role==='admin')return ALL.slice();
+  /* an explicit choice in Suite → Settings → Team beats pipeline guesswork.
+     'ALL' is the deliberate see-everything setting; a single code narrows to it.
+     Seats with nothing assigned fall through to the pipeline logic below, so
+     nobody's existing scope moves until ownership actually sets it. */
+  const assigned=seat&&seat.business;
+  if(assigned){
+    const a=String(assigned).toUpperCase();
+    if(a==='ALL')return ALL.slice();
+    if(ALL.indexOf(a.toLowerCase())>-1)return [a.toLowerCase()];
+  }
+  /* a manager holding no pipelines yet covers everything */
+  if(role==='manager'&&!pipes.length)return ALL.slice();
   if(pipes.indexOf('asap')>-1)out.push('asap');
   if(pipes.some(p=>p.indexOf('h2m')===0))out.push('h2m');
   if(pipes.indexOf('rl_buy')>-1||pipes.indexOf('rl_list')>-1)out.push('rl');
