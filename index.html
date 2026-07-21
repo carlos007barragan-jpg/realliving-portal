@@ -328,6 +328,11 @@ const CARDS = [
   {
     id:"opportunity", name:"Agent Opportunity Map", type:"app", tile:"t-teal", icon:"map",
     desc:"All four income streams with full compensation tables."
+  },
+  {
+    id:"team", url:"apps/team.html", name:"Team & Access", type:"app", tile:"t-slate", icon:"users",
+    ownerOnly:true,
+    desc:"Who has signed what, where each person is in training, and what they still owe."
   }
 ];
 
@@ -379,6 +384,9 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     </symbol>
     <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
     </symbol>
     <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -622,8 +630,11 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     const first = CU.name.split(" ")[0];
     $("greeting").textContent = "Welcome back, " + first;
 
-    $("cardGrid").innerHTML = CARDS.map(c => {
-      const lock = lockReason(c.id);
+    /* ownership tools stay out of everyone else's dashboard entirely */
+    const isOwner = String(CU.role||'').toLowerCase()==='owner' || String(CU.role||'').toLowerCase()==='admin';
+    $("cardGrid").innerHTML = CARDS.filter(c => !c.ownerOnly || isOwner).map(c => {
+      /* an ownership tool is never gated behind that owner's own onboarding */
+      const lock = c.ownerOnly ? '' : lockReason(c.id);
       return `
       <button class="card${lock?' locked':''}" data-id="${c.id}">
         <div class="tile ${c.tile}"><svg><use href="#i-${c.icon}"/></svg></div>
@@ -689,7 +700,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
   $("cardGrid").addEventListener("click", e => {
     const card = e.target.closest(".card"); if(!card) return;
     const c = CARDS.find(x => x.id === card.dataset.id); if(!c) return;
-    const lock = lockReason(c.id);
+    const lock = c.ownerOnly ? '' : lockReason(c.id);
     if(lock){ alert(c.name + " is locked.\n\n" + lock.replace(/<[^>]+>/g,'')); return; }
     if(c.type === "external"){
       window.open(c.src, "_blank", "noopener");
