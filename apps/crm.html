@@ -393,7 +393,15 @@ tr:hover .rowacts{display:inline-flex}
 const SUPABASE_URL='https://zfflgvjnkcjnbwydurlp.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf';
 const CLOUD=/^https:\/\//.test(SUPABASE_URL)&&typeof window!=='undefined'&&!!window.supabase;
-let sb=CLOUD?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
+/* Only the top-level page may rotate the shared refresh token. The suite, this CRM
+   and the other apps all build their own client against the same origin and the same
+   stored session; with auto-refresh on in each, they race to redeem one refresh token
+   when it expires, and Supabase's reuse detection revokes the session — which lands on
+   whoever is mid-task as being timed out and thrown back to the login screen. Embedded
+   copies still read and use the session, they just let the parent do the refreshing. */
+const TOP_LEVEL = (()=>{try{return window.self===window.top}catch(e){return false}})();
+let sb=CLOUD?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,
+  {auth:{persistSession:true,autoRefreshToken:TOP_LEVEL}}):null;
 let SEAT_ID=null; /* set from the signed-in user's profile in cloud mode */
 let DEV=false;     /* true only for the local admin/dev door — enables role preview */
 
@@ -931,7 +939,7 @@ function renderNav(){
   document.getElementById('nav').innerHTML=pagesFor().map(it=>{
     if(it.sec)return '<div class="nav-sec">'+it.sec+'</div>';
     let on=false,click='';
-    if(it.k==='portal'){click="location.href='../index.html'";}
+    if(it.k==='portal'){click="location.href='business-suite.html'";}
     else if(it.k==='biz'){on=page==='biz'&&bizSel===it.arg&&(it.arg!=='H2M'||((it.grp==='of')===(pipeSel==='h2m_of')));click="pipeSel='"+it.pipe+"';go('biz','"+it.arg+"')";}
     else if(it.k==='reports'){on=page==='reports'&&(it.rep==='team'?repTab==='team':repTab!=='team');click="repTab='"+it.rep+"';go('reports')";}
     else{on=page===it.k;click="go('"+it.k+"')";}
