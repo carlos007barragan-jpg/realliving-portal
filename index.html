@@ -487,7 +487,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
             <option value="assistant">Assistant</option>
           </select>
           <select id="tm-biz" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff">
-            <option value="">Sees all businesses</option>
+            <option value="ALL">Sees all businesses</option>
             <option value="ASAP">ASAP Lending only</option>
             <option value="H2M">H2M only</option>
             <option value="RL">Real Living Licensed only</option>
@@ -745,7 +745,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     $("teamList").innerHTML=TEAM.map(m=>{
       const pos=posOf(m);
       const opts=Object.keys(POS_LABEL).map(k=>'<option value="'+k+'"'+(k===pos?' selected':'')+'>'+POS_LABEL[k]+'</option>').join('');
-      const bizzes=[['','All'],['ASAP','ASAP'],['H2M','H2M'],['RL','RL'],['TC','TC']];
+      const bizzes=[['ALL','All'],['ASAP','ASAP'],['H2M','H2M'],['RL','RL'],['TC','TC']];
       const bops=bizzes.map(b=>'<option value="'+b[0]+'"'+((m.business||'')===b[0]?' selected':'')+'>'+b[1]+'</option>').join('');
       const noSeat = !m.seat;
       const isMe = m.id===(CU&&CU.authId);
@@ -1015,131 +1015,5 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     })();
   </script>
 
-
-  <!-- Offboarding Modal -->
-  <div id="offboardModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;
-    background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px">
-    <div style="background:#fff;border-radius:12px;padding:32px;max-width:480px;width:100%;
-      box-shadow:0 20px 60px rgba(20,27,38,.3)">
-      <h2 style="margin:0 0 8px 0;font-size:18px;color:#2C3E50;font-weight:600">Remove Team Member</h2>
-      <p id="offboardName" style="margin:0 0 24px 0;font-size:14px;color:#5C554D;font-weight:600">
-        <!-- Name will be injected here -->
-      </p>
-      
-      <div style="background:#FFF3CD;border:1px solid #FFE69C;border-radius:8px;padding:12px;
-        margin-bottom:24px;font-size:13px;color:#856404;line-height:1.6">
-        <strong>⚠ Warning:</strong> This person will be removed from the system. All their deals, clients, tasks, and appointments will be reassigned to the selected owner. This action cannot be undone.
-      </div>
-      
-      <div style="margin-bottom:24px">
-        <label style="display:block;font-size:13px;font-weight:600;color:#2C3E50;margin-bottom:8px">
-          Reassign all data to:
-        </label>
-        <select id="offboardOwner" style="width:100%;padding:10px;border:1px solid #D0CCC5;border-radius:6px;
-          font-size:14px;background:#fff;color:#2C3E50">
-          <option value="">-- Select Owner --</option>
-        </select>
-      </div>
-      
-      <div style="background:#F5F3F0;border-radius:6px;padding:12px;margin-bottom:24px;font-size:12px;color:#5C554D;line-height:1.6">
-        <strong>What gets reassigned:</strong><br>
-        • All open and closed deals<br>
-        • All client relationships<br>
-        • All tasks and follow-ups<br>
-        • All appointments and calendar items
-      </div>
-      
-      <div style="display:flex;gap:12px;justify-content:flex-end">
-        <button onclick="cancelOffboard()" style="padding:11px 20px;background:#E0DAD1;color:#2C3E50;
-          border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;transition:all .2s">
-          Cancel
-        </button>
-        <button onclick="confirmOffboard()" style="padding:11px 20px;background:#FF6B6B;color:#fff;
-          border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;transition:all .2s">
-          Remove & Reassign
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <style>
-    .remove-btn { padding:6px 12px;background:#FF6B6B;color:#fff;border:none;border-radius:4px;
-      cursor:pointer;font-size:12px;font-weight:600;transition:all .2s }
-    .remove-btn:hover { background:#E55555;box-shadow:0 2px 8px rgba(255,107,107,.3) }
-  </style>
-
-  <script>
-
-    let pendingOffboardUserId = null;
-    
-    async function openOffboardModal(userId, userName) {
-      pendingOffboardUserId = userId;
-      document.getElementById('offboardName').textContent = 'Remove: ' + userName;
-      
-      // Populate owner dropdown
-      try {
-        const {data: owners} = await sb.from('profiles').select('id,full_name,email').eq('role', 'owner');
-        const select = document.getElementById('offboardOwner');
-        select.innerHTML = '<option value="">-- Select Owner --</option>';
-        owners?.forEach(o => {
-          const opt = document.createElement('option');
-          opt.value = o.id;
-          opt.textContent = o.full_name || o.email;
-          select.appendChild(opt);
-        });
-      } catch(e) { console.error('Load owners:', e.message) }
-      
-      document.getElementById('offboardModal').style.display = 'flex';
-    }
-    
-    function cancelOffboard() {
-      document.getElementById('offboardModal').style.display = 'none';
-      pendingOffboardUserId = null;
-    }
-    
-    async function confirmOffboard() {
-      const reassignTo = document.getElementById('offboardOwner').value;
-      if (!reassignTo) {
-        alert('Please select an owner to reassign data to');
-        return;
-      }
-      
-      const confirmed = confirm('Are you absolutely certain? This will remove the team member and reassign all their data. This cannot be undone.');
-      if (!confirmed) return;
-      
-      try {
-        const session = await sb.auth.getSession();
-        const response = await fetch('https://zfflgvjnkcjnbwydurlp.supabase.co/functions/v1/team-admin', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + session.data.session.access_token
-          },
-          body: JSON.stringify({
-            action: 'offboard',
-            userId: pendingOffboardUserId,
-            reassignTo: reassignTo
-          })
-        });
-        
-        const result = await response.json();
-        if (result.error) {
-          alert('Error: ' + result.error);
-          return;
-        }
-        
-        alert('Success! Team member removed and data reassigned.');
-        cancelOffboard();
-        location.reload();
-      } catch(e) {
-        alert('Failed: ' + e.message);
-      }
-    }
-    
-    window.openOffboardModal = openOffboardModal;
-    window.cancelOffboard = cancelOffboard;
-    window.confirmOffboard = confirmOffboard;
-    
-  </script>
 </body>
 </html>
