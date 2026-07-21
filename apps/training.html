@@ -4532,7 +4532,7 @@ init();
 <script>
 /* Portal SSO bridge: if the Business Suite session exists, walk straight in. PIN login stays as fallback. */
 (async()=>{try{
-  const _sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf');
+  const _sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});
   const {data:{session}}=await _sb.auth.getSession();
   if(!session)return;
   const {data:prof}=await _sb.from('profiles').select('*').eq('id',session.user.id).single();
