@@ -4538,8 +4538,21 @@ init();
   const {data:prof}=await _sb.from('profiles').select('*').eq('id',session.user.id).single();
   if(!prof)return;
   const _name=prof.full_name||session.user.email, _admin=(prof.role==='owner');
-  /* map CRM roles onto Training's role keys — owners/admins get every track */
-  const roleMap={owner:'owner',manager:'sales_manager',marketing:'marketer',agent:(prof.business==='ASAP'?'asap_agent':'licensed_agent')};
+  /* Map CRM roles onto Training's role keys. The hub keeps its own role list, so
+     this is where the two can drift — a manager used to land on sales_manager,
+     which carries only fundamentals/crm/h2m and no RL track at all.
+     Scope now follows the business set in Suite > Settings > Team, matching
+     bizFromSeat: a manager covering everything gets every track. */
+  const B=String(prof.business||'').toUpperCase();
+  const wideManager=(!B||B==='ALL');
+  const roleMap={
+    owner:'owner',
+    manager: wideManager ? 'ops_director'
+           : (B==='ASAP' ? 'asap_team_lead' : 'sales_manager'),
+    marketing:'marketer',
+    agent: B==='ASAP' ? 'asap_agent'
+         : (B==='H2M' ? 'marketer' : 'licensed_agent')
+  };
   CU={name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
   e('loginView').style.display='none'; e('mainView').style.display='block';
   const ri=(typeof ROLES!=='undefined'&&ROLES[CU.role])||{label:CU.role,admin:_admin};
