@@ -1,0 +1,60 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CRM User Manual — Real Living</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:16px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F7F5F2;color:#1C1A17}
+header{background:#141B26;color:#fff;padding:18px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header b{font-size:17px;letter-spacing:-.01em}
+header .tag{font-size:12px;color:#C8A44D;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.wrap{display:flex;gap:26px;max-width:1240px;margin:26px auto;padding:0 20px;align-items:flex-start}
+.side{width:255px;flex:none;position:sticky;top:20px}
+.mi{display:flex;gap:11px;align-items:center;width:100%;text-align:left;background:transparent;border:0;
+    padding:11px 12px;border-radius:11px;cursor:pointer;font:inherit;font-size:14.5px;color:#4A443C}
+.mi i{font-style:normal;font-size:11.5px;font-weight:800;color:#A79781;letter-spacing:.05em}
+.mi:hover{background:#EFEBE4}
+.mi.on{background:#141B26;color:#fff}.mi.on i{color:#C8A44D}
+.main{flex:1;min-width:0}
+.pane{display:none}.pane.on{display:block}
+.eyebrow{font-size:11.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#A79781}
+h2{font-size:29px;letter-spacing:-.02em;margin:5px 0 10px;font-weight:800}
+.intro{color:#57504A;max-width:60ch}
+.shot{position:relative;margin:22px 0;border-radius:14px;overflow:hidden;border:1px solid #E0DAD1;
+      box-shadow:0 10px 34px rgba(20,27,38,.13);line-height:0;background:#fff}
+.shot img{width:100%;display:block}
+.hl{position:absolute;border:2.5px solid #C8A44D;border-radius:8px;
+    box-shadow:0 0 0 3000px rgba(20,27,38,.0);pointer-events:none}
+.num{position:absolute;top:-13px;left:-13px;width:27px;height:27px;border-radius:50%;background:#C8A44D;
+     color:#141B26;font-size:14px;font-weight:800;display:grid;place-items:center;line-height:1;
+     box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.steps{list-style:none;margin:20px 0;display:grid;gap:12px}
+.steps li{display:flex;gap:13px;align-items:flex-start;background:#fff;border:1px solid #E6E1D9;
+          border-radius:12px;padding:14px 16px}
+.sn{flex:none;width:26px;height:26px;border-radius:50%;background:#141B26;color:#C8A44D;
+    font-size:13px;font-weight:800;display:grid;place-items:center}
+.foot{margin:26px 0 60px}
+.next{background:#141B26;color:#fff;border:0;border-radius:11px;padding:13px 20px;font:inherit;
+      font-weight:700;cursor:pointer}
+.next:hover{background:#22303F}
+@media(max-width:860px){.wrap{display:block;padding:0 14px}.side{width:auto;position:static;display:flex;
+  gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:8px}.mi{width:auto;white-space:nowrap}h2{font-size:24px}}
+</style></head><body>
+<header><b>CRM User Manual</b><span class="tag">Real Living</span></header>
+<div class="wrap"><nav class="side"><button class="mi on" data-m="dash"><i>01</i>Your dashboard</button><button class="mi" data-m="contacts"><i>02</i>Contacts</button><button class="mi" data-m="props"><i>03</i>Properties</button><button class="mi" data-m="pipeline_asap"><i>04</i>Working a pipeline</button><button class="mi" data-m="followups"><i>05</i>Follow-ups</button><button class="mi" data-m="commissions"><i>06</i>Commissions</button><button class="mi" data-m="reports"><i>07</i>Reports</button><button class="mi" data-m="calendar"><i>08</i>Calendar</button><button class="mi" data-m="settings"><i>09</i>Settings</button></nav><div class="main"><section class="pane on" id="p_dash"><div class="eyebrow">Module 01</div><h2>Your dashboard</h2><p class="intro">This is the first thing you see. It is built to answer one question — what needs me today. Work down it before you go anywhere else.</p><div class="shot"><img src="shots/dash.png" alt="Your dashboard"/><div class="hl" style="left:0.00%;top:0.00%;width:15.42%;height:100.00%"><span class="num">1</span></div><div class="hl" style="left:17.22%;top:17.67%;width:80.97%;height:29.33%"><span class="num">2</span></div></div><ol class="steps"><li><span class="sn">1</span><div>The left rail is the whole CRM, grouped by business — you only see the pipelines you actually work.</div></li><li><span class="sn">2</span><div>The top of the dashboard is what needs you today, before anything else.</div></li></ol><div class="foot"><button class="next" data-go="contacts">Next — Contacts</button></div></section><section class="pane" id="p_contacts"><div class="eyebrow">Module 02</div><h2>Contacts</h2><p class="intro">Every person you deal with lives here, once. A buyer who later becomes a seller is still one contact, with both deals hanging off them.</p><div class="shot"><img src="shots/contacts.png" alt="Contacts"/><div class="hl" style="left:66.04%;top:9.11%;width:15.28%;height:4.00%"><span class="num">1</span></div><div class="hl" style="left:17.22%;top:22.44%;width:80.97%;height:76.00%"><span class="num">2</span></div></div><ol class="steps"><li><span class="sn">1</span><div>Search by name, phone, email or address.</div></li><li><span class="sn">2</span><div>Everyone you work with lives here — buyers, sellers, investors, lenders.</div></li></ol><div class="foot"><button class="next" data-go="props">Next — Properties</button></div></section><section class="pane" id="p_props"><div class="eyebrow">Module 03</div><h2>Properties</h2><p class="intro">Every property we touch, with its own numbers, photos and status. Properties are separate from deals on purpose — one property can pass through several deals.</p><div class="shot"><img src="shots/props.png" alt="Properties"/><div class="hl" style="left:17.22%;top:17.89%;width:80.97%;height:8.67%"><span class="num">1</span></div></div><ol class="steps"><li><span class="sn">1</span><div>Each property carries its own numbers, photos and status.</div></li></ol><div class="foot"><button class="next" data-go="pipeline_asap">Next — Working a pipeline</button></div></section><section class="pane" id="p_pipeline_asap"><div class="eyebrow">Module 04</div><h2>Working a pipeline</h2><p class="intro">A pipeline is your deals arranged by stage. Your job is to move things to the right. If a deal has not moved in a while, that is the signal to act.</p><div class="shot"><img src="shots/pipeline_asap.png" alt="Working a pipeline"/><div class="hl" style="left:17.22%;top:57.44%;width:80.97%;height:16.00%"><span class="num">1</span></div></div><ol class="steps"><li><span class="sn">1</span><div>Deals sit in stages. Moving a deal forward is how work progresses.</div></li></ol><div class="foot"><button class="next" data-go="followups">Next — Follow-ups</button></div></section><section class="pane" id="p_followups"><div class="eyebrow">Module 05</div><h2>Follow-ups</h2><p class="intro">The CRM watches who has gone quiet and puts them here. If you work nothing else on a slow day, work this list.</p><div class="shot"><img src="shots/followups.png" alt="Follow-ups"/></div><div class="foot"><button class="next" data-go="commissions">Next — Commissions</button></div></section><section class="pane" id="p_commissions"><div class="eyebrow">Module 06</div><h2>Commissions</h2><p class="intro">What you have earned, what is still pending, and what has already been paid out.</p><div class="shot"><img src="shots/commissions.png" alt="Commissions"/></div><div class="foot"><button class="next" data-go="reports">Next — Reports</button></div></section><section class="pane" id="p_reports"><div class="eyebrow">Module 07</div><h2>Reports</h2><p class="intro">Where the numbers get totalled. What you can see here depends on your role.</p><div class="shot"><img src="shots/reports.png" alt="Reports"/><div class="hl" style="left:17.22%;top:42.22%;width:80.97%;height:42.11%"><span class="num">1</span></div></div><ol class="steps"><li><span class="sn">1</span><div>Where the numbers get totalled up.</div></li></ol><div class="foot"><button class="next" data-go="calendar">Next — Calendar</button></div></section><section class="pane" id="p_calendar"><div class="eyebrow">Module 08</div><h2>Calendar</h2><p class="intro">Appointments across every deal you own, in one place.</p><div class="shot"><img src="shots/calendar.png" alt="Calendar"/></div><div class="foot"><button class="next" data-go="settings">Next — Settings</button></div></section><section class="pane" id="p_settings"><div class="eyebrow">Module 09</div><h2>Settings</h2><p class="intro">Your own details and the switches that control how the CRM behaves for you.</p><div class="shot"><img src="shots/settings.png" alt="Settings"/></div><div class="foot"><button class="next" data-go="DONE">Finish this track</button></div></section></div></div>
+<script>
+var btns=[].slice.call(document.querySelectorAll('.mi'));
+function show(id){
+  document.querySelectorAll('.pane').forEach(function(p){p.classList.toggle('on',p.id==='p_'+id)});
+  btns.forEach(function(b){b.classList.toggle('on',b.dataset.m===id)});
+  window.scrollTo({top:0,behavior:'smooth'});
+  try{localStorage.setItem('rl_crm_manual_at',id)}catch(e){}
+}
+btns.forEach(function(b){b.onclick=function(){show(b.dataset.m)}});
+document.querySelectorAll('.next').forEach(function(n){n.onclick=function(){
+  var g=n.dataset.go;
+  if(g==='DONE'){ n.textContent='\u2713 Track complete'; n.disabled=true;
+    try{localStorage.setItem('rl_track_crm','done')}catch(e){}
+    if(window.parent!==window)window.parent.postMessage({rlTrack:'crm',done:true},'*');
+    return; }
+  show(g);
+}});
+</script></body></html>
