@@ -207,7 +207,7 @@ function askRemove(seatId){
 async function reload(){ROSTER=await api({action:'roster'});await render()}
 
 (async function(){
-  SB=supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf');
+  SB=supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});
   const {data:{session}}=await SB.auth.getSession();
   if(!session){document.getElementById('out').innerHTML=
     '<div class="card">Please <a href="../index.html">sign in to the Business Suite</a> first.</div>';return}
