@@ -141,7 +141,12 @@ async function load(sb){
   const biz=bizFromSeat(seat);
   const role=roleFromSeat(seat);
   const docs=docsFor(biz,role), tracks=tracksFor(biz);
-  const signed=docs.filter(d=>st.sigs&&st.sigs[d.id]).length;
+  /* a document counts as settled when it's signed OR an owner waived it as not applicable */
+  const isWaived=id=>!!(st.waived&&st.waived[id]);
+  const isSigned=id=>!!(st.sigs&&st.sigs[id]);
+  docs.forEach(d=>{ d.waived=isWaived(d.id); d.waiver=d.waived?st.waived[d.id]:null; });
+  const signed=docs.filter(d=>isSigned(d.id)||isWaived(d.id)).length;
+  const waivedCount=docs.filter(d=>isWaived(d.id)&&!isSigned(d.id)).length;
   const trained=tracks.filter(t=>st.tracks&&st.tracks[t]).length;
   const docsDone=signed>=docs.length;
   const trainDone=docsDone&&trained>=tracks.length;
@@ -149,7 +154,7 @@ async function load(sb){
     sb, uid, email, session, seat, state:st,
     biz, role, roleLabel:ROLE_LABEL[role]||'Team member',
     bizLabels:biz.map(b=>BIZ_LABEL[b]).filter(Boolean),
-    docs, tracks, signed, trained, docsDone, trainDone,
+    docs, tracks, signed, waivedCount, trained, docsDone, trainDone,
     stage: !docsDone ? 'docs' : (!trainDone ? 'training' : 'done')
   };
 }
