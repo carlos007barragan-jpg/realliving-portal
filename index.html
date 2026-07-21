@@ -719,14 +719,22 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
       const opts=Object.keys(POS_LABEL).map(k=>'<option value="'+k+'"'+(k===pos?' selected':'')+'>'+POS_LABEL[k]+'</option>').join('');
       const bizzes=[['','All'],['ASAP','ASAP'],['H2M','H2M'],['RL','RL'],['TC','TC']];
       const bops=bizzes.map(b=>'<option value="'+b[0]+'"'+((m.business||'')===b[0]?' selected':'')+'>'+b[1]+'</option>').join('');
+      const noSeat = !m.seat;
+      const isMe = m.id===(CU&&CU.authId);
+      const canRemove = m.role!=='owner' && !isMe;
       return '<div class="mrow" style="gap:8px;flex-wrap:wrap">'+
-        '<span class="v" style="min-width:150px">'+(m.full_name||'—')+(m.seat&&m.seat.ext?' <span style="color:var(--muted);font-weight:400">ext '+m.seat.ext+'</span>':'')+'</span>'+
+        '<span class="v" style="min-width:150px">'+(m.full_name||'—')+(m.seat&&m.seat.ext?' <span style="color:var(--muted);font-weight:400">ext '+m.seat.ext+'</span>':'')+
+          (noSeat?' <span style="color:#B4341F;font-weight:700;font-size:11px">NO SEAT</span>':'')+'</span>'+
         '<select data-uid="'+m.id+'" class="tm-role" style="padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:12.5px;background:#fff">'+opts+'</select>'+
         '<select data-uid="'+m.id+'" class="tm-bizsel" style="padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:12.5px;background:#fff">'+bops+'</select>'+
+        (noSeat?'<button class="tm-repair" data-uid="'+m.id+'" style="padding:6px 10px;border:1px solid #B4341F;background:#fff;color:#B4341F;border-radius:7px;font-size:12px;cursor:pointer;font-weight:700">Fix seat</button>':'')+
+        (canRemove?'<button class="tm-remove" data-uid="'+m.id+'" data-seat="'+(m.seat_id||'')+'" data-name="'+(m.full_name||'').replace(/"/g,'')+'" style="padding:6px 10px;border:1px solid #D9C7C4;background:#fff;color:#B4341F;border-radius:7px;font-size:12px;cursor:pointer">Remove</button>':'')+
       '</div>';
     }).join('')||'<div style="color:var(--muted);font-size:13px;padding:8px 0">No members yet.</div>';
     $("teamList").querySelectorAll('.tm-role').forEach(el=>el.addEventListener('change',()=>changePos(el.dataset.uid,el.value)));
     $("teamList").querySelectorAll('.tm-bizsel').forEach(el=>el.addEventListener('change',()=>changeBiz(el.dataset.uid,el.value)));
+    $("teamList").querySelectorAll('.tm-repair').forEach(el=>el.addEventListener('click',()=>repairSeat(el.dataset.uid)));
+    $("teamList").querySelectorAll('.tm-remove').forEach(el=>el.addEventListener('click',()=>askRemove(el.dataset.uid,el.dataset.seat,el.dataset.name)));
   }
   async function changePos(uid,pos){
     const m=TEAM.find(x=>x.id===uid); if(!m)return;
@@ -789,6 +797,56 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     }catch(e){err.textContent=String(e.message||e);err.style.display='block';}
     finally{$("tm-go").disabled=false;$("tm-go").textContent='Create login & invite';}
   });
+
+  /* ---------- REMOVE A TEAM MEMBER ---------- */
+  async function teamApi(payload){
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch(SUPABASE_URL+'/functions/v1/team-admin',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify(payload)});
+    const j=await r.json().catch(()=>({error:'bad response'}));
+    if(!r.ok||j.error)throw new Error(j.error||('HTTP '+r.status));
+    return j;
+  }
+  async function repairSeat(uid){
+    try{ const r=await teamApi({action:'repairSeat',authUid:uid});
+      alert('Seat '+r.seat.id+' created for '+r.seat.name+'.');
+      await loadTeam(); renderTeam();
+    }catch(e){ alert(e.message); }
+  }
+  function askRemove(authUid,seatId,name){
+    if(!seatId){alert('This person has no seat yet. Use "Fix seat" first, then remove them.');return;}
+    const others=TEAM.filter(m=>m.seat_id&&m.seat_id!==seatId);
+    if(!others.length){alert('There is nobody to hand their work to.');return;}
+    const back=document.createElement('div');
+    back.style.cssText='position:fixed;inset:0;background:rgba(20,16,14,.55);display:grid;place-items:center;z-index:9999;padding:18px';
+    back.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:430px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">'+
+      '<div style="font-weight:800;font-size:18px">Remove '+name+'</div>'+
+      '<div style="background:#FBF0EE;border:1px solid #E7CFCB;border-radius:10px;padding:12px;font-size:13px;color:#8A2B1A;margin:14px 0;line-height:1.5">'+
+        'Their login is deleted immediately and they lose access to every app. '+
+        'Everything they own &mdash; deals, appointments, contacts, activity, tasks &mdash; moves to the person you choose. Nothing is erased.</div>'+
+      '<div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8A7F76;margin-bottom:6px">Hand their work to</div>'+
+      '<select id="rmHeir" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff">'+
+        others.map(m=>'<option value="'+m.seat_id+'">'+(m.full_name||m.seat_id)+' &mdash; '+(m.role||'')+'</option>').join('')+'</select>'+
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">'+
+        '<button id="rmCancel" style="padding:9px 14px;border:1px solid var(--line);background:#fff;border-radius:9px;cursor:pointer;font-size:14px">Cancel</button>'+
+        '<button id="rmGo" style="padding:9px 14px;border:0;background:#B4341F;color:#fff;border-radius:9px;cursor:pointer;font-weight:700;font-size:14px">Remove and transfer</button>'+
+      '</div></div>';
+    document.body.appendChild(back);
+    back.querySelector('#rmCancel').onclick=()=>back.remove();
+    back.querySelector('#rmGo').onclick=async()=>{
+      const btn=back.querySelector('#rmGo'); btn.disabled=true; btn.textContent='Transferring…';
+      try{
+        const r=await teamApi({action:'remove',seatId,toSeatId:back.querySelector('#rmHeir').value,authUid});
+        const by=(r.moved&&r.moved.byCollection)||{};
+        back.remove();
+        alert('Moved '+((r.moved&&r.moved.total)||0)+' records from '+r.from+' to '+r.to+'.\n\n'+
+          Object.keys(by).map(k=>'  '+k+': '+by[k]).join('\n')+
+          '\n\nLogin '+(r.loginRemoved?'deleted.':'could NOT be deleted \u2014 check manually.'));
+        await loadTeam(); renderTeam();
+      }catch(e){ alert(e.message); btn.disabled=false; btn.textContent='Remove and transfer'; }
+    };
+  }
 
   $("logoutBtn").addEventListener("click", async () => {
     try{ if(sb) await sb.auth.signOut(); }catch(e){}
