@@ -4290,11 +4290,9 @@ function openModule(tid,mid){
     if(/\.(mp4|webm|mov)(\?|$)/i.test(src)){
       /* a real file — use a proper player rather than an iframe */
       /* offer webm alongside mp4 so every browser has a format it can play */
-      const vtt=src.replace(/\.mp4(\?|$)/i,'.vtt$1');
       vid.innerHTML='<video controls playsinline preload="metadata" '+
         'style="width:100%;display:block;aspect-ratio:16/10;background:#000">'+
         '<source src="'+src+'" type="video/mp4">'+
-        '<track kind="captions" srclang="en" label="English" src="'+vtt+'" default>'+
         '</video>';
     } else {
       vid.innerHTML='<iframe src="'+src+'" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe>';
