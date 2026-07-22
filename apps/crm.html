@@ -2197,7 +2197,7 @@ function vProp(id){
   const p=P(id);if(!p)return '<div class="empty">Property not found.</div>';
   if(!canSeeWholeBook()&&!propAvailable(p))return '<button class="back" onclick="go(\'props\')">← Inventory</button><div class="empty">That property isn\'t in the available inventory. Ask a manager if you need it.</div>';
   const ds=S.deals.filter(d=>d.propertyId===id).sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
-  let h='<button class="back" onclick="go(\'props\')">← H2M Inventory</button>';
+  let h='<button class="back" onclick="go(\'props\')">← Inventory</button>';
   const live=/inventory — marketed|in inventory/i.test(p.status||'')&&/marketed/i.test(p.status||'');
   h+='<div class="prof-head"><div style="flex:1"><h1 style="font-size:28px">'+esc(p.address)+'</h1><div class="meta">'+p.beds+' bd / '+p.baths+' ba'+(p.sqft?' · '+p.sqft.toLocaleString()+' sqft':'')+' · <b>'+esc(p.status)+'</b>'+(p.category?' · <span class="tag">'+esc(p.category)+'</span>':'')+(live?' <span class="tag gr">LIVE on the websites</span>':'')+'</div></div>'+
      (canSeeWholeBook()?'<button class="btn ghost small" onclick="togglePropArchive(\''+p.id+'\')">'+(propArchived(p)?'Restore to inventory':'Archive')+'</button> ':'')+
@@ -2208,6 +2208,14 @@ function vProp(id){
       '<div class="kv">'+kv('Headline',p.title)+kv('List price',p.listPrice?money(p.listPrice):(p.arv?money(p.arv)+' (from ARV)':'—'))+kv('Area',p.area)+kv('Photos',(p.photos&&p.photos.length?p.photos.length+' attached':'none yet — add them below'))+'</div>'+
       (p.desc?'<div class="mut" style="font-size:13px;margin-top:10px;line-height:1.7">'+esc(p.desc).slice(0,300)+(p.desc.length>300?'…':'')+'</div>':'')+
       '</div>';
+  }
+  /* the folder the team opens to pull photos for Facebook and the other socials */
+  if(p.driveUrl){
+    h+='<div class="card" style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+      '<div style="flex:1;min-width:200px"><div class="eyebrow">Photo folder</div>'+
+      '<div class="mut" style="font-size:12.5px">Open the Drive folder to download the photos for Facebook and the other socials.</div></div>'+
+      '<a class="btn small" href="'+esc(p.driveUrl)+'" target="_blank" rel="noopener">Open Drive folder</a>'+
+      '<button class="btn ghost small" onclick="copyDrive(\''+p.id+'\')">Copy link</button></div>';
   }
   h+=vPropPhotos(p);
   if(isInvestProp(p)){
@@ -3201,10 +3209,15 @@ function mAddProp(editId){
   MP_EDIT=editId||null;
   const p=editId?P(editId):null;
   const v=(k,d)=>p?(p[k]??d??''):(d??'');
-  modal('<h2>'+(p?'Edit property':'New H2M property')+'</h2>'+
+  modal('<h2>'+(p?'Edit property':'New property')+'</h2>'+
   '<label>Address</label><input id="mp-addr" placeholder="Street, city, state zip" value="'+esc(v('address'))+'">'+
   '<div class="frow"><div><label>Category — this decides which numbers you fill in</label><select id="mp-cat" onchange="mpMoney()"><option value=""'+(v('category')?'':' selected')+'>— not set —</option>'+PCATS.map(ct=>'<option'+(v('category')===ct?' selected':'')+'>'+ct+'</option>').join('')+'</select></div>'+
-  (p?'<div><label>Status</label><select id="mp-status">'+PSTATUSES.map(st=>'<option'+(st===p.status?' selected':'')+'>'+st+'</option>').join('')+(PSTATUSES.includes(p.status)?'':'<option selected>'+esc(p.status)+'</option>')+'</select></div>':'<div></div>')+'</div>'+
+  (p?'<div><label>Status</label><select id="mp-status">'+PSTATUSES.map(st=>'<option'+(st===p.status?' selected':'')+'>'+st+'</option>').join('')+(PSTATUSES.includes(p.status)?'':'<option selected>'+esc(p.status)+'</option>')+'</select></div>':
+     /* Adding a property used to always open an H2M acquisition deal, whatever the
+        property actually was — so an RL listing or a straight piece of inventory
+        turned up in the H2M pipeline. Ask instead, and default to not opening one. */
+     '<div><label>Also open a deal for this?</label><select id="mp-pipe"><option value="">No — just add it to the property list</option>'+
+     Object.keys(PIPES).map(k=>'<option value="'+k+'">'+esc(PIPES[k].name)+'</option>').join('')+'</select></div>')+'</div>'+
   '<div class="frow"><div><label>Beds</label><input id="mp-beds" type="number" value="'+v('beds',3)+'"></div><div><label>Baths</label><input id="mp-baths" type="number" value="'+v('baths',1)+'"></div>'+
   '<div><label>Square feet</label><input id="mp-sqft" type="number" value="'+(v('sqft')||'')+'"></div></div>'+
   '<div id="mp-money"></div>'+
@@ -3217,6 +3230,8 @@ function mAddProp(editId){
   '<div class="login-err" id="mp-ai-err" style="margin-bottom:6px"></div>'+
   '<label>Description — English (property page)</label><textarea id="mp-desc" rows="4" placeholder="What makes this home worth seeing…">'+esc(v('desc'))+'</textarea>'+
   '<label>Description — Spanish (optional; Mi Casa + /es/ fall back to English if blank)</label><textarea id="mp-descEs" rows="3">'+esc(v('descEs'))+'</textarea>'+
+  '<label>Google Drive photo folder — the link the team opens to download photos for Facebook</label>'+
+  '<input id="mp-drive" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(v('driveUrl'))+'">'+
   '<label>Photo URLs — one per line, first is the cover</label><textarea id="mp-photos" rows="4" placeholder="https://…/front.jpg&#10;https://…/kitchen.jpg">'+esc(p&&p.photos?p.photos.join('\n'):(v('photo')||''))+'</textarea>'+
   '<div class="mut" style="font-size:12px;margin-top:8px">'+(p?'Changes go live on the websites within a minute of saving.':'An acquisition deal opens automatically in H2M · Acquisitions.')+'</div>'+
   '<button class="btn" style="margin-top:18px" onclick="saveProp(\''+(editId||'')+'\')">'+(p?'Save changes':'Add property')+'</button>');
@@ -3369,6 +3384,7 @@ function readPropForm(p){
   p.listPrice=+g('mp-list')||0;p.sqft=+g('mp-sqft')||0;
   p.area=g('mp-area').trim();p.title=g('mp-title').trim();
   p.desc=g('mp-desc').trim();p.descEs=g('mp-descEs').trim();
+  txt('mp-drive','driveUrl');
   p.photos=g('mp-photos').split(/\n+/).map(x=>x.trim()).filter(Boolean);
   p.photo=p.photos[0]||null;
   const st=document.getElementById('mp-status');if(st)p.status=st.value;
@@ -3386,8 +3402,18 @@ function saveProp(editId){
   }
   const p=readPropForm({id:uid('p'),status:'Acquisition — Off-Market Lead',createdAt:new Date().toISOString()});
   S.properties.unshift(p);
-  S.deals.push({id:uid('d'),clientId:null,pipe:'h2m_acq',type:'Acquisition',stage:0,agentId:me.id,propertyId:p.id,hist:[{s:0,at:new Date().toISOString()}],propInterest:p.address,budget:0,down:0,closeDate:'',titleOffice:'',revenue:0,createdAt:new Date().toISOString()});
-  save();closeAll();go('prop',p.id);toast('Property added — acquisition deal opened');
+  const pipeEl=document.getElementById('mp-pipe');
+  const pipe=pipeEl?pipeEl.value:'';
+  if(pipe&&PIPES[pipe]){
+    S.deals.push({id:uid('d'),clientId:null,pipe:pipe,type:(PIPES[pipe].types||['Acquisition'])[0],stage:0,agentId:me.id,propertyId:p.id,hist:[{s:0,at:new Date().toISOString()}],propInterest:p.address,budget:0,down:0,closeDate:'',titleOffice:'',revenue:0,createdAt:new Date().toISOString()});
+  }
+  save();closeAll();go('prop',p.id);
+  toast(pipe&&PIPES[pipe]?('Property added — deal opened in '+PIPES[pipe].name):'Property added to the list');
+}
+function copyDrive(pid){
+  const p=P(pid); if(!p||!p.driveUrl)return;
+  try{navigator.clipboard.writeText(p.driveUrl);toast('Drive link copied');}
+  catch(e){toast('Copy failed — the link is on the Edit property screen');}
 }
 function mAddUser(editId){
   if(!editId&&CLOUD&&!DEV){toast('Invite new members from the Business Suite — Settings → Team');return}
