@@ -4162,8 +4162,34 @@ e('lpin').addEventListener('keydown',ev=>{if(ev.key==='Enter')doLogin();});
 function doLogout(){CU=null;e('mainView').style.display='none';e('loginView').style.display='flex';e('lname').value='';e('lpin').value='';}
 
 // ═══ ROLE / MODULE FILTERING ═══
+/* The gate and the hub each decided which tracks apply, from different inputs — the
+   gate from the pipelines on someone's seat, the hub from its own role table. When the
+   gate asked for more than the role table offered, the extra tracks appeared in the
+   "finish these to unlock the Business Suite" banner with no card to complete them, so
+   the person was locked out of the suite with no way forward. The gate's list wins;
+   the role table can still add to it, never take away. */
+let REQUIRED_TRACKS=[];
 function getMyTracks(){
-  const r=ROLES[CU.role]; return r?r.tracks:[];
+  const r=ROLES[CU.role];
+  const mine=(r&&r.tracks)||[];
+  const all=mine.slice();
+  REQUIRED_TRACKS.forEach(t=>{if(TRACKS[t]&&all.indexOf(t)<0)all.push(t)});
+  return all;
+}
+async function loadRequiredTracks(prof){
+  try{
+    if(!window.RLOnboard||!RLOnboard.client)return;
+    const sb=RLOnboard.client(); if(!sb||!prof)return;
+    let seat=null;
+    if(prof.seat_id){
+      const {data}=await sb.from('records').select('data')
+        .eq('collection','users').eq('id',prof.seat_id).maybeSingle();
+      seat=data?data.data:null;
+    }
+    if(!seat)seat={role:prof.role,business:prof.business,pipes:[]};
+    const biz=RLOnboard.bizFromSeat(seat);
+    REQUIRED_TRACKS=RLOnboard.tracksFor(biz)||[];
+  }catch(e){console.warn('[required tracks]',e&&e.message)}
 }
 function moduleVisibleToMe(mod){
   if(!mod.roles||!mod.roles.length) return true;
@@ -4632,8 +4658,9 @@ init();
          : (B==='H2M' ? 'marketer' : 'licensed_agent')
   };
   CU={id:session.user.id,name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
+  await loadRequiredTracks(prof);
   adoptLegacyProgress();
-  reconcileCompletedTracks();
+  await reconcileCompletedTracks();
   e('loginView').style.display='none'; e('mainView').style.display='block';
   const ri=(typeof ROLES!=='undefined'&&ROLES[CU.role])||{label:CU.role,admin:_admin};
   e('utag').textContent=_name+' · '+(ri.label||CU.role);
