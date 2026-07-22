@@ -4176,69 +4176,21 @@ function getMyTracks(){
   REQUIRED_TRACKS.forEach(t=>{if(TRACKS[t]&&all.indexOf(t)<0)all.push(t)});
   return all;
 }
-async function loadRequiredTracks(prof){
+async function loadRequiredTracks(){
+  /* Ask the gate itself rather than re-deriving its logic here. RLOnboard.load is what
+     the unlock banner already runs, so its track list and the cards on this page cannot
+     disagree by construction. onboard.js is loaded after this script, so wait for it. */
+  for(let i=0;i<25;i++){
+    if(window.RLOnboard&&RLOnboard.client)break;
+    await new Promise(r=>setTimeout(r,200));
+  }
   try{
     if(!window.RLOnboard||!RLOnboard.client)return;
-    const sb=RLOnboard.client(); if(!sb||!prof)return;
-    let seat=null;
-    if(prof.seat_id){
-      const {data}=await sb.from('records').select('data')
-        .eq('collection','users').eq('id',prof.seat_id).maybeSingle();
-      seat=data?data.data:null;
-    }
-    if(!seat)seat={role:prof.role,business:prof.business,pipes:[]};
-    const biz=RLOnboard.bizFromSeat(seat);
-    REQUIRED_TRACKS=RLOnboard.tracksFor(biz)||[];
+    const sb=RLOnboard.client(); if(!sb)return;
+    const ctx=await RLOnboard.load(sb);
+    if(ctx&&ctx.tracks&&ctx.tracks.length)REQUIRED_TRACKS=ctx.tracks.slice();
   }catch(e){console.warn('[required tracks]',e&&e.message)}
 }
-function moduleVisibleToMe(mod){
-  if(!mod.roles||!mod.roles.length) return true;
-  if(mod.roles.includes('ALL')) return true; // universal modules (Sales Fundamentals)
-  const myKey=ROLE_MODULE_KEY[CU.role];
-  const r=ROLES[CU.role];
-  if(r&&r.admin&&(CU.role==='owner'||CU.role==='ops_director')) return true; // owners/ops see all modules
-  return mod.roles.includes(myKey);
-}
-function myModules(trackId){
-  const t=TRACKS[trackId]; if(!t) return [];
-  /* Modules carry their own role tags, and those tags predate the gate deciding which
-     tracks a person owes. Karely's seat made ASAP and H2M required of her, but every
-     module in them is tagged for other roles, so the filter returned nothing and both
-     tracks rendered as empty cards she could never finish. A track the company requires
-     has to be completable, so role tags cannot thin one out. */
-  if(REQUIRED_TRACKS.indexOf(trackId)>-1) return t.modules.slice();
-  const vis=t.modules.filter(moduleVisibleToMe);
-  /* A card with nothing inside it is always a fault, never a legitimate state — if the
-     tags would leave someone staring at an empty track, show them the whole thing
-     rather than something they cannot work. */
-  return vis.length?vis:t.modules.slice();
-}
-
-// ═══ PROGRESS ═══
-function getProg(uid,tid){return (progress[uid]||{})[tid]||{};}
-/* Until the SSO bridge started setting CU.id, every signed-in person's module
-   progress was filed under the literal key "undefined". Giving them a real id
-   orphaned that history — the modules were still finished, but the hub looked in
-   a bucket that had never been written to, so it read as a wiped account and
-   re-locked everything. Move the old bucket across once, and only when the real
-   one is still empty, so nobody who has since made progress gets overwritten. */
-function adoptLegacyProgress(){
-  try{
-    if(!CU||!CU.id)return;
-    const legacy=progress['undefined'];
-    if(!legacy||!Object.keys(legacy).length)return;
-    const mine=progress[CU.id];
-    if(mine&&Object.keys(mine).length)return;
-    progress[CU.id]=legacy;
-    sl('rl_tc3_progress',progress);
-    if(typeof pushProgress==='function')pushProgress();
-  }catch(e){console.warn('[progress adopt]',e&&e.message)}
-}
-/* A finished track is recorded on the server, but the tick against each module only
-   ever lived in the learner's own browser. Clear that browser and the hub re-locks a
-   track the company already has them down as having completed, and they are made to
-   click through it again. Where the server says a track is done, restore the modules
-   to match. Only ever fills in — it cannot un-tick anything. */
 async function reconcileCompletedTracks(){
   try{
     if(!CU||!CU.id||!window.RLOnboard||!RLOnboard.client)return;
@@ -4283,9 +4235,8 @@ async function pushProgress(){
     if(!sb||!CU||!CU.id)return;
     const {data:{session}}=await sb.auth.getSession();
     if(!session)return;
-    const mine=(ROLES[CU.role]&&ROLES[CU.role].tracks)||[];
     const out={};
-    mine.forEach(id=>{
+    getMyTracks().forEach(id=>{
       const t=TRACKS[id]; if(!t)return;
       const mods=myModules(id), p=getProg(CU.id,id);
       const done=mods.filter(m=>p[m.id]&&p[m.id].done);
@@ -4668,7 +4619,7 @@ init();
          : (B==='H2M' ? 'marketer' : 'licensed_agent')
   };
   CU={id:session.user.id,name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
-  await loadRequiredTracks(prof);
+  await loadRequiredTracks();
   adoptLegacyProgress();
   await reconcileCompletedTracks();
   e('loginView').style.display='none'; e('mainView').style.display='block';
