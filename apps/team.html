@@ -115,6 +115,7 @@ async function render(){
       '<div class="meta" style="margin-top:7px">'+a.settled+' of '+a.docs.length+' documents · '+
         a.trained+' of '+a.tracks.length+' training tracks'+
         (login&&login.lastSignIn?' · last signed in '+esc(String(login.lastSignIn).slice(0,10)):'')+'</div>'+
+      trainingDetail(ob)+
       '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
         '<button onclick="toggle(\''+seat.id+'\')">Paperwork detail</button>'+
         (seat.role!=='owner'?'<button class="danger" onclick="askRemove(\''+seat.id+'\')">Remove from platform</button>':'')+
@@ -122,6 +123,28 @@ async function render(){
       '<div id="d_'+seat.id+'" class="hide">'+detail(seat,ob,a)+'</div></div>';
   });
   document.getElementById('out').innerHTML=html;
+}
+
+
+/* Where someone actually is inside each track. The hub mirrors a per-track summary
+   to the training collection; anyone who has not opened a module since that started
+   simply has nothing here yet, so show the track totals rather than a false zero. */
+function trainingDetail(ob){
+  const t=ob&&ob.uid?TRAIN[ob.uid]:null;
+  if(!t||!t.tracks)return '';
+  const keys=Object.keys(t.tracks);
+  if(!keys.length)return '';
+  return '<div style="margin-top:10px">'+keys.map(k=>{
+    const r=t.tracks[k]||{};
+    const total=r.total||0, done=r.done||0;
+    const pct=total?Math.round(100*done/total):0;
+    const where=done>=total&&total?'finished':(r.next?'up next: '+esc(r.next):(r.last?'last done: '+esc(r.last):'not started'));
+    return '<div style="display:flex;align-items:center;gap:9px;padding:3px 0">'+
+      '<span style="min-width:150px;font-size:12.5px">'+esc(r.label||k)+'</span>'+
+      '<span class="bar" style="flex:1;max-width:150px;margin:0"><i style="width:'+pct+'%"></i></span>'+
+      '<span class="meta" style="font-size:11.5px;white-space:nowrap">'+done+' / '+total+' modules</span>'+
+      '<span class="why" style="flex:1">'+where+'</span></div>';
+  }).join('')+'</div>';
 }
 
 function detail(seat,ob,a){
@@ -204,7 +227,14 @@ function askRemove(seatId){
   };
 }
 
-async function reload(){ROSTER=await api({action:'roster'});await render()}
+let TRAIN={};
+async function loadTraining(){
+  try{
+    const {data}=await SB.from('records').select('id,data').eq('collection','training').eq('deleted',false);
+    TRAIN={}; (data||[]).forEach(r=>{TRAIN[r.id]=r.data});
+  }catch(e){TRAIN={}}
+}
+async function reload(){ROSTER=await api({action:'roster'});await loadTraining();await render()}
 
 (async function(){
   SB=supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});
