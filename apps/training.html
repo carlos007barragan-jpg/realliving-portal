@@ -4207,7 +4207,11 @@ function myModules(trackId){
      tracks rendered as empty cards she could never finish. A track the company requires
      has to be completable, so role tags cannot thin one out. */
   if(REQUIRED_TRACKS.indexOf(trackId)>-1) return t.modules.slice();
-  return t.modules.filter(moduleVisibleToMe);
+  const vis=t.modules.filter(moduleVisibleToMe);
+  /* A card with nothing inside it is always a fault, never a legitimate state — if the
+     tags would leave someone staring at an empty track, show them the whole thing
+     rather than something they cannot work. */
+  return vis.length?vis:t.modules.slice();
 }
 
 // ═══ PROGRESS ═══
