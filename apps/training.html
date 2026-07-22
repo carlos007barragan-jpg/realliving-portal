@@ -4201,6 +4201,12 @@ function moduleVisibleToMe(mod){
 }
 function myModules(trackId){
   const t=TRACKS[trackId]; if(!t) return [];
+  /* Modules carry their own role tags, and those tags predate the gate deciding which
+     tracks a person owes. Karely's seat made ASAP and H2M required of her, but every
+     module in them is tagged for other roles, so the filter returned nothing and both
+     tracks rendered as empty cards she could never finish. A track the company requires
+     has to be completable, so role tags cannot thin one out. */
+  if(REQUIRED_TRACKS.indexOf(trackId)>-1) return t.modules.slice();
   return t.modules.filter(moduleVisibleToMe);
 }
 
