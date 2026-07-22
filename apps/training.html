@@ -4638,9 +4638,29 @@ init();
   const busy=t=>{const d=e('dashView'); if(d)d.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-3)">'+t+'</div>';};
   try{
     const _sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});
-    const {data:{session}}=await _sb.auth.getSession();
-    /* No Suite session at all — the PIN card stays as the standalone way in. */
-    if(!session)return;
+    const {data:{session},error:sErr}=await _sb.auth.getSession();
+    window.__hubDebug=()=>({session:!!session,error:sErr&&sErr.message,
+      framed:(function(){try{return window.self!==window.top}catch(e){return 'blocked'}})(),
+      supabase:typeof window.supabase!=='undefined', onboard:!!window.RLOnboard});
+    /* No Suite session found. The PIN card remains as the standalone way in, but say so
+       rather than presenting a bare sign-in box to someone who just signed in next door —
+       that looks like the sign-in did not work, when the real problem is elsewhere. */
+    if(!session){
+      const n=document.getElementById('sso-note');
+      if(!n){
+        const d=document.createElement('div');
+        d.id='sso-note';
+        d.style.cssText='max-width:420px;margin:14px auto 0;padding:11px 14px;border-radius:8px;'+
+          'background:#FDF3D8;color:#6B4E00;font-size:12.5px;line-height:1.6;text-align:center';
+        d.textContent='No Business Suite session was found in this browser, so this is asking for the '+
+          'standalone PIN. If you just signed in to the Suite, go back and open Training from there.'+
+          (sErr&&sErr.message?' ('+sErr.message+')':'');
+        const card=document.getElementById('loginView');
+        if(card&&card.firstElementChild)card.firstElementChild.appendChild(d);
+      }
+      console.warn('[sso bridge] no session', sErr&&sErr.message);
+      return;
+    }
     /* There is a session, so this person has already signed in once and should never be
        asked again. Take the card down now: the lookups below take a moment, and leaving
        it up meant staring at a sign-in box you had already satisfied. */
