@@ -146,7 +146,10 @@ const RLOB={
       if(name.length<3){err.textContent='Please type your full legal name.';return}
       if(!el('obChk').checked){err.textContent='Tick the box to confirm.';return}
       el('obGo').disabled=true;el('obGo').textContent='Saving…';
-      const fail=await window.RLOnboard.sign(CTX,id,name);
+      const agreedText=(d.kind==='sign'
+        ? 'I have read this document and I agree to be bound by it. I intend my typed name to be my signature.'
+        : 'I have read this document and I understand it.');
+      const fail=await window.RLOnboard.sign(CTX,id,name,{agreed:agreedText});
       if(fail){err.textContent='Could not save: '+fail;el('obGo').disabled=false;el('obGo').textContent='Try again';return}
       CTX.state.name=name;
       CTX=await window.RLOnboard.load(CTX.sb);
