@@ -4191,6 +4191,44 @@ async function loadRequiredTracks(){
     if(ctx&&ctx.tracks&&ctx.tracks.length)REQUIRED_TRACKS=ctx.tracks.slice();
   }catch(e){console.warn('[required tracks]',e&&e.message)}
 }
+function moduleVisibleToMe(mod){
+  if(!mod.roles||!mod.roles.length) return true;
+  if(mod.roles.includes('ALL')) return true; // universal modules (Sales Fundamentals)
+  const myKey=ROLE_MODULE_KEY[CU.role];
+  const r=ROLES[CU.role];
+  if(r&&r.admin&&(CU.role==='owner'||CU.role==='ops_director')) return true; // owners/ops see all modules
+  return mod.roles.includes(myKey);
+}
+function myModules(trackId){
+  const t=TRACKS[trackId]; if(!t) return [];
+  /* Modules carry their own role tags, written before the gate decided which tracks a
+     person owes. ASAP is tagged agent/team_lead and H2M marketer/sales_manager, so for a
+     licensed_agent the filter returned nothing and both tracks rendered as cards with no
+     modules inside. A track the company requires has to be completable, so role tags
+     cannot thin one out — and an empty card is always a fault, never a real state. */
+  if(REQUIRED_TRACKS.indexOf(trackId)>-1) return t.modules.slice();
+  const vis=t.modules.filter(moduleVisibleToMe);
+  return vis.length?vis:t.modules.slice();
+}
+// ═══ PROGRESS ═══
+function getProg(uid,tid){return (progress[uid]||{})[tid]||{};}
+/* Until the SSO bridge set CU.id, progress was filed under the literal key "undefined".
+   Giving people a real id orphaned that history — the modules were still finished, but
+   the hub read an empty bucket and re-locked the track. Move the old bucket across once,
+   and only when the real one is still empty, so nobody who has since progressed is
+   overwritten by stale data. */
+function adoptLegacyProgress(){
+  try{
+    if(!CU||!CU.id)return;
+    const legacy=progress['undefined'];
+    if(!legacy||!Object.keys(legacy).length)return;
+    const mine=progress[CU.id];
+    if(mine&&Object.keys(mine).length)return;
+    progress[CU.id]=legacy;
+    sl('rl_tc3_progress',progress);
+    if(typeof pushProgress==='function')pushProgress();
+  }catch(e){console.warn('[progress adopt]',e&&e.message)}
+}
 async function reconcileCompletedTracks(){
   try{
     if(!CU||!CU.id||!window.RLOnboard||!RLOnboard.client)return;
