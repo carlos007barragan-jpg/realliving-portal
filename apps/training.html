@@ -4198,6 +4198,36 @@ function adoptLegacyProgress(){
     if(typeof pushProgress==='function')pushProgress();
   }catch(e){console.warn('[progress adopt]',e&&e.message)}
 }
+/* A finished track is recorded on the server, but the tick against each module only
+   ever lived in the learner's own browser. Clear that browser and the hub re-locks a
+   track the company already has them down as having completed, and they are made to
+   click through it again. Where the server says a track is done, restore the modules
+   to match. Only ever fills in — it cannot un-tick anything. */
+async function reconcileCompletedTracks(){
+  try{
+    if(!CU||!CU.id||!window.RLOnboard||!RLOnboard.client)return;
+    const sb=RLOnboard.client(); if(!sb)return;
+    const {data}=await sb.from('records').select('data')
+      .eq('collection','onboarding').eq('id',CU.id).maybeSingle();
+    const done=(data&&data.data&&data.data.tracks)||{};
+    if(!Object.keys(done).length)return;
+    let changed=false;
+    Object.keys(done).forEach(tid=>{
+      if(!done[tid]||!TRACKS[tid])return;
+      const mods=myModules(tid); if(!mods.length)return;
+      if(!progress[CU.id])progress[CU.id]={};
+      if(!progress[CU.id][tid])progress[CU.id][tid]={};
+      const bucket=progress[CU.id][tid];
+      mods.forEach(m=>{
+        if(!bucket[m.id]||!bucket[m.id].done){
+          bucket[m.id]={done:true,score:null,ts:Date.parse(done[tid])||Date.now(),restored:true};
+          changed=true;
+        }
+      });
+    });
+    if(changed){sl('rl_tc3_progress',progress);pushProgress();if(typeof renderDash==='function')renderDash();}
+  }catch(e){console.warn('[track reconcile]',e&&e.message)}
+}
 function setModDone(tid,mid,score){
   const uid=CU.id;
   if(!progress[uid])progress[uid]={};
@@ -4603,6 +4633,7 @@ init();
   };
   CU={id:session.user.id,name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
   adoptLegacyProgress();
+  reconcileCompletedTracks();
   e('loginView').style.display='none'; e('mainView').style.display='block';
   const ri=(typeof ROLES!=='undefined'&&ROLES[CU.role])||{label:CU.role,admin:_admin};
   e('utag').textContent=_name+' · '+(ri.label||CU.role);
