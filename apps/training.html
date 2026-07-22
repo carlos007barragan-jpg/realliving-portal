@@ -4634,38 +4634,47 @@ init();
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* Portal SSO bridge: if the Business Suite session exists, walk straight in. PIN login stays as fallback. */
-(async()=>{try{
-  const _sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});
-  const {data:{session}}=await _sb.auth.getSession();
-  if(!session)return;
-  const {data:prof}=await _sb.from('profiles').select('*').eq('id',session.user.id).single();
-  if(!prof)return;
-  const _name=prof.full_name||session.user.email, _admin=(prof.role==='owner');
-  /* Map CRM roles onto Training's role keys. The hub keeps its own role list, so
-     this is where the two can drift — a manager used to land on sales_manager,
-     which carries only fundamentals/crm/h2m and no RL track at all.
-     Scope now follows the business set in Suite > Settings > Team, matching
-     bizFromSeat: a manager covering everything gets every track. */
-  const B=String(prof.business||'').toUpperCase();
-  const wideManager=(!B||B==='ALL');
-  const roleMap={
-    owner:'owner',
-    manager: wideManager ? 'ops_director'
-           : (B==='ASAP' ? 'asap_team_lead' : 'sales_manager'),
-    marketing:'marketer',
-    agent: B==='ASAP' ? 'asap_agent'
-         : (B==='H2M' ? 'marketer' : 'licensed_agent')
-  };
-  CU={id:session.user.id,name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
-  await loadRequiredTracks();
-  adoptLegacyProgress();
-  await reconcileCompletedTracks();
-  e('loginView').style.display='none'; e('mainView').style.display='block';
-  const ri=(typeof ROLES!=='undefined'&&ROLES[CU.role])||{label:CU.role,admin:_admin};
-  e('utag').textContent=_name+' · '+(ri.label||CU.role);
-  e('adminBtn').style.display=(ri.admin||_admin)?'inline-flex':'none';
-  renderDash();
-}catch(e){console.error('[sso bridge]',e)}})();
+(async()=>{
+  const busy=t=>{const d=e('dashView'); if(d)d.innerHTML='<div style="text-align:center;padding:60px;color:var(--text-3)">'+t+'</div>';};
+  try{
+    const _sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});
+    const {data:{session}}=await _sb.auth.getSession();
+    /* No Suite session at all — the PIN card stays as the standalone way in. */
+    if(!session)return;
+    /* There is a session, so this person has already signed in once and should never be
+       asked again. Take the card down now: the lookups below take a moment, and leaving
+       it up meant staring at a sign-in box you had already satisfied. */
+    e('loginView').style.display='none';
+    e('mainView').style.display='block';
+    busy('Signing you in\u2026');
+    const {data:prof}=await _sb.from('profiles').select('*').eq('id',session.user.id).single();
+    if(!prof){busy('You are signed in, but no training profile is mapped to this account yet \u2014 ask ownership to check your seat.');return;}
+    const _name=prof.full_name||session.user.email, _admin=(prof.role==='owner');
+    /* Map CRM roles onto Training's role keys. The hub keeps its own role list, so this
+       is where the two can drift — a manager used to land on sales_manager, which carries
+       only fundamentals/crm/h2m and no RL track at all. Scope follows the business set in
+       Suite > Settings > Team, matching bizFromSeat. */
+    const B=String(prof.business||'').toUpperCase();
+    const wideManager=(!B||B==='ALL');
+    const roleMap={
+      owner:'owner',
+      manager: wideManager ? 'ops_director' : (B==='ASAP' ? 'asap_team_lead' : 'sales_manager'),
+      marketing:'marketer',
+      agent: B==='ASAP' ? 'asap_agent' : (B==='H2M' ? 'marketer' : 'licensed_agent')
+    };
+    CU={id:session.user.id,name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
+    const ri=(typeof ROLES!=='undefined'&&ROLES[CU.role])||{label:CU.role,admin:_admin};
+    e('utag').textContent=_name+' \u00b7 '+(ri.label||CU.role);
+    e('adminBtn').style.display=(ri.admin||_admin)?'inline-flex':'none';
+    await loadRequiredTracks();
+    adoptLegacyProgress();
+    await reconcileCompletedTracks();
+    renderDash();
+  }catch(err){
+    console.error('[sso bridge]',err);
+    busy('Something went wrong loading your training. Refresh, and if it persists tell ownership.');
+  }
+})();
 </script>
 <script src="onboard.js"></script>
 <script src="onboard-training.js"></script>
