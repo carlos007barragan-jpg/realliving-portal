@@ -404,6 +404,9 @@ let sb=CLOUD?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,
   {auth:{persistSession:true,autoRefreshToken:TOP_LEVEL}}):null;
 let SEAT_ID=null; /* set from the signed-in user's profile in cloud mode */
 let DEV=false;     /* true only for the local admin/dev door — enables role preview */
+/* Who is really signed in, kept apart from `me` so viewing as someone else can never
+   be used to climb: impersonation rewrites `me`, never this. */
+let REAL_OWNER=false, REAL_NAME='';
 
 /* ================= DATA ================= */
 const LS='rl_crm_v3';
@@ -824,6 +827,7 @@ async function cloudEnter(userId,emailFallback){
   await pullAll(true);
   const seat=S.users.find(u=>u.id===SEAT_ID);
   me=(prof.role==='owner')?ADMIN:(seat||{id:SEAT_ID,name:prof.full_name||emailFallback,role:prof.role,business:prof.business});
+  REAL_OWNER=(prof.role==='owner');REAL_NAME=prof.full_name||emailFallback||'';
   if(prof.role==='owner')sessionStorage.setItem('rl_adm','1');
   enter();startSync();
 }
@@ -852,10 +856,33 @@ async function cloudResume(){
 }
 if(typeof window!=='undefined')setTimeout(()=>{cloudResume()},50);
 function viewAs(id){
-  if(!DEV)return;
+  if(!DEV&&!REAL_OWNER)return;
+  /* leave a trail — stepping into someone's account should never be silent */
+  if(id&&REAL_OWNER){const t=S.users.find(u=>u.id===id);if(t)logAct(null,null,esc(REAL_NAME||'Ownership')+' opened the CRM as '+esc(t.name)+' to troubleshoot.');}
   me=id?S.users.find(u=>u.id===id)||ADMIN:ADMIN;
   if(id)sessionStorage.setItem('rl_view',id);else sessionStorage.removeItem('rl_view');
   enter();
+}
+function viewAsSeat(id){
+  if(!REAL_OWNER)return;
+  if(me.id===id){setView('');toast('Back to your own account');return}
+  setView(id);
+}
+/* A standing reminder while impersonating. Without it it is genuinely easy to forget
+   whose account you are typing into and change the wrong person's data. */
+function viewBanner(){
+  const el=document.getElementById('view-banner');
+  const on=REAL_OWNER&&me&&me.id!=='admin'&&sessionStorage.getItem('rl_view');
+  if(!on){if(el)el.remove();return}
+  const html='Viewing the CRM as <b>'+esc(me.name)+'</b> \u2014 anything you change is saved to their data.'+
+    ' <button class="btn small" style="margin-left:10px" onclick="viewAsSeat(\''+me.id+'\')">Back to my account</button>';
+  if(el){el.innerHTML=html;return}
+  const d=document.createElement('div');
+  d.id='view-banner';
+  d.style.cssText='position:sticky;top:0;z-index:900;background:var(--gold2,#C8A44D);color:#1b1b1b;'+
+    'padding:9px 16px;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+  d.innerHTML=html;
+  document.body.insertBefore(d,document.body.firstChild);
 }
 function logout(){try{if(sb)sb.auth.signOut();}catch(e){}sessionStorage.removeItem('rl_adm');sessionStorage.removeItem('rl_view');setTimeout(()=>location.reload(),150)}
 function realUid(){return SEAT_ID||(me&&me.id!=='admin'?me.id:'u1')}
@@ -932,7 +959,7 @@ function pagesFor(){
   if(me.role!=='marketing')out.push({k:'commissions',label:'Commissions',icon:I.comm2});
   if(me.role!=='marketing')out.push({k:'followups',label:'Follow-Ups',icon:I.fu});
   if(me.role==='owner'||me.role==='manager')out.push({k:'settings',label:'Settings',icon:I.set});
-  if(DEV)out.push({sec:'Developer'},{k:'devview',label:'Change View',icon:I.set});
+  if(DEV||REAL_OWNER)out.push({sec:DEV?'Developer':'Ownership'},{k:'devview',label:'Change View',icon:I.set});
   return out;
 }
 function renderNav(){
@@ -970,6 +997,7 @@ function enter(){
 }
 function go(k,arg){
   document.body.classList.remove('side-open');
+  try{viewBanner()}catch(e){}
   page=k;pageArg=arg;if(k==='biz')bizSel=arg;
   renderNav();closeAll();
   const M=document.getElementById('main');
@@ -2709,7 +2737,7 @@ function wallChecks(){
   ];
 }
 function vDevView(){
-  if(!DEV)return '<div class="empty">Not available on this account.</div>';
+  if(!DEV&&!REAL_OWNER)return '<div class="empty">Not available on this account.</div>';
   const curSeat=me.id==='admin'?'':me.id;
   let h='<div class="sect-head" style="margin-top:4px"><h2>Change View</h2><span class="cnt">generalized positions — dev door only</span></div>'+
     '<div class="mut" style="font-size:13px;margin-bottom:14px">After editing, flip through each position to confirm what that role can and cannot see. These are generalizations of the position — not any individual\'s account.</div>'+
@@ -2719,6 +2747,20 @@ function vDevView(){
       '<b style="font-family:var(--disp);font-size:17px">'+r.label+'</b>'+
       '<small style="display:block;color:var(--mut);font-size:12px;margin-top:5px;line-height:1.5">'+r.sub+'</small>'+
       (on?'<div style="margin-top:10px"><span class="tag" style="border-color:var(--gold2);color:var(--gold2)">Currently viewing</span></div>':'')+'</div>'}).join('')+'</div>';
+  /* Generalized positions above are for testing what a role can see. This lists the
+     actual people, for reproducing a problem someone is reporting on their own data. */
+  if(REAL_OWNER){
+    const team=S.users.filter(u=>u.id!=='admin'&&!u.deleted);
+    h+='<div class="sect-head" style="margin-top:6px"><h2 style="font-size:18px">Open the CRM as a teammate</h2><span class="cnt">their permissions, their data</span></div>'+
+      '<div class="mut" style="font-size:12.5px;margin-bottom:12px">Use this to reproduce something a person is reporting. You stay signed in as yourself and it is written to the activity log. This shows their view of the CRM \u2014 it is not their screen, and it will not show anything saved only in their own browser.</div>'+
+      '<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr));margin-bottom:24px">'+
+      (team.length?team.map(u=>{const on=me.id===u.id;
+        return '<div class="card rowlink" style="padding:15px 17px;cursor:pointer'+(on?';border-color:var(--gold2)':'')+'" onclick="viewAsSeat(\''+u.id+'\')">'+
+        '<b style="font-family:var(--disp);font-size:16px">'+esc(u.name)+'</b>'+
+        '<small style="display:block;color:var(--mut);font-size:12px;margin-top:4px">'+esc(u.role||'')+(u.business?' \u00b7 '+esc(u.business):'')+'</small>'+
+        (on?'<div style="margin-top:9px"><span class="tag" style="border-color:var(--gold2);color:var(--gold2)">Currently viewing</span></div>':'')+'</div>'}).join('')
+        :'<div class="empty">No teammates on the roster yet.</div>')+'</div>';
+  }
   const checks=wallChecks();
   const pass=checks.filter(c=>c[1]).length;
   h+='<div class="sect-head"><h2 style="font-size:18px">Protection audit</h2><span class="cnt">runs live every time this page opens</span><span class="spacer"></span>'+
