@@ -618,12 +618,16 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
 
   function openCard(id){
     const c = CARDS.find(x=>x.id===id); if(!c||!c.url) return;
-    const f=$("appFrame"); f.removeAttribute("srcdoc"); f.src=c.url;
+    const f=$("appFrame"); f.removeAttribute("srcdoc"); f.src=appUrl(c.url);
     $("appTitle").textContent=c.name; $("appView").classList.add("on");
   }
 
   /* ---------- DASHBOARD ---------- */
-  function renderDashboard(){
+  /* Apps are plain files on Pages, which caches hard. During active fixes that means
+   people keep loading yesterday's copy of an app and hitting bugs that are already
+   fixed — so stamp the frame URL and always fetch the current one. */
+function appUrl(u){ return u + (u.indexOf('?')>-1?'&':'?') + 'v=' + Date.now(); }
+function renderDashboard(){
     $("uName").textContent = CU.name;
     $("uRole").textContent = CU.role;
     $("uAvatar").textContent = CU.initial;
@@ -710,7 +714,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     if(c.url){
       /* live URL loading — the suite always serves the latest version of each app */
       f.removeAttribute("srcdoc");
-      f.src = c.url;
+      f.src = appUrl(c.url);
       $("appTitle").textContent = c.name;
       $("appView").classList.add("on");
       return;
