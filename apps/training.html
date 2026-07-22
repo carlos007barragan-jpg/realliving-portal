@@ -4186,6 +4186,36 @@ function setModDone(tid,mid,score){
   if(!progress[uid][tid])progress[uid][tid]={};
   progress[uid][tid][mid]={done:true,score,ts:Date.now()};
   sl('rl_tc3_progress',progress);
+  pushProgress();
+}
+/* Module progress lived only in this browser's localStorage, so ownership could see
+   that a track was finished but never where someone had reached inside it — and the
+   record died with a cleared cache or a second laptop. Mirror a compact per-track
+   summary to Supabase so Team & Access can report real position. Best effort: a
+   failure here must never block someone from finishing a module. */
+async function pushProgress(){
+  try{
+    const sb=window.RLOnboard&&window.RLOnboard.client&&window.RLOnboard.client();
+    if(!sb||!CU||!CU.id)return;
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return;
+    const mine=(ROLES[CU.role]&&ROLES[CU.role].tracks)||[];
+    const out={};
+    mine.forEach(id=>{
+      const t=TRACKS[id]; if(!t)return;
+      const mods=myModules(id), p=getProg(CU.id,id);
+      const done=mods.filter(m=>p[m.id]&&p[m.id].done);
+      const next=mods.find(m=>!(p[m.id]&&p[m.id].done));
+      out[id]={label:t.name||id,done:done.length,total:mods.length,
+               last:done.length?done[done.length-1].title:null,
+               next:next?next.title:null};
+    });
+    await sb.from('records').upsert({
+      collection:'training', id:CU.id,
+      data:{name:CU.name,role:CU.role,tracks:out,updatedAt:new Date().toISOString()},
+      updated_at:new Date().toISOString(), deleted:false
+    },{onConflict:'collection,id'});
+  }catch(e){console.warn('[progress sync]',e&&e.message)}
 }
 function isModDone(tid,mid){return !!(getProg(CU.id,tid)[mid]&&getProg(CU.id,tid)[mid].done);}
 function isAdminViewer(){const r=ROLES[CU.role];return !!(r&&r.admin);}
@@ -4553,7 +4583,7 @@ init();
     agent: B==='ASAP' ? 'asap_agent'
          : (B==='H2M' ? 'marketer' : 'licensed_agent')
   };
-  CU={name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
+  CU={id:session.user.id,name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
   e('loginView').style.display='none'; e('mainView').style.display='block';
   const ri=(typeof ROLES!=='undefined'&&ROLES[CU.role])||{label:CU.role,admin:_admin};
   e('utag').textContent=_name+' · '+(ri.label||CU.role);
