@@ -71,7 +71,7 @@ function assess(seat,ob){
   const biz=RLOnboard.bizFromSeat(seat), role=RLOnboard.roleFromSeat(seat);
   const docs=RLOnboard.requirements(biz,role), tracks=RLOnboard.tracksFor(biz);
   const sigs=(ob&&ob.sigs)||{}, waived=(ob&&ob.waived)||{}, done=(ob&&ob.tracks)||{};
-  docs.forEach(d=>{d._signed=!!sigs[d.id];d._waived=!!waived[d.id];d._waiver=waived[d.id]||null});
+  docs.forEach(d=>{d._sig=sigs[d.id]||null;d._signed=!!sigs[d.id];d._waived=!!waived[d.id];d._waiver=waived[d.id]||null});
   const settled=docs.filter(d=>d._signed||d._waived).length;
   const trained=tracks.filter(t=>done[t]).length;
   const docsDone=settled>=docs.length, trainDone=docsDone&&trained>=tracks.length;
@@ -117,7 +117,7 @@ async function render(){
         (login&&login.lastSignIn?' · last signed in '+esc(String(login.lastSignIn).slice(0,10)):'')+'</div>'+
       trainingDetail(ob)+
       '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
-        '<button onclick="toggle(\''+seat.id+'\')">Paperwork detail</button>'+
+        '<button onclick="toggle(\''+seat.id+'\')">Paperwork detail</button>'+(ob&&pendingCounter(ob)?'<button class="go" onclick="countersignAll(\''+ob.uid+'\')">Countersign '+pendingCounter(ob)+'</button>':'')+
         (seat.role!=='owner'?'<button class="danger" onclick="askRemove(\''+seat.id+'\')">Remove from platform</button>':'')+
       '</div>'+
       '<div id="d_'+seat.id+'" class="hide">'+detail(seat,ob,a)+'</div></div>';
@@ -161,9 +161,12 @@ function detail(seat,ob,a){
       const state=d._signed?['ok','✓']:(d._waived?['wv','—']:['no','○']);
       h+='<div class="row"><span class="tick '+state[0]+'">'+state[1]+'</span>'+
         '<div class="docname">'+esc(d.t)+
-          '<div class="why">'+(d._signed?'signed':(d._waived?
+          '<div class="why">'+(d._signed?sigLine(d._sig):(d._waived?
             'waived by '+esc(d._waiver.by)+(d._waiver.reason?' — '+esc(d._waiver.reason):''):
             'not signed yet'))+'</div></div>'+
+        (uid&&d._signed?'<button onclick="cert(\''+uid+'\',\''+d.id+'\')">Certificate</button>':'')+
+        (uid&&d._signed&&!(d._sig&&d._sig.counter)?
+          '<button class="go" onclick="countersign(\''+uid+'\',\''+d.id+'\')">Countersign</button>':'')+
         (uid?(d._signed?'':(d._waived?
           '<button onclick="unwaive(\''+uid+'\',\''+d.id+'\')">Undo waiver</button>':
           '<button onclick="askWaive(\''+uid+'\',\''+d.id+'\',\''+esc(d.t).replace(/'/g,"")+'\')">Not applicable</button>')):'')+
@@ -173,6 +176,66 @@ function detail(seat,ob,a){
   if(!uid)h+='<div class="note">They have not signed in yet, so there is nothing to waive. Waivers become available on first login.</div>';
   return h;
 }
+
+/* ---- signatures, countersignature and the certificate ---- */
+function pendingCounter(ob){const g=(ob&&ob.sigs)||{};return Object.keys(g).filter(k=>g[k]&&g[k].ts&&!g[k].counter).length}
+function fdt(ts){ try{return new Date(ts).toLocaleString([], {dateStyle:'medium', timeStyle:'short'})}catch(e){return String(ts||'')} }
+function sigLine(sig){
+  if(!sig)return 'signed';
+  const who=sig.name?(' as '+esc(sig.name)):'';
+  const when=sig.ts?(' on '+esc(fdt(sig.ts))):'';
+  return 'signed'+who+when+(sig.counter
+    ? ' · countersigned by '+esc(sig.counter.name)
+    : ' · <b style="color:#B4341F">awaiting your countersignature</b>');
+}
+async function countersign(uid,docId){
+  const r=await api({action:'countersign',uid:uid,docId:docId});
+  if(r&&r.error){alert(r.error);return}
+  await reload();
+}
+async function countersignAll(uid){
+  if(!confirm('Countersign every outstanding document for this person?'))return;
+  const r=await api({action:'countersignAll',uid:uid});
+  if(r&&r.error){alert(r.error);return}
+  await reload();
+}
+/* The documents themselves are files in the hub, so a browser cannot stamp a signature
+   into the original. This is the record that stands on its own: what was signed, by whom,
+   the exact wording accepted, when, and the company's countersignature. */
+function cert(uid,docId){
+  const ob=(ROSTER.onboarding||[]).find(o=>o.uid===uid); if(!ob)return;
+  const sig=(ob.sigs||{})[docId]; if(!sig)return;
+  const seat=(ROSTER.seats||[]).find(x=>x.id===ob.seatId)||{};
+  const who=ob.name||seat.name||ob.email||uid;
+  const w=window.open('','_blank','width=760,height=900');
+  if(!w){alert('Allow pop-ups to view the certificate.');return}
+  w.document.write('<!doctype html><meta charset="utf-8"><title>Signature certificate</title>'+
+    '<style>body{font:14px/1.7 Georgia,serif;color:#1b1b1b;max-width:640px;margin:40px auto;padding:0 24px}'+
+    'h1{font-size:20px;margin:0 0 4px}.sub{color:#666;font-size:12px;margin-bottom:26px}'+
+    'dl{display:grid;grid-template-columns:180px 1fr;gap:10px 16px;margin:0 0 24px}'+
+    'dt{color:#666;font-size:12px;text-transform:uppercase;letter-spacing:.06em}dd{margin:0}'+
+    '.q{border-left:3px solid #C8A44D;padding:10px 14px;background:#FBF8F1;font-style:italic}'+
+    '.ft{margin-top:28px;padding-top:14px;border-top:1px solid #ddd;color:#777;font-size:11.5px}'+
+    '@media print{body{margin:0}}</style>'+
+    '<h1>Signature certificate</h1>'+
+    '<div class="sub">Real Living Companies — record of electronic signature</div>'+
+    '<dl>'+
+      '<dt>Document</dt><dd>'+esc(sig.title||docId)+'</dd>'+
+      '<dt>Reference</dt><dd>'+esc(docId)+'</dd>'+
+      '<dt>Signed by</dt><dd>'+esc(who)+(ob.email?' &lt;'+esc(ob.email)+'&gt;':'')+'</dd>'+
+      '<dt>Typed signature</dt><dd>'+esc(sig.name||'—')+'</dd>'+
+      '<dt>Signed at</dt><dd>'+esc(fdt(sig.ts))+'</dd>'+
+      '<dt>Countersigned</dt><dd>'+(sig.counter
+          ? esc(sig.counter.name)+' — '+esc(fdt(sig.counter.ts))
+          : 'not yet countersigned')+'</dd>'+
+    '</dl>'+
+    (sig.agreed?'<div class="q">'+esc(sig.agreed)+'</div>':
+      '<div class="q">This signature predates the recording of accepted wording, so the exact sentence agreed to was not captured.</div>')+
+    '<div class="ft">The document itself is held in the Document Hub under the reference above. '+
+    'This certificate evidences the signature, not the contents of that file.</div>');
+  w.document.close();
+}
+
 function toggle(id){const e=document.getElementById('d_'+id);e.classList.toggle('hide')}
 
 /* ---- waive ---- */
