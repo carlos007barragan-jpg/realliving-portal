@@ -864,7 +864,7 @@ function viewAs(id){
   enter();
 }
 function viewAsSeat(id){
-  if(!REAL_OWNER)return;
+  if(!REAL_OWNER&&!DEV)return;
   if(me.id===id){setView('');toast('Back to your own account');return}
   setView(id);
 }
@@ -872,7 +872,7 @@ function viewAsSeat(id){
    whose account you are typing into and change the wrong person's data. */
 function viewBanner(){
   const el=document.getElementById('view-banner');
-  const on=REAL_OWNER&&me&&me.id!=='admin'&&sessionStorage.getItem('rl_view');
+  const on=(REAL_OWNER||DEV)&&me&&me.id!=='admin'&&sessionStorage.getItem('rl_view');
   if(!on){if(el)el.remove();return}
   const html='Viewing the CRM as <b>'+esc(me.name)+'</b> \u2014 anything you change is saved to their data.'+
     ' <button class="btn small" style="margin-left:10px" onclick="viewAsSeat(\''+me.id+'\')">Back to my account</button>';
@@ -2749,10 +2749,10 @@ function vDevView(){
       (on?'<div style="margin-top:10px"><span class="tag" style="border-color:var(--gold2);color:var(--gold2)">Currently viewing</span></div>':'')+'</div>'}).join('')+'</div>';
   /* Generalized positions above are for testing what a role can see. This lists the
      actual people, for reproducing a problem someone is reporting on their own data. */
-  if(REAL_OWNER){
+  if(REAL_OWNER||DEV){
     const team=S.users.filter(u=>u.id!=='admin'&&!u.deleted);
     h+='<div class="sect-head" style="margin-top:6px"><h2 style="font-size:18px">Open the CRM as a teammate</h2><span class="cnt">their permissions, their data</span></div>'+
-      '<div class="mut" style="font-size:12.5px;margin-bottom:12px">Use this to reproduce something a person is reporting. You stay signed in as yourself and it is written to the activity log. This shows their view of the CRM \u2014 it is not their screen, and it will not show anything saved only in their own browser.</div>'+
+      '<div class="mut" style="font-size:12.5px;margin-bottom:12px">Use this to reproduce something a person is reporting. This shows their view of the CRM \u2014 it is not their screen, and it will not show anything saved only in their own browser.'+(REAL_OWNER?' You stay signed in as yourself and the switch is written to the activity log.':' <b>Through the dev door you are working from this browser\u2019s copy of the data, not live cloud data, and nothing you change here syncs.</b> Sign in with your owner account for the live picture.')+'</div>'+
       '<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr));margin-bottom:24px">'+
       (team.length?team.map(u=>{const on=me.id===u.id;
         return '<div class="card rowlink" style="padding:15px 17px;cursor:pointer'+(on?';border-color:var(--gold2)':'')+'" onclick="viewAsSeat(\''+u.id+'\')">'+
