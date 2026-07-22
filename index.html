@@ -935,6 +935,15 @@ function renderDashboard(){
       return m;
     }
 
+    let PENDING_COUNTER=0;
+    function countPending(rows){
+      let n=0;
+      (rows||[]).forEach(r=>{
+        const g=(r.data&&r.data.sigs)||{};
+        Object.keys(g).forEach(k=>{ if(g[k]&&g[k].ts&&!g[k].counter)n++; });
+      });
+      return n;
+    }
     function buildFeed(seats, rows){
       const titles = docTitles();
       const TL = (window.RLOnboard && window.RLOnboard.TRACK_LABEL) || {};
@@ -980,11 +989,18 @@ function renderDashboard(){
 
     function renderFeed(){
       const list = document.getElementById('notifList'); if(!list) return;
+      /* Signatures waiting on the company's countersignature are a task, not news —
+         they sit at the top and stay there until they are dealt with. */
+      const todo = PENDING_COUNTER
+        ? '<div class="notif-item" style="background:#FDF3D8;cursor:pointer" onclick="openTeamAccess()">'+
+          '<strong>'+PENDING_COUNTER+' document'+(PENDING_COUNTER===1?'':'s')+' need your countersignature</strong>'+
+          '<div class="notif-time">Open Team &amp; Access to sign them off</div></div>'
+        : '';
       if (!FEED.length) {
-        list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No activity yet.</div>';
+        list.innerHTML = todo || '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No activity yet.</div>';
         return;
       }
-      list.innerHTML = FEED.map(e =>
+      list.innerHTML = todo + FEED.map(e =>
         '<div class="notif-item"><strong>' + esc(e.who) + '</strong> ' + esc(e.what) +
         '<div class="notif-time">' + esc(whenText(e.ts)) + '</div></div>'
       ).join('');
@@ -995,9 +1011,15 @@ function renderDashboard(){
       return FEED.filter(e => String(e.ts) > mark).length;
     }
 
+    function openTeamAccess(){
+      const c = CARDS.find(x=>x.id==='team'); if(!c) return;
+      const m=document.getElementById('notifModal'); if(m)m.classList.remove('open');
+      const card=document.querySelector('.card[data-id="team"]');
+      if(card)card.click();
+    }
     function updateBell(){
       const bell = document.getElementById('notifBell'); if(!bell) return;
-      bell.classList.toggle('unseen', unseenCount() > 0);
+      bell.classList.toggle('unseen', unseenCount() > 0 || PENDING_COUNTER > 0);
       renderFeed();
     }
 
@@ -1031,6 +1053,7 @@ function renderDashboard(){
         const {data: rows} = await sb.from('records').select('id,data')
           .eq('collection','onboarding').in('id', seats.map(s => s.id));
         const next = buildFeed(seats, rows||[]);
+        PENDING_COUNTER = countPending(rows||[]);
 
         /* first run only records a watermark, so opening the suite after a busy
            week shows the history in the panel without a wall of pop-ups */
