@@ -205,10 +205,53 @@ async function save(ctx){
   return error?error.message:null;
 }
 /* one signature */
-async function sign(ctx,docId,typedName){
+/* A signature used to be a name and a timestamp. That is thin evidence: it does not say
+   what the person actually agreed to, and there was no company-side signature at all.
+   Keep the wording they accepted and the document they accepted it against, and flag it
+   for countersignature. Deliberately does NOT gate their onboarding — waiting on
+   ownership to countersign would stall a new hire on their first day. */
+async function sign(ctx,docId,typedName,evidence){
   ctx.state.sigs=ctx.state.sigs||{};
-  ctx.state.sigs[docId]={name:typedName,ts:new Date().toISOString()};
+  const doc=(ctx.docs||[]).filter(d=>d.id===docId)[0]||{};
+  ctx.state.sigs[docId]={
+    name:typedName,
+    ts:new Date().toISOString(),
+    title:doc.t||docId,
+    kind:doc.kind||'sign',
+    why:doc.why||null,
+    agreed:(evidence&&evidence.agreed)||null,
+    counter:null
+  };
   return await save(ctx);
+}
+/* The company's side. Recorded against the person's own onboarding record so the
+   document and both signatures stay together. */
+async function countersign(sb,uid,docId,byName,byId){
+  const {data}=await sb.from('records').select('data')
+    .eq('collection','onboarding').eq('id',uid).maybeSingle();
+  const st=(data&&data.data)||null;
+  if(!st||!st.sigs||!st.sigs[docId])return 'That document has not been signed yet.';
+  st.sigs[docId].counter={name:byName,byId:byId||null,ts:new Date().toISOString()};
+  const {error}=await sb.from('records').upsert({
+    collection:'onboarding',id:uid,data:st,updated_at:new Date().toISOString(),deleted:false
+  },{onConflict:'collection,id'});
+  return error?error.message:null;
+}
+/* Everything signed but not yet countersigned, across the whole team. */
+async function awaitingCountersign(sb){
+  const {data}=await sb.from('records').select('id,data')
+    .eq('collection','onboarding').eq('deleted',false);
+  const out=[];
+  (data||[]).forEach(r=>{
+    const sigs=(r.data&&r.data.sigs)||{};
+    Object.keys(sigs).forEach(id=>{
+      const s=sigs[id];
+      if(s&&s.ts&&!s.counter)out.push({uid:r.id,who:r.data.name||r.data.email||r.id,
+        docId:id,title:s.title||id,signedAt:s.ts,signedAs:s.name});
+    });
+  });
+  out.sort((a,b)=>String(b.signedAt).localeCompare(String(a.signedAt)));
+  return out;
 }
 /* one training track finished */
 async function completeTrack(ctx,trackId){
@@ -217,6 +260,6 @@ async function completeTrack(ctx,trackId){
   return await save(ctx);
 }
 
-global.RLOnboard={load,save,sign,completeTrack,docsFor,tracksFor,bizFromSeat,roleFromSeat,requirements,
+global.RLOnboard={load,save,sign,countersign,awaitingCountersign,completeTrack,docsFor,tracksFor,bizFromSeat,roleFromSeat,requirements,
   COMPANY,BIZ_DOCS,ROLE_DOCS,BIZ_LABEL,ROLE_LABEL,TRACK_LABEL,client};
 })(window);
