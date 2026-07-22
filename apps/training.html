@@ -4180,6 +4180,24 @@ function myModules(trackId){
 
 // ═══ PROGRESS ═══
 function getProg(uid,tid){return (progress[uid]||{})[tid]||{};}
+/* Until the SSO bridge started setting CU.id, every signed-in person's module
+   progress was filed under the literal key "undefined". Giving them a real id
+   orphaned that history — the modules were still finished, but the hub looked in
+   a bucket that had never been written to, so it read as a wiped account and
+   re-locked everything. Move the old bucket across once, and only when the real
+   one is still empty, so nobody who has since made progress gets overwritten. */
+function adoptLegacyProgress(){
+  try{
+    if(!CU||!CU.id)return;
+    const legacy=progress['undefined'];
+    if(!legacy||!Object.keys(legacy).length)return;
+    const mine=progress[CU.id];
+    if(mine&&Object.keys(mine).length)return;
+    progress[CU.id]=legacy;
+    sl('rl_tc3_progress',progress);
+    if(typeof pushProgress==='function')pushProgress();
+  }catch(e){console.warn('[progress adopt]',e&&e.message)}
+}
 function setModDone(tid,mid,score){
   const uid=CU.id;
   if(!progress[uid])progress[uid]={};
@@ -4584,6 +4602,7 @@ init();
          : (B==='H2M' ? 'marketer' : 'licensed_agent')
   };
   CU={id:session.user.id,name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
+  adoptLegacyProgress();
   e('loginView').style.display='none'; e('mainView').style.display='block';
   const ri=(typeof ROLES!=='undefined'&&ROLES[CU.role])||{label:CU.role,admin:_admin};
   e('utag').textContent=_name+' · '+(ri.label||CU.role);
