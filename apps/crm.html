@@ -2209,14 +2209,18 @@ function vProp(id){
       (p.desc?'<div class="mut" style="font-size:13px;margin-top:10px;line-height:1.7">'+esc(p.desc).slice(0,300)+(p.desc.length>300?'…':'')+'</div>':'')+
       '</div>';
   }
-  /* the folder the team opens to pull photos for Facebook and the other socials */
-  if(p.driveUrl){
-    h+='<div class="card" style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
-      '<div style="flex:1;min-width:200px"><div class="eyebrow">Photo folder</div>'+
-      '<div class="mut" style="font-size:12.5px">Open the Drive folder to download the photos for Facebook and the other socials.</div></div>'+
-      '<a class="btn small" href="'+esc(p.driveUrl)+'" target="_blank" rel="noopener">Open Drive folder</a>'+
-      '<button class="btn ghost small" onclick="copyDrive(\''+p.id+'\')">Copy link</button></div>';
-  }
+  /* Anyone who can open a property can set this. Posting to Facebook is marketing's
+     job and marketing is excluded from canEditProps, so gating the link behind the
+     full edit form put it out of reach of the people who actually need it. The rest
+     of that form still controls acquisition numbers and deletion and stays gated. */
+  h+='<div class="card" style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+     '<div style="flex:1;min-width:200px"><div class="eyebrow">Photo folder</div>'+
+     '<div class="mut" style="font-size:12.5px">'+(p.driveUrl
+        ? 'Open the Drive folder to download the photos for Facebook and the other socials.'
+        : 'No folder linked yet — paste the Google Drive link so the team can pull the photos.')+'</div></div>'+
+     (p.driveUrl?'<a class="btn small" href="'+esc(p.driveUrl)+'" target="_blank" rel="noopener">Open Drive folder</a>'+
+                 '<button class="btn ghost small" onclick="copyDrive(\''+p.id+'\')">Copy link</button>':'')+
+     '<button class="btn '+(p.driveUrl?'ghost ':'')+'small" onclick="mDriveLink(\''+p.id+'\')">'+(p.driveUrl?'Change':'Add photo folder')+'</button></div>';
   h+=vPropPhotos(p);
   if(isInvestProp(p)){
     h+=canSeeAcq()
@@ -3409,6 +3413,24 @@ function saveProp(editId){
   }
   save();closeAll();go('prop',p.id);
   toast(pipe&&PIPES[pipe]?('Property added — deal opened in '+PIPES[pipe].name):'Property added to the list');
+}
+function mDriveLink(pid){
+  const p=P(pid); if(!p)return;
+  modal('<h2>Photo folder</h2>'+
+    '<div class="mut" style="font-size:13px;margin-bottom:10px">Paste the Google Drive folder link for this property. '+
+    'Set the folder to <b>Anyone with the link \u2014 Viewer</b> in Drive, or the team will hit a permission wall.</div>'+
+    '<label>Google Drive link</label><input id="dl-url" placeholder="https://drive.google.com/drive/folders/\u2026" value="'+esc(p.driveUrl||'')+'">'+
+    '<div class="mrow"><button class="btn ghost" onclick="closeAll()">Cancel</button>'+
+    '<button class="btn" onclick="saveDriveLink(\''+pid+'\')">Save link</button></div>');
+}
+function saveDriveLink(pid){
+  const p=P(pid); if(!p)return;
+  const el=document.getElementById('dl-url'); if(!el)return;
+  const url=el.value.trim();
+  if(url&&!/^https?:\/\//i.test(url)){toast('That needs to be a full link starting with https://');return}
+  p.driveUrl=url||undefined;
+  logAct(null,null,(url?'Photo folder linked':'Photo folder link removed')+' \u2014 '+p.address+'.');
+  save();closeAll();go('prop',pid);toast(url?'Photo folder saved':'Link removed');
 }
 function copyDrive(pid){
   const p=P(pid); if(!p||!p.driveUrl)return;
