@@ -604,7 +604,13 @@ function normalize(){
 const isFinalRaw=d=>d.stage>=PIPES[d.pipe].stages.length-1;
 function save(){
   localStorage.setItem(LS,JSON.stringify(S));
-  if(sb&&SEAT_ID){stampChanges();clearTimeout(save._t);save._t=setTimeout(pushChanges,1200);}
+  if(sb&&SEAT_ID){stampChanges();clearTimeout(save._t);save._t=setTimeout(pushChanges,400);}
+}
+/* Is there anything saved here that has not reached the cloud yet? */
+function hasQueued(){
+  for(const c in _pushQ)for(const _ in _pushQ[c])return true;
+  for(const c in _del)for(const _ in _del[c])return true;
+  return false;
 }
 function uid(p){S.seq++;return p+S.seq}
 /* ---------- lookups ---------- */
@@ -4008,13 +4014,19 @@ function applyRemote(rows){
 async function pullAll(first){
   if(!sb||!SEAT_ID)return;
   try{
+    /* A first pull rebuilds local state from the cloud, so anything saved on this device
+       but not yet pushed gets wiped by it — and because it never reached the cloud, it does
+       not come back. That is the "I added a client and it disappeared" case: the save was
+       fine, a re-sync landed inside the debounce window and erased it. Flush before the
+       rebuild, and keep anything still queued afterwards rather than erasing over it. */
+    if(first&&hasQueued())await pushChanges();
     const q=sb.from('records').select('*');
     const {data,error}=first?await q:await q.gt('updated_at',_lastPull);
     if(error)throw error;
     if(first){
       /* if the cloud is empty, this device seeds it (first team login) */
       if(!data.length){stampChanges();SYNC_COLS.forEach(col=>{(S[col]||[]).forEach(r=>{(_pushQ[col]=_pushQ[col]||{})[r.id]=new Date().toISOString()})});(_pushQ.meta={targets:new Date().toISOString()});await pushChanges();return}
-      SYNC_COLS.forEach(col=>{S[col]=[]});
+      SYNC_COLS.forEach(col=>{const qd=_pushQ[col]||{};S[col]=(S[col]||[]).filter(r=>qd[r.id])});
     }
     const changed=applyRemote(data||[]);
     if(changed){localStorage.setItem(LS,JSON.stringify(S));if(me&&!first)refresh();}
@@ -4024,6 +4036,12 @@ async function pullAll(first){
 function startSync(){
   if(!sb||_syncTimer)return;
   setSyncDot('ok','Synced · live');
+  /* Leaving the page inside the debounce window used to strand the last save on this
+     device only. Flush on the way out — hiding the tab counts, since phones background a
+     page without ever firing an unload. */
+  const flush=()=>{try{if(hasQueued())pushChanges()}catch(e){}};
+  window.addEventListener('pagehide',flush);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});
   _syncTimer=setInterval(async()=>{
     const ae=document.activeElement;
     if(ae&&/INPUT|SELECT|TEXTAREA/.test(ae.tagName))return;
