@@ -3164,7 +3164,17 @@ function rmDeal(id){
 }
 /* ================= MODALS ================= */
 function modal(h){const m=document.getElementById('modal');m.innerHTML='<button class="close" onclick="closeAll()">×</button>'+h;m.classList.add('on');document.getElementById('ovl').style.display='block'}
-function closeAll(){document.getElementById('drawer').classList.remove('on');document.getElementById('modal').classList.remove('on');document.getElementById('ovl').style.display='none';document.getElementById('gresults').style.display='none'}
+/* Is a modal or drawer currently open and holding someone's unsaved typing? */
+let _deferRefresh=false;
+function editorOpen(){
+  const o=document.getElementById('ovl');
+  if(o&&o.style.display==='block')return true;
+  const m=document.getElementById('modal');
+  return !!(m&&m.classList.contains('on'));
+}
+function closeAll(){document.getElementById('drawer').classList.remove('on');document.getElementById('modal').classList.remove('on');document.getElementById('ovl').style.display='none';document.getElementById('gresults').style.display='none';
+  /* a sync arrived while the editor was open — bring the page up to date now that it is safe */
+  if(_deferRefresh){_deferRefresh=false;setTimeout(refresh,0);}}
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',2200)}
 function mAddClient(edit){
   const c=edit?C(edit):{name:'',phone:'',email:'',address:'',spouseName:'',spousePhone:'',spouseEmail:'',source:SOURCES[0]};
@@ -4029,7 +4039,14 @@ async function pullAll(first){
       SYNC_COLS.forEach(col=>{const qd=_pushQ[col]||{};S[col]=(S[col]||[]).filter(r=>qd[r.id])});
     }
     const changed=applyRemote(data||[]);
-    if(changed){localStorage.setItem(LS,JSON.stringify(S));if(me&&!first)refresh();}
+    if(changed){
+      localStorage.setItem(LS,JSON.stringify(S));
+      /* refresh() re-renders the page, and rendering closes any open editor — so a
+         teammate's change syncing while someone is halfway through a property would wipe
+         the form and everything typed into it. It reads as the box timing out and closing.
+         Take the data, hold the re-render until the editor is closed. */
+      if(me&&!first){ if(editorOpen())_deferRefresh=true; else refresh(); }
+    }
     setSyncDot('ok','Synced · live');
   }catch(e){console.error('[sync pull]',e);setSyncDot('err','Offline — using local copy');}
 }
