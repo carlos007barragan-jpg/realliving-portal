@@ -404,6 +404,7 @@ let sb=CLOUD?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,
   {auth:{persistSession:true,autoRefreshToken:TOP_LEVEL}}):null;
 let SEAT_ID=null; /* set from the signed-in user's profile in cloud mode */
 let DEV=false;     /* true only for the local admin/dev door — enables role preview */
+let _attnTeam=false; /* owner/manager toggle: show the whole team's overdue work, not just mine */
 /* Who is really signed in, kept apart from `me` so viewing as someone else can never
    be used to climb: impersonation rewrites `me`, never this. */
 let REAL_OWNER=false, REAL_NAME='';
@@ -795,12 +796,20 @@ function attentionItems(){
   return items.sort((a,b)=>w[a.sev]-w[b.sev]);
 }
 function vAttention(){
-  const items=attentionItems();
+  let items=attentionItems();
+  /* Every item knows whose it is (aid). An owner used to see the whole team's work mixed
+     into their own list, so the dashboard nagged them to do Karely's follow-ups. Default
+     to your own; owners and managers get a toggle to see the team when they want to. */
+  const canSeeTeam=me.role==='owner'||me.role==='manager';
+  const mineOnly=!(canSeeTeam&&_attnTeam);
+  if(mineOnly)items=items.filter(it=>!it.aid||it.aid===me.id);
   let h='<div class="sect" style="margin-top:16px"><div class="sect-head"><h2>Needs attention</h2>'+
     (items.length?'<span class="warn-cnt">'+items.length+' item'+(items.length===1?'':'s')+'</span>':'')+
-    '<span class="spacer"></span>'+foldBtn('attn')+'</div>';
+    '<span class="spacer"></span>'+
+    (canSeeTeam?'<button class="btn ghost small" style="margin-right:8px" onclick="_attnTeam=!_attnTeam;go(\'dash\')">'+(_attnTeam?'Showing whole team':'Showing just mine')+'</button>':'')+
+    foldBtn('attn')+'</div>';
   if(folded('attn'))return h+'</div>';
-  if(!items.length)return h+'<div class="card"><div class="allclear"><span class="sdot g"></span>All clear — no stalled deals, overdue closings, missed appointments, or untouched leads.</div></div></div>';
+  if(!items.length)return h+'<div class="card"><div class="allclear"><span class="sdot g"></span>'+(mineOnly?'All clear — nothing of yours is overdue.':'All clear — no stalled deals, overdue closings, missed appointments, or untouched leads.')+'</div></div></div>';
   h+='<div class="card" style="padding:8px 20px">'+items.slice(0,8).map(it=>
     '<div class="kpirow"><span class="sdot '+(it.sev==='rd'?'r':'a')+'"></span><span class="lab" style="flex:1;min-width:200px">'+it.t+'<small>'+it.s+'</small></span>'+
     '<button class="btn ghost small" onclick="'+it.fn+'">'+it.act+'</button></div>').join('')+
@@ -1324,16 +1333,18 @@ function mAddTask(clientId){
   modal('<h2>New task</h2>'+
   '<label>Task</label><input id="mt-title" placeholder="e.g. Call about the counter-offer">'+
   '<label>Contact (optional)</label><select id="mt-client"><option value="">—</option>'+S.clients.map(c=>'<option value="'+c.id+'"'+(c.id===clientId?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select>'+
-  '<div class="frow"><div><label>Assigned to</label><select id="mt-agent"'+(me.role==='agent'?' disabled':'')+'>'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+((me.role==='agent'?me.id:me.id==='admin'?realUid():me.id)===u.id?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select></div>'+
+  '<div class="frow"><div><label>Assign to</label><select id="mt-agent">'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+((me.id==='admin'?realUid():me.id)===u.id?' selected':'')+'>'+esc(u.name)+(u.id===(me.id==='admin'?realUid():me.id)?' (me)':'')+'</option>').join('')+'</select></div>'+
   '<div><label>Due</label><input id="mt-due" type="date" value="'+tomorrow+'"></div></div>'+
   '<button class="btn" style="margin-top:18px" onclick="saveTask()">Add task</button>');
 }
 function saveTask(){
   const g=x=>document.getElementById(x).value;
   if(!g('mt-title').trim()){toast('Task title is required');return}
-  S.tasks.push({id:uid('t'),title:g('mt-title').trim(),clientId:g('mt-client')||null,agentId:g('mt-agent'),due:g('mt-due'),done:false,createdAt:new Date().toISOString(),by:me.id==='admin'?realUid():me.id});
-  if(g('mt-client'))logAct(null,g('mt-client'),'Task created — '+g('mt-title').trim()+' (due '+fdate(g('mt-due'))+').');
-  save();closeAll();refresh();toast('Task added');
+  const meId=me.id==='admin'?realUid():me.id;
+  const assignee=g('mt-agent')||meId;
+  S.tasks.push({id:uid('t'),title:g('mt-title').trim(),clientId:g('mt-client')||null,agentId:assignee,due:g('mt-due'),done:false,createdAt:new Date().toISOString(),by:meId});
+  if(g('mt-client'))logAct(null,g('mt-client'),'Task created — '+g('mt-title').trim()+' (due '+fdate(g('mt-due'))+')'+(assignee!==meId?' · assigned to '+esc(U(assignee).name):'')+'.');
+  save();closeAll();refresh();toast(assignee!==meId?'Task added for '+U(assignee).name:'Task added');
 }
 const LEAD_TARGETS={asap:'ASAP Lending — funding lead',rl_buy:'RL Team — buyer lead',rl_list:'RL Team — seller / listing lead',h2m_ws:'H2M — wholesale seller lead',h2m_dispo:'H2M — investor buyer lead',h2m_of:'H2M — owner finance buyer'};
 /* ================= GUIDED INTAKE ================= */
@@ -3886,7 +3897,7 @@ function mAddAppt(clientId,dateStr){
   const defBiz=(me.business)||'RL';
   modal('<h2>New appointment</h2>'+
   '<label>Client</label><select id="ma-client">'+S.clients.map(c=>'<option value="'+c.id+'"'+(c.id===clientId?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select>'+
-  '<div class="frow"><div><label>With</label><select id="ma-agent">'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===me.id?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select></div>'+
+  '<div class="frow"><div><label>Assign to</label><select id="ma-agent">'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===(me.id==='admin'?realUid():me.id)?' selected':'')+'>'+esc(u.name)+(u.id===(me.id==='admin'?realUid():me.id)?' (me)':'')+'</option>').join('')+'</select></div>'+
   '<div><label>Vertical</label><select id="ma-biz">'+Object.keys(BIZ).map(b=>'<option value="'+b+'"'+(b===defBiz?' selected':'')+'>'+BIZ[b]+'</option>').join('')+'</select></div></div>'+
   '<div class="frow"><div><label>Date</label><input id="ma-date" type="date" value="'+today+'"></div><div><label>Time</label><input id="ma-time" type="time" value="10:00"></div></div>'+
   '<div class="frow"><div><label>Type</label><select id="ma-type"><option>Consult</option><option>Showing</option><option>Listing Appt</option><option>Closing</option><option>Follow-up</option></select></div>'+
