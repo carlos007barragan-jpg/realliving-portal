@@ -622,9 +622,13 @@ const money=n=>n||n===0?'$'+Number(n).toLocaleString():'—';
 const fdate=iso=>iso?new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
 const esc=s=>String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const isLost=d=>d.lost===true;
-/* isFinal = no longer open (won OR lost). isWon = actually closed business. */
-const isFinal=d=>isLost(d)||d.stage>=PIPES[d.pipe].stages.length-1;
-const isWon=d=>!isLost(d)&&d.stage>=PIPES[d.pipe].stages.length-1;
+/* Deals swept off the board for audit — imported history that is neither an open deal
+   nor a real close. Hidden from the pipeline and from open-pipeline counts, but not lost
+   business and not revenue, so reporting must treat them as neither. */
+const isArchived=d=>d.boardHidden===true||d.outcome==='archived';
+/* isFinal = no longer open (won OR lost OR archived off the board). */
+const isFinal=d=>isLost(d)||isArchived(d)||d.stage>=PIPES[d.pipe].stages.length-1;
+const isWon=d=>!isLost(d)&&!isArchived(d)&&d.stage>=PIPES[d.pipe].stages.length-1;
 const dealTitle=d=>{const c=d.clientId?C(d.clientId):null;return c?c.name:(d.propInterest||'Property deal')};
 const linkedDeals=d=>d.propertyId?S.deals.filter(x=>x.propertyId===d.propertyId&&x.id!==d.id):[];
 function logAct(dealId,clientId,text){S.acts.push({id:uid('a'),dealId,clientId,by:me.id,ts:new Date().toISOString(),text});}
@@ -920,7 +924,7 @@ function canEditDeal(d){
 }
 function visibleDeals(pipe){
   /* closed-out (lost) files drop off the board — they live on the client profile instead */
-  let ds=S.deals.filter(d=>d.pipe===pipe&&!isLost(d));
+  let ds=S.deals.filter(d=>d.pipe===pipe&&!isLost(d)&&!isArchived(d));
   if(me.role==='agent')ds=ds.filter(d=>d.agentId===me.id);
   return ds;
 }
@@ -1145,7 +1149,7 @@ function vDash(){
   }
   if(me.role==='manager'){
     const pipes=myPipes();let open=0,openN=0,closedN=0,closed=0;
-    pipes.forEach(p=>S.deals.filter(d=>d.pipe===p).forEach(d=>{if(d.pipe==='h2m_acq'||isLost(d))return;if(isWon(d)){closed+=d.revenue||0;closedN++}else{open+=d.revenue||0;openN++}}));
+    pipes.forEach(p=>S.deals.filter(d=>d.pipe===p).forEach(d=>{if(d.pipe==='h2m_acq'||isLost(d)||isArchived(d))return;if(isWon(d)){closed+=d.revenue||0;closedN++}else{open+=d.revenue||0;openN++}}));
     h+='<div class="grid cards4"><div class="card"><div class="eyebrow">Open pipeline · '+BIZ[me.business]+'</div><div class="big">'+money(open)+'</div><div class="sub"><b>'+openN+'</b> active deals</div></div>'+
        '<div class="card"><div class="eyebrow">Closed</div><div class="big">'+money(closed)+'</div><div class="sub"><b>'+closedN+'</b> deals closed</div></div>'+
        '<div class="card"><div class="eyebrow">Team</div><div class="big">'+S.users.filter(u=>u.business===me.business).length+'</div><div class="sub">people in '+BIZ[me.business]+'</div></div></div>';
@@ -1198,7 +1202,7 @@ function vDash(){
 function vSnapshot(){
   let rows='';
   Object.keys(PIPES).forEach(p=>{
-    const ds=S.deals.filter(d=>d.pipe===p);if(!ds.length){rows+='<div class="hbar"><span class="hl">'+PIPES[p].name+'</span><span class="ht"></span><span class="hv mut">0</span></div>';return}
+    const ds=S.deals.filter(d=>d.pipe===p&&!isArchived(d));if(!ds.length){rows+='<div class="hbar"><span class="hl">'+PIPES[p].name+'</span><span class="ht"></span><span class="hv mut">0</span></div>';return}
     const n=PIPES[p].stages.length;
     let segs='';PIPES[p].stages.forEach((st,i)=>{
       const c=ds.filter(d=>d.stage===i).length;if(!c)return;
@@ -1232,7 +1236,7 @@ function vScorecard(){
 const maxStage=d=>Math.max(d.stage,...(d.hist||[]).map(h=>h.s));
 function vVelocity(){
   if(!myPipes().includes(velPipe))velPipe=myPipes()[0];
-  const all=S.deals.filter(d=>d.pipe===velPipe);
+  const all=S.deals.filter(d=>d.pipe===velPipe&&!isArchived(d));
   const stages=PIPES[velPipe].stages;
   const rows=stages.map((st,i)=>{
     const reached=all.filter(d=>maxStage(d)>=i).length;
@@ -1862,7 +1866,7 @@ function vClient(id){
   let h='<button class="back" onclick="go(\'clients\')">← All contacts</button>';
   /* header band */
   h+='<div class="prof-head"><div class="avatar">'+esc(initials)+'</div><div style="flex:1;min-width:220px"><h1>'+esc(c.name)+'</h1>'+
-     '<div class="meta" style="margin-top:5px">'+(c.pastClient?'<span class="tag gr">Past client — has bought from us</span> ':'')+(isDormant(c)?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">Dormant — not being worked</span> ':'')+(c.archived?'<span class="tag" style="border-color:var(--mut);color:var(--mut)">Archived in previous CRM</span> ':'')+'<span class="tag">'+esc(c.source)+'</span> '+bizs.map(b=>'<span class="tag" style="background:'+BIZCOLOR[b]+'18;border-color:'+BIZCOLOR[b]+'55;color:'+BIZCOLOR[b]+'">'+BIZ[b]+'</span>').join(' ')+
+     '<div class="meta" style="margin-top:5px">'+(c.pastClient?'<span class="tag gr">Past client — has bought from us</span> ':'')+(c.auditNeeded?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">Needs audit — imported deal parked here</span> ':(isDormant(c)?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">Dormant — not being worked</span> ':''))+(c.archived?'<span class="tag" style="border-color:var(--mut);color:var(--mut)">Archived in previous CRM</span> ':'')+'<span class="tag">'+esc(c.source)+'</span> '+bizs.map(b=>'<span class="tag" style="background:'+BIZCOLOR[b]+'18;border-color:'+BIZCOLOR[b]+'55;color:'+BIZCOLOR[b]+'">'+BIZ[b]+'</span>').join(' ')+
      (open.length?' <span class="tag gr">'+open.length+' active deal'+(open.length===1?'':'s')+'</span>':'')+'</div></div>'+
      '<button class="btn ghost small" onclick="mCall(\''+c.id+'\')">Call</button>'+
      '<button class="btn ghost small" onclick="mSendText(\''+c.id+'\')">Text</button>'+
