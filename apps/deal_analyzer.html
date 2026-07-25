@@ -172,7 +172,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--black);-
     <div class="brand" style="font-size:1.5rem">Real <em>Living</em></div>
     <div style="font-size:.75rem;color:var(--gray);margin-top:6px;margin-bottom:18px">Deal Analyzer</div>
     <div style="font-size:.85rem;color:var(--black);line-height:1.6;margin-bottom:18px">Sign in once at the Business Suite and every app opens automatically — including this one.</div>
-    <a class="btn btn-gold btn-lg" style="width:100%;justify-content:center;text-decoration:none" href="../index.html">Go to the Business Suite →</a>
+    <a class="btn btn-gold btn-lg" style="width:100%;justify-content:center;text-decoration:none" href="../index.html" target="_top">Go to the Business Suite →</a>
     <div id="ssoChecking" style="font-size:.72rem;color:var(--gray);margin-top:14px">Checking your session…</div>
   </div>
 </div>
@@ -366,9 +366,9 @@ function initStorage(){
 /* Login is handled entirely by the Business Suite SSO bridge at the bottom of this file.
    The old name+PIN sign-in was removed; these remain as no-ops so nothing calls a missing
    function. */
-function doLogin(){ location.href='../index.html'; }
+function doLogin(){ (window.top||window).location.href='../index.html'; }
 const _lp=document.getElementById('loginPin'); if(_lp)_lp.onkeydown=ev=>{if(ev.key==='Enter')doLogin();};
-function doLogout(){currentUser=null;try{localStorage.removeItem('rl_session');}catch(e){}location.href='../index.html';}
+function doLogout(){currentUser=null;try{localStorage.removeItem('rl_session');}catch(e){}(window.top||window).location.href='../index.html';}
 
 // ── TOP BAR ────────────────────────────────────────────────────────
 function renderBar(inEditor){
