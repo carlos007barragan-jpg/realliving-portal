@@ -325,6 +325,47 @@ let currentUser=null, users=[...DEF_USERS], deals=[], currentDeal={...DEFS}, sco
 
 // ── STORAGE ────────────────────────────────────────────────────────
 const db={};
+/* Deals were saved to this browser's localStorage only, so a deal saved on one owner's
+   laptop was invisible to every other person — nobody shared anything. They now persist to
+   the shared records table under collection 'analyzer_deals', with localStorage kept as an
+   offline cache. */
+let _adb=null;
+function analyzerClient(){
+  if(_adb)return _adb;
+  try{_adb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});}catch(e){_adb=null;}
+  return _adb;
+}
+async function pullCloudDeals(){
+  const sb=analyzerClient(); if(!sb)return;
+  try{
+    const {data:{session}}=await sb.auth.getSession(); if(!session)return;
+    const {data}=await sb.from('records').select('id,data').eq('collection','analyzer_deals').eq('deleted',false);
+    const cloud=(data||[]).map(r=>r.data);
+    const cloudIds=new Set(cloud.map(d=>d.id));
+    /* One-time lift: deals saved before cloud sync existed only in this browser. Push any
+       the cloud has never seen, so an owner's existing analyses become visible to the team
+       without re-entering them. */
+    const localOnly=(loadLS('rl_deals',[])||[]).filter(d=>d&&d.id&&!cloudIds.has(d.id));
+    for(const d of localOnly){ await pushCloudDeal(d); cloud.unshift(d); }
+    deals=cloud.sort((a,b)=>String(b.savedAt||'').localeCompare(String(a.savedAt||'')));
+    saveLS('rl_deals',deals);
+    if(currentUser)renderDashboard();
+  }catch(e){console.warn('[analyzer pull]',e&&e.message);}
+}
+async function pushCloudDeal(deal){
+  const sb=analyzerClient(); if(!sb)return;
+  try{
+    const {data:{session}}=await sb.auth.getSession(); if(!session)return;
+    await sb.from('records').upsert({collection:'analyzer_deals',id:deal.id,data:deal,updated_at:new Date().toISOString(),deleted:false},{onConflict:'collection,id'});
+  }catch(e){console.warn('[analyzer push]',e&&e.message);}
+}
+async function deleteCloudDeal(id){
+  const sb=analyzerClient(); if(!sb)return;
+  try{
+    const {data:{session}}=await sb.auth.getSession(); if(!session)return;
+    await sb.from('records').update({deleted:true,updated_at:new Date().toISOString()}).eq('collection','analyzer_deals').eq('id',id);
+  }catch(e){console.warn('[analyzer del]',e&&e.message);}
+}
 function loadLS(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
 function saveLS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){db[k]=v;}}
 function initStorage(){
@@ -460,8 +501,26 @@ function renderDashboard(){
   si.placeholder='Search deals by address, city, agent...';
   si.oninput=()=>renderDealList(wrap,si.value);
   const sameUser=(a,b)=>(a||'').trim().toLowerCase()===(b||'').trim().toLowerCase();
-  const visCount=currentUser?.role==='admin'?deals.length:deals.filter(d=>!d.savedBy||sameUser(d.savedBy,currentUser?.name)).length;
-  const cnt=document.createElement('span'); cnt.style.cssText='font-size:.72rem;color:var(--gray)'; cnt.textContent=visCount+' deal'+(visCount!==1?'s':'')+(currentUser?.role==='admin'?' (all agents)':' (yours)');
+  window._mineOf=d=>sameUser(d.savedBy,currentUser?.name)||(d.savedById&&currentUser?.uid&&d.savedById===currentUser.uid);
+  /* Owners and managers can see the whole team's analyses, so they understand a deal
+     someone else has already worked up. Everyone else sees their own. */
+  const teamView=currentUser?.role==='admin'||currentUser?.role==='manager';
+  if(window._dealScope===undefined)window._dealScope='mine';
+  const scopeNow=teamView?window._dealScope:'mine';
+  if(teamView){
+    const tabs=document.createElement('div'); tabs.style.cssText='display:flex;gap:6px;margin-bottom:12px';
+    [['mine','My deals'],['all',"Everyone's deals"]].forEach(([k,lbl])=>{
+      const b=document.createElement('button');
+      b.className='btn btn-sm'+(scopeNow===k?'':' btn-ghost');
+      b.textContent=lbl;
+      b.onclick=()=>{window._dealScope=k;renderDashboard();};
+      tabs.appendChild(b);
+    });
+    wrap.appendChild(tabs);
+  }
+  const visibleForCount=scopeNow==='all'?deals:deals.filter(d=>!d.savedBy||window._mineOf(d));
+  const visCount=visibleForCount.length;
+  const cnt=document.createElement('span'); cnt.style.cssText='font-size:.72rem;color:var(--gray)'; cnt.textContent=visCount+' deal'+(visCount!==1?'s':'')+(scopeNow==='all'?' (whole team)':' (yours)');
   sh.appendChild(si); sh.appendChild(cnt); wrap.appendChild(sh);
   renderDealList(wrap,''); mb.appendChild(wrap);
 }
@@ -470,8 +529,10 @@ function renderDealList(wrap,q){
   let list=wrap.querySelector('#deal-list');
   if(list) list.remove();
   list=document.createElement('div'); list.id='deal-list';
-  // Agents see only their own deals; admins see all
-  const visibleDeals=currentUser?.role==='admin'?deals:deals.filter(d=>!d.savedBy||sameUser(d.savedBy,currentUser?.name));
+  const teamView=currentUser?.role==='admin'||currentUser?.role==='manager';
+  const scopeNow=teamView?(window._dealScope||'mine'):'mine';
+  /* mine = deals I saved; all = the whole team (owners/managers only) */
+  const visibleDeals=scopeNow==='all'?deals:deals.filter(d=>!d.savedBy||window._mineOf(d));
   const filtered=visibleDeals.filter(d=>!q||((d.name||'')+(d.addr1||'')+(d.addr2||'')+(d.savedBy||'')).toLowerCase().includes(q.toLowerCase()));
   if(!filtered.length){
     const em=document.createElement('div'); em.className='card'; em.style.cssText='text-align:center;padding:40px;color:var(--gray)';
@@ -486,7 +547,7 @@ function renderDealList(wrap,q){
       row.innerHTML=`<div style="flex:1;min-width:0">
         <div style="font-size:.88rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name||d.addr1||'Unnamed'}</div>
         <div style="font-size:.72rem;color:var(--gray);margin-top:1px">${[d.addr1,d.addr2].filter(Boolean).join(', ')}${d.beds?' · '+d.beds:''}</div>
-        <div style="font-size:.68rem;color:var(--gray)">By ${d.savedBy||'—'} · ${d.savedAt||''}</div>
+        <div style="font-size:.68rem;color:var(--gray)">By ${d.savedBy||'—'} · ${d.savedAt?new Date(d.savedAt).toLocaleDateString():''}</div>
       </div>
       <div style="display:flex;gap:14px;text-align:right;flex-shrink:0;margin:0 12px">
         <div><div style="font-size:.63rem;color:var(--gray)">Purchase</div><div style="font-size:.8rem;font-weight:500">$${Math.round(d.purchase||0).toLocaleString()}</div></div>
@@ -496,7 +557,7 @@ function renderDealList(wrap,q){
       const acts=document.createElement('div'); acts.style.cssText='display:flex;gap:4px'; acts.onclick=ev=>ev.stopPropagation();
       const eb=document.createElement('button'); eb.className='btn btn-info btn-sm'; eb.textContent='Edit'; eb.onclick=()=>loadDeal(d.id);
       const sb=document.createElement('button'); sb.className='btn btn-white btn-sm'; sb.textContent='Share'; sb.onclick=()=>openShareFor(d.id);
-      const db2=document.createElement('button'); db2.className='btn btn-danger btn-sm'; db2.textContent='Del'; db2.onclick=()=>{deals=deals.filter(x=>x.id!==d.id);saveLS('rl_deals',deals);showToast('Deleted');renderDashboard();};
+      const db2=document.createElement('button'); db2.className='btn btn-danger btn-sm'; db2.textContent='Del'; db2.onclick=()=>{deals=deals.filter(x=>x.id!==d.id);saveLS('rl_deals',deals);deleteCloudDeal(d.id);showToast('Deleted');renderDashboard();};
       acts.appendChild(eb); acts.appendChild(sb); acts.appendChild(db2); row.appendChild(acts);
       row.onclick=()=>loadDeal(d.id); list.appendChild(row);
     });
@@ -959,9 +1020,9 @@ function openSaveModal(){
 function confirmSave(){
   const nm=(e('dealNameInp').value||currentDeal.addr1||'New Deal').trim();
   const id=currentId||('d'+Date.now());
-  const deal={...currentDeal,scope:[...scope.map(x=>({...x}))],id,name:nm,savedBy:currentUser?.name,savedAt:new Date().toLocaleDateString()};
+  const deal={...currentDeal,scope:[...scope.map(x=>({...x}))],id,name:nm,savedBy:currentUser?.name,savedById:currentUser?.uid||currentUser?.id||null,savedAt:new Date().toISOString()};
   const idx=deals.findIndex(d=>d.id===id);if(idx>=0)deals[idx]=deal;else deals.unshift(deal);
-  saveLS('rl_deals',deals);currentId=id;
+  saveLS('rl_deals',deals);currentId=id;pushCloudDeal(deal);
   e('sh-title').textContent='"'+nm+'" Saved';e('sh-sub').textContent='Share with your client.';
   e('sh-step1').style.display='none';e('sh-step2').style.display='block';
   showToast('Saved: '+nm);
@@ -1127,9 +1188,12 @@ try {
   const {data:prof}=await _sb.from('profiles').select('*').eq('id',session.user.id).single();
   if(!prof)return;
   const _name=prof.full_name||session.user.email, _admin=(prof.role==='owner');
-  currentUser={id:'sso',name:_name,pin:'',role:_admin?'admin':prof.role};
+  /* keep the auth id so a person's deals follow them across devices, and treat managers
+     as a team-view role alongside owners */
+  currentUser={id:'sso',uid:session.user.id,name:_name,pin:'',role:_admin?'admin':(prof.role==='manager'?'manager':prof.role)};
   try{saveLS('rl_session',{id:'sso'})}catch(e){}
   e('loginView').style.display='none'; e('adminView').style.display='block';
+  await pullCloudDeals();
   loadFromURL(); renderBar(); renderDashboard();
 }catch(e){console.error('[sso bridge]',e)}})();
 </script>
