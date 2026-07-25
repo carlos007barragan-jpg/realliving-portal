@@ -505,14 +505,18 @@ function renderDashboard(){
   /* Owners and managers can see the whole team's analyses, so they understand a deal
      someone else has already worked up. Everyone else sees their own. */
   const teamView=currentUser?.role==='admin'||currentUser?.role==='manager';
-  if(window._dealScope===undefined)window._dealScope='mine';
+  const myCount=deals.filter(d=>!d.savedBy||window._mineOf(d)).length;
+  /* First open, land where the deals actually are: if this person has none of their own
+     but the team has some, show the team view rather than an empty "My deals" tab that
+     hides everyone else's work — the reason Laylani logged in and saw nothing. */
+  if(window._dealScope===undefined)window._dealScope=(teamView&&myCount===0&&deals.length>0)?'all':'mine';
   const scopeNow=teamView?window._dealScope:'mine';
   if(teamView){
     const tabs=document.createElement('div'); tabs.style.cssText='display:flex;gap:6px;margin-bottom:12px';
     [['mine','My deals'],['all',"Everyone's deals"]].forEach(([k,lbl])=>{
       const b=document.createElement('button');
       b.className='btn btn-sm'+(scopeNow===k?'':' btn-ghost');
-      b.textContent=lbl;
+      b.textContent=lbl+(k==='all'?' ('+deals.length+')':(myCount?' ('+myCount+')':''));
       b.onclick=()=>{window._dealScope=k;renderDashboard();};
       tabs.appendChild(b);
     });
@@ -536,7 +540,16 @@ function renderDealList(wrap,q){
   const filtered=visibleDeals.filter(d=>!q||((d.name||'')+(d.addr1||'')+(d.addr2||'')+(d.savedBy||'')).toLowerCase().includes(q.toLowerCase()));
   if(!filtered.length){
     const em=document.createElement('div'); em.className='card'; em.style.cssText='text-align:center;padding:40px;color:var(--gray)';
-    em.innerHTML=deals.length?'<div>No results.</div>':'<div style="font-size:1rem;font-weight:500;margin-bottom:6px">No deals yet</div><div style="font-size:.8rem">Click "+ New Deal" to get started.</div>';
+    if(q){ em.innerHTML='<div>No results.</div>'; }
+    else if(scopeNow!=='all'&&deals.length>0){
+      /* their own list is empty but the team has deals — point them at the other tab
+         instead of implying nothing exists */
+      em.innerHTML='<div style="font-size:1rem;font-weight:500;margin-bottom:6px">None of your own yet</div>'+
+        '<div style="font-size:.8rem;margin-bottom:12px">Your team has '+deals.length+' deal'+(deals.length!==1?'s':'')+'. Switch to <b>Everyone\'s deals</b> to see '+(deals.length!==1?'them':'it')+'.</div>'+
+        '<button class="btn btn-sm" onclick="window._dealScope=\'all\';renderDashboard();">See everyone\'s deals</button>';
+    } else {
+      em.innerHTML='<div style="font-size:1rem;font-weight:500;margin-bottom:6px">No deals yet</div><div style="font-size:.8rem">Click "+ New Deal" to get started.</div>';
+    }
     list.appendChild(em);
   } else {
     filtered.forEach(d=>{
