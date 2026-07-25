@@ -313,7 +313,24 @@ const db={};
 let _adb=null;
 function analyzerClient(){
   if(_adb)return _adb;
-  try{_adb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});}catch(e){_adb=null;}
+  /* Use the SAME storage key the Business Suite uses (Supabase's default for this project),
+     so this app reads the Suite's existing session instead of looking in a different bucket
+     and finding nothing — which is what was bouncing signed-in people back to the sign-in
+     card. Embedded copies (inside the Suite iframe) never auto-refresh the shared token;
+     only the top-level Suite tab does, so they can't race each other. */
+  try{
+    const embedded=(function(){try{return window.self!==window.top}catch(e){return true}})();
+    _adb=window.supabase.createClient(
+      'https://zfflgvjnkcjnbwydurlp.supabase.co',
+      'sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',
+      {auth:{
+        storageKey:'sb-zfflgvjnkcjnbwydurlp-auth-token',
+        persistSession:true,
+        autoRefreshToken:!embedded,
+        detectSessionInUrl:false
+      }}
+    );
+  }catch(e){_adb=null;}
   return _adb;
 }
 async function pullCloudDeals(){
@@ -1143,7 +1160,8 @@ try {
      screen — reveal the sign-in card after a few seconds. Cleared the moment we resolve. */
   const _safety=setTimeout(()=>{const lv=document.getElementById('loginView');if(lv&&!lv.classList.contains('show')&&document.getElementById('adminView').style.display!=='block')lv.classList.add('show');},5000);
   try{
-  const _sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});
+  const _sb=analyzerClient();
+  if(!_sb){ const chk=document.getElementById('ssoChecking'); if(chk)chk.textContent='Could not start — refresh the page.'; return; }
   const {data:{session}}=await _sb.auth.getSession();
   const chk=document.getElementById('ssoChecking');
   if(!session){ clearTimeout(_safety); const lv=document.getElementById('loginView'); if(lv)lv.classList.add('show'); if(chk)chk.textContent='Not signed in. Use the button above to sign in at the Business Suite.'; return; }
