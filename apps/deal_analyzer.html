@@ -165,19 +165,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--black);-
 
 <!-- LOGIN -->
 <div id="loginView">
-  <div class="card" style="width:320px;padding:24px">
-    <div style="text-align:center;margin-bottom:20px">
-      <div class="brand" style="font-size:1.5rem">Real <em>Living</em></div>
-      <div style="font-size:.75rem;color:var(--gray);margin-top:5px">Deal Analyzer — Agent Login</div>
-    </div>
-    <div class="ig" style="margin-bottom:8px"><label>Agent name</label><input type="text" id="loginName" placeholder="Your name"></div>
-    <div class="ig" style="margin-bottom:14px"><label>PIN</label><input type="password" id="loginPin" placeholder="••••" maxlength="8"></div>
-    <div id="loginErr" style="color:var(--red);font-size:.72rem;margin-bottom:8px;text-align:center;display:none"></div>
-    <button class="btn btn-gold btn-lg" style="width:100%;justify-content:center" onclick="doLogin()">Sign In</button>
+  <div class="card" style="width:340px;padding:28px;text-align:center">
+    <div class="brand" style="font-size:1.5rem">Real <em>Living</em></div>
+    <div style="font-size:.75rem;color:var(--gray);margin-top:6px;margin-bottom:18px">Deal Analyzer</div>
+    <div style="font-size:.85rem;color:var(--black);line-height:1.6;margin-bottom:18px">Sign in once at the Business Suite and every app opens automatically — including this one.</div>
+    <a class="btn btn-gold btn-lg" style="width:100%;justify-content:center;text-decoration:none" href="../index.html">Go to the Business Suite →</a>
+    <div id="ssoChecking" style="font-size:.72rem;color:var(--gray);margin-top:14px">Checking your session…</div>
   </div>
 </div>
 
 <!-- ADMIN VIEW -->
+<!-- removed the old Agent/PIN login: identity and role are inherited from the Business Suite session -->
+<div id="_removed_login_marker" style="display:none"></div>
 <div id="adminView" style="display:none">
   <!-- TOP BAR -->
   <div class="bar">
@@ -285,27 +284,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--off);color:var(--black);-
 </div>
 
 <!-- USERS MODAL -->
-<div class="ov" id="usersModal">
-  <div class="modal">
-    <button class="mx" onclick="closeM('usersModal')">✕</button>
-    <h3>Manage Users</h3>
-    <p>Add agents or admins. Admins can see all deals and manage users. You cannot remove yourself.</p>
-    <div id="userList" style="margin-bottom:12px"></div>
-    <div class="dvd">Add new user</div>
-    <div class="g2" style="margin-bottom:8px">
-      <div class="ig"><label>Name</label><input type="text" id="newUserName" placeholder="Full name"></div>
-      <div class="ig"><label>PIN</label><input type="text" id="newUserPin" placeholder="e.g. 5678"></div>
-    </div>
-    <div class="ig" style="margin-bottom:10px">
-      <label>Role</label>
-      <select id="newUserRole" style="border:1px solid var(--bd);border-radius:5px;padding:6px 9px;font-size:.83rem;font-family:'DM Sans',sans-serif;background:var(--lg);color:var(--black);width:100%">
-        <option value="agent">Agent — sees own deals only</option>
-        <option value="admin">Admin — sees all deals, manages users</option>
-      </select>
-    </div>
-    <button class="btn btn-green" style="width:100%;justify-content:center" onclick="addUser()">Add User</button>
-  </div>
-</div>
 
 <div class="toast" id="toast"></div>
 
@@ -373,37 +351,21 @@ function initStorage(){
   deals=loadLS('rl_deals',[]);
   // Restore an active session if one exists, so a page reload doesn't kick the user out.
   const savedSession=loadLS('rl_session',null);
-  if(savedSession&&savedSession.id){
-    const u=users.find(x=>x.id===savedSession.id);
-    if(u){
-      try{
-        currentUser=u;
-        e('loginView').style.display='none';
-        e('adminView').style.display='block';
-        renderBar(); renderDashboard();
-      }catch(sessErr){
-        // If restoring the session view fails, fall back to a clean login instead of a broken screen.
-        console.error('Session restore failed, showing login:',sessErr);
-        currentUser=null;
-        try{localStorage.removeItem('rl_session');}catch(x){}
-        e('loginView').style.display='flex';
-        e('adminView').style.display='none';
-      }
-    }
+  /* Session restore is now the SSO bridge's job — it reads the Business Suite session and
+     sets currentUser. We no longer resurrect a local PIN user here, since those no longer
+     exist. Left intentionally minimal. */
+  if(savedSession&&savedSession.id&&savedSession.id!=='sso'){
+    try{localStorage.removeItem('rl_session');}catch(x){}
   }
 }
 
 // ── AUTH ───────────────────────────────────────────────────────────
-function doLogin(){
-  const name=e('loginName').value.trim(),pin=e('loginPin').value.trim();
-  const u=users.find(u=>u.name.toLowerCase()===name.toLowerCase()&&u.pin===pin);
-  if(!u){e('loginErr').textContent='Invalid name or PIN.';e('loginErr').style.display='block';return;}
-  e('loginErr').style.display='none';
-  currentUser=u; saveLS('rl_session',{id:u.id}); e('loginView').style.display='none'; e('adminView').style.display='block';
-  loadFromURL(); renderBar(); renderDashboard();
-}
-e('loginPin').onkeydown=ev=>{if(ev.key==='Enter')doLogin();};
-function doLogout(){currentUser=null;try{localStorage.removeItem('rl_session');}catch(e){}e('loginView').style.display='flex';e('adminView').style.display='none';}
+/* Login is handled entirely by the Business Suite SSO bridge at the bottom of this file.
+   The old name+PIN sign-in was removed; these remain as no-ops so nothing calls a missing
+   function. */
+function doLogin(){ location.href='../index.html'; }
+const _lp=document.getElementById('loginPin'); if(_lp)_lp.onkeydown=ev=>{if(ev.key==='Enter')doLogin();};
+function doLogout(){currentUser=null;try{localStorage.removeItem('rl_session');}catch(e){}location.href='../index.html';}
 
 // ── TOP BAR ────────────────────────────────────────────────────────
 function renderBar(inEditor){
@@ -418,7 +380,7 @@ function renderBar(inEditor){
     btn('+ New Deal',newDeal,'gold',acts,true);
   }
   const un=document.createElement('span');un.style.cssText='font-size:.7rem;color:rgba(255,255,255,.4);padding:0 4px';un.textContent=currentUser?.name;acts.appendChild(un);
-  if(currentUser?.role==='admin') btn('⚙ Agents',openUsers,'ghost',acts);
+  /* user management removed — identity and role come from the Business Suite login */
   btn('Sign Out',doLogout,'ghost',acts);
 }
 function btn(txt,fn,style,parent,lg){
@@ -1059,30 +1021,8 @@ function downloadPDF(){
 }
 
 // ── USERS MODAL ────────────────────────────────────────────────────
-function openUsers(){
-  const list=e('userList');list.innerHTML='';
-  users.forEach(u=>{
-    const row=document.createElement('div');row.className='si';row.style.cursor='default';
-    const isSelf=u.id===currentUser?.id;
-    const roleBadge=u.role==='admin'?`<span style="background:var(--gold);color:#fff;font-size:.6rem;padding:1px 6px;border-radius:3px;margin-left:5px">ADMIN</span>`:`<span style="background:var(--lg);color:var(--gray);font-size:.6rem;padding:1px 6px;border-radius:3px;margin-left:5px">AGENT</span>`;
-    row.innerHTML=`<div><div style="font-size:.82rem;font-weight:500">${u.name}${roleBadge}${isSelf?'<span style="font-size:.65rem;color:var(--gold);margin-left:5px">(you)</span>':''}</div><div style="font-size:.7rem;color:var(--gray)">PIN: ${u.pin}</div></div>`;
-    if(!isSelf){
-      const d=document.createElement('button');d.className='btn btn-danger btn-sm';d.textContent='Remove';
-      d.onclick=()=>{users=users.filter(x=>x.id!==u.id);saveLS('rl_users',users);openUsers();showToast('Removed: '+u.name);};
-      row.appendChild(d);
-    }
-    list.appendChild(row);
-  });
-  e('usersModal').classList.add('open');
-}
-function addUser(){
-  const nm=e('newUserName').value.trim(),pn=e('newUserPin').value.trim(),rl=e('newUserRole').value;
-  if(!nm||!pn){showToast('Name and PIN required');return;}
-  users.push({id:'u'+Date.now(),name:nm,pin:pn,role:rl});
-  saveLS('rl_users',users);
-  e('newUserName').value='';e('newUserPin').value='';
-  openUsers();showToast('Added: '+nm+' ('+rl+')');
-}
+function openUsers(){ /* deprecated: identity is managed in the Business Suite, not here */ return; }
+function addUser(){ /* removed: users are managed in the Business Suite */ }
 
 // ── HELPERS ────────────────────────────────────────────────────────
 function appendCard(wrap,title,html){const c=document.createElement('div');c.className='card';c.innerHTML=`<div class="ct">${title}</div>${html}`;wrap.appendChild(c);return c;}
@@ -1193,13 +1133,15 @@ try {
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* Portal SSO bridge: if the Business Suite session exists, walk straight in. PIN login stays as fallback. */
+/* Portal SSO bridge: the only way in. Reads the Business Suite session and sets identity
+   and role. No session → send them to the Suite to sign in once. */
 (async()=>{try{
-  const _sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf');
+  const _sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf',{auth:{persistSession:true,autoRefreshToken:(function(){try{return window.self===window.top}catch(e){return false}})()}});
   const {data:{session}}=await _sb.auth.getSession();
-  if(!session)return;
+  const chk=document.getElementById('ssoChecking');
+  if(!session){ if(chk)chk.textContent='Not signed in. Use the button above to sign in at the Business Suite.'; return; }
   const {data:prof}=await _sb.from('profiles').select('*').eq('id',session.user.id).single();
-  if(!prof)return;
+  if(!prof){ if(chk)chk.textContent='Signed in, but no profile is mapped to this account yet — ask ownership to check your seat.'; return; }
   const _name=prof.full_name||session.user.email, _admin=(prof.role==='owner');
   /* keep the auth id so a person's deals follow them across devices, and treat managers
      as a team-view role alongside owners */
@@ -1208,7 +1150,10 @@ try {
   e('loginView').style.display='none'; e('adminView').style.display='block';
   await pullCloudDeals();
   loadFromURL(); renderBar(); renderDashboard();
-}catch(e){console.error('[sso bridge]',e)}})();
+}catch(err){console.error('[sso bridge]',err);
+  const chk=document.getElementById('ssoChecking');
+  if(chk)chk.textContent='Could not verify your session. Refresh, or sign in at the Business Suite.';
+}})();
 </script>
 </body>
 </html>
