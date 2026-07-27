@@ -420,6 +420,7 @@ let sb=CLOUD?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,
 let SEAT_ID=null; /* set from the signed-in user's profile in cloud mode */
 let DEV=false;     /* true only for the local admin/dev door — enables role preview */
 let _attnTeam=false; /* owner/manager toggle: show the whole team's overdue work, not just mine */
+let editingNote=null; /* id of the note currently being edited inline on a client profile */
 /* Who is really signed in, kept apart from `me` so viewing as someone else can never
    be used to climb: impersonation rewrites `me`, never this. */
 let REAL_OWNER=false, REAL_NAME='';
@@ -1969,7 +1970,7 @@ function vClient(id){
   const ttab=(k,l)=>'<button class="ttab'+(profTab===k?' on':'')+'" onclick="profTab=\''+k+'\';go(\'client\',\''+c.id+'\')">'+l+'</button>';
   h+='<div><div class="card">'+
     '<div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:19px">Activity</h2></div>'+
-    (canNote?'<div style="display:flex;gap:8px;margin-bottom:12px"><input id="note-in" placeholder="Add a note — calls, texts and stage moves log here automatically…"><button class="btn small" onclick="addNote(\''+c.id+'\')">Add</button></div>':'')+
+    (canNote?'<div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-start"><textarea id="note-in" rows="3" style="flex:1;resize:vertical;min-height:66px;line-height:1.6" placeholder="Add a note — calls, texts and stage moves log here automatically…"></textarea><button class="btn small" onclick="addNote(\''+c.id+'\')">Add</button></div>':'')+
     '<div class="ttabs">'+ttab('all','All')+ttab('sms','Conversation')+ttab('note','Notes')+ttab('touch','Calls & texts')+ttab('deal','Deal moves')+'</div>'+
     (profTab==='sms'?smsThread(c):
     '<ul class="tl">'+(shown.length?shown.map(a=>{const k=kindOf(a.text);
@@ -1978,7 +1979,13 @@ function vClient(id){
       if(tch&&tch.rec)extra+=' <a href="'+esc(tch.rec)+'" target="_blank" style="color:var(--gold2)">▶ recording</a>';
       if(tch&&tch.dur)extra+=' <span class="mut">'+Math.round(tch.dur/60)+' min</span>';
       if(tch&&tch.tx)extra+=' <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();mTranscript(\''+tch.id+'\')">transcript</span>';
-      return '<li><span class="tico"><svg viewBox="0 0 24 24"><path d="'+TICO[k]+'"/></svg></span>'+esc(a.text)+extra+'<small>'+esc(U(a.by).name)+' · '+fdate(a.ts)+'</small></li>'}).join(''):'<div class="empty">Nothing logged in this CRM yet — start with a call or a note.</div>')+'</ul>')+'</div>';
+      const editable=(k==='note')&&canNote&&(a.by===me.id||me.role==='owner'||me.role==='manager');
+      if(k==='note'&&editingNote===a.id){
+        return '<li><span class="tico"><svg viewBox="0 0 24 24"><path d="'+TICO[k]+'"/></svg></span><div style="flex:1;min-width:0"><textarea id="note-edit" rows="3" style="width:100%;resize:vertical;min-height:66px;line-height:1.6">'+esc(a.text)+'</textarea><div style="display:flex;gap:8px;margin-top:6px"><button class="btn small" onclick="saveNoteEdit(\''+a.id+'\',\''+c.id+'\')">Save</button><button class="btn ghost small" onclick="cancelNoteEdit(\''+c.id+'\')">Cancel</button></div></div></li>';
+      }
+      const noteBody=(k==='note')?'<span style="white-space:pre-wrap">'+esc(a.text)+'</span>':esc(a.text);
+      const editLink=editable?' <span class="mut" style="cursor:pointer;text-decoration:underline" onclick="editNote(\''+a.id+'\',\''+c.id+'\')">edit</span>':'';
+      return '<li><span class="tico"><svg viewBox="0 0 24 24"><path d="'+TICO[k]+'"/></svg></span>'+noteBody+extra+'<small>'+esc(U(a.by).name)+' · '+fdate(a.ts)+(a.edited?' · edited':'')+editLink+'</small></li>'}).join(''):'<div class="empty">Nothing logged in this CRM yet — start with a call or a note.</div>')+'</ul>')+'</div>';
   /* ---- what this client has actually bought from us ---- */
   if(won.length||lost.length){
     h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:17px">Closed files</h2><span class="cnt">'+won.length+' sold'+(lost.length?' · '+lost.length+' closed out':'')+'</span></div>'+
@@ -2105,6 +2112,19 @@ function bulkDormant(makeDormant){
 function addNote(cid){
   const el=document.getElementById('note-in');if(!el.value.trim())return;
   logAct(null,cid,el.value.trim());save();go('client',cid);
+}
+function editNote(id,cid){
+  editingNote=id; go('client',cid);
+  setTimeout(()=>{const t=document.getElementById('note-edit');if(t){t.focus();t.setSelectionRange(t.value.length,t.value.length);}},30);
+}
+function cancelNoteEdit(cid){ editingNote=null; go('client',cid); }
+function saveNoteEdit(id,cid){
+  const t=document.getElementById('note-edit'); if(!t)return;
+  const v=t.value.trim();
+  if(!v){ editingNote=null; go('client',cid); return; }   /* empty = leave the note as it was */
+  const a=S.acts.find(x=>x.id===id);
+  if(a){ a.text=v; a.edited=true; a.editedAt=new Date().toISOString(); }
+  editingNote=null; save(); go('client',cid);
 }
 async function addDoc(cid,input){
   const f=input.files[0];if(!f)return;
