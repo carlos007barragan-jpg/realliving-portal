@@ -2,7 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- PWA: installable app layer -->
+<link rel="manifest" href="/realliving-portal/manifest.json">
+<meta name="theme-color" content="#0F172A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Real Living">
+<link rel="apple-touch-icon" href="/realliving-portal/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/realliving-portal/icons/favicon-32.png">
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',function(){
+  navigator.serviceWorker.register('/realliving-portal/sw.js',{scope:'/realliving-portal/'}).catch(function(e){console.warn('[sw]',e&&e.message);});
+});}
+</script>
+<!-- /PWA -->
 <title>Real Living — Training Center</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -4170,11 +4185,13 @@ function doLogout(){CU=null;e('mainView').style.display='none';e('loginView').st
    the role table can still add to it, never take away. */
 let REQUIRED_TRACKS=[];
 function getMyTracks(){
+  /* The gate's list (REQUIRED_TRACKS, set from the seat) is authoritative in SSO mode, so
+     the cards on this page always match the unlock banner by construction. The local role
+     table is only a fallback for the standalone PIN sign-in, where there is no Suite
+     session to ask. */
+  if(REQUIRED_TRACKS.length) return REQUIRED_TRACKS.filter(t=>TRACKS[t]);
   const r=ROLES[CU.role];
-  const mine=(r&&r.tracks)||[];
-  const all=mine.slice();
-  REQUIRED_TRACKS.forEach(t=>{if(TRACKS[t]&&all.indexOf(t)<0)all.push(t)});
-  return all;
+  return ((r&&r.tracks)||['fundamentals','crm']).filter(t=>TRACKS[t]);
 }
 async function loadRequiredTracks(){
   /* Ask the gate itself rather than re-deriving its logic here. RLOnboard.load is what
@@ -4196,7 +4213,7 @@ function moduleVisibleToMe(mod){
   if(mod.roles.includes('ALL')) return true; // universal modules (Sales Fundamentals)
   const myKey=ROLE_MODULE_KEY[CU.role];
   const r=ROLES[CU.role];
-  if(r&&r.admin&&(CU.role==='owner'||CU.role==='ops_director')) return true; // owners/ops see all modules
+  if((CU&&CU.admin)||(r&&r.admin)) return true; // owners & managers (and PIN-mode admins) see all modules
   return mod.roles.includes(myKey);
 }
 function myModules(trackId){
@@ -4291,7 +4308,7 @@ async function pushProgress(){
   }catch(e){console.warn('[progress sync]',e&&e.message)}
 }
 function isModDone(tid,mid){return !!(getProg(CU.id,tid)[mid]&&getProg(CU.id,tid)[mid].done);}
-function isAdminViewer(){const r=ROLES[CU.role];return !!(r&&r.admin);}
+function isAdminViewer(){const r=ROLES[CU.role];return !!((CU&&CU.admin)||(r&&r.admin));}
 function isModUnlocked(tid,mid){
   if(isAdminViewer()) return true; // owners/admins can freely click through every module
   const mods=myModules(tid);
@@ -4311,7 +4328,7 @@ function renderDash(){
   e('moduleView').style.display='none';
   e('dashView').style.display='block';
   const wrap=e('dashView'); wrap.innerHTML='';
-  const roleInfo=ROLES[CU.role]||{label:CU.role};
+  const roleInfo={label:(CU&&CU.label)||((ROLES[CU.role]||{}).label)||CU.role, admin:(CU&&CU.admin)||((ROLES[CU.role]||{}).admin)};
   const head=document.createElement('div'); head.className='page-head';
   const reviewNote = isAdminViewer()
     ? '<div class="page-sub">You\'re viewing as <strong>'+roleInfo.label+'</strong>. All modules across every track are unlocked — click into any module to review its content, audio and quiz. You don\'t need to complete them in order.</div>'
@@ -4667,26 +4684,28 @@ init();
     e('loginView').style.display='none';
     e('mainView').style.display='block';
     busy('Signing you in\u2026');
-    const {data:prof}=await _sb.from('profiles').select('*').eq('id',session.user.id).single();
-    if(!prof){busy('You are signed in, but no training profile is mapped to this account yet \u2014 ask ownership to check your seat.');return;}
-    const _name=prof.full_name||session.user.email, _admin=(prof.role==='owner');
-    /* Map CRM roles onto Training's role keys. The hub keeps its own role list, so this
-       is where the two can drift — a manager used to land on sales_manager, which carries
-       only fundamentals/crm/h2m and no RL track at all. Scope follows the business set in
-       Suite > Settings > Team, matching bizFromSeat. */
-    const B=String(prof.business||'').toUpperCase();
-    const wideManager=(!B||B==='ALL');
-    const roleMap={
-      owner:'owner',
-      manager: wideManager ? 'ops_director' : (B==='ASAP' ? 'asap_team_lead' : 'sales_manager'),
-      marketing:'marketer',
-      agent: B==='ASAP' ? 'asap_agent' : (B==='H2M' ? 'marketer' : 'licensed_agent')
-    };
-    CU={id:session.user.id,name:_name,role:_admin?'owner':(roleMap[prof.role]||'team_lead')};
-    const ri=(typeof ROLES!=='undefined'&&ROLES[CU.role])||{label:CU.role,admin:_admin};
-    e('utag').textContent=_name+' \u00b7 '+(ri.label||CU.role);
-    e('adminBtn').style.display=(ri.admin||_admin)?'inline-flex':'none';
-    await loadRequiredTracks();
+    /* One source of truth. The onboarding gate already decides a person's role, business
+       scope and required tracks from their CRM seat (role + business + pipelines). Read
+       exactly that here instead of the profiles table and a private role map — when the
+       hub derived its own answer it drifted from the gate, and people were shown a track
+       list that did not match what the unlock banner demanded (this is what locked Karely
+       out of ASAP and H2M). RLOnboard.load(_sb) reuses the session we already have, so
+       there is no second client and no second opinion. onboard.js loads after this inline
+       script, so wait briefly for it. */
+    for(let i=0;i<25;i++){ if(window.RLOnboard&&RLOnboard.load)break; await new Promise(r=>setTimeout(r,200)); }
+    let ctx=null;
+    try{ ctx = window.RLOnboard ? await RLOnboard.load(_sb) : null; }
+    catch(err){ console.warn('[sso bridge] gate load',err&&err.message); }
+    if(!ctx||!ctx.seat){
+      busy('You are signed in, but no team seat is mapped to this account yet \u2014 ask ownership to add you in Suite \u203a Team & Access.');
+      return;
+    }
+    const _name=(ctx.seat&&ctx.seat.name)||(ctx.state&&ctx.state.name)||session.user.email;
+    const _admin=(ctx.role==='owner'||ctx.role==='manager');
+    CU={id:ctx.uid, name:_name, role:ctx.role, admin:_admin, label:ctx.roleLabel||ctx.role};
+    REQUIRED_TRACKS=(ctx.tracks||[]).slice();
+    e('utag').textContent=_name+' \u00b7 '+CU.label;
+    e('adminBtn').style.display=_admin?'inline-flex':'none';
     adoptLegacyProgress();
     await reconcileCompletedTracks();
     renderDash();
