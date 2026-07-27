@@ -1,5 +1,20 @@
 <!DOCTYPE html><html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- PWA: installable app layer -->
+<link rel="manifest" href="/realliving-portal/manifest.json">
+<meta name="theme-color" content="#0F172A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Real Living">
+<link rel="apple-touch-icon" href="/realliving-portal/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/realliving-portal/icons/favicon-32.png">
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',function(){
+  navigator.serviceWorker.register('/realliving-portal/sw.js',{scope:'/realliving-portal/'}).catch(function(e){console.warn('[sw]',e&&e.message);});
+});}
+</script>
+<!-- /PWA -->
 <title>Team &amp; Access — Real Living</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
