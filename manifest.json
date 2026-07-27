@@ -1,0 +1,19 @@
+{
+  "name": "Real Living Business Suite",
+  "short_name": "Real Living",
+  "description": "Real Living Companies — CRM, training, documents, deals and team, all in one place.",
+  "start_url": "/realliving-portal/index.html",
+  "scope": "/realliving-portal/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0F172A",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/realliving-portal/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/realliving-portal/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/realliving-portal/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
