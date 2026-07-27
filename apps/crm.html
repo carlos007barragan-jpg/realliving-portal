@@ -791,6 +791,21 @@ function attentionItems(){
     const touched=S.deals.some(d=>d.clientId===c.id)||S.appts.some(a=>a.clientId===c.id)||S.touches.some(t=>t.clientId===c.id)||S.acts.some(a=>a.clientId===c.id&&a.text.indexOf('Client created')!==0);
     if(!touched)items.push({aid:c.genBy,sev:'rd',t:esc(c.name)+' — new lead, zero follow-up',s:'Added '+age+'d ago · '+esc(c.source)+' · credited to '+esc(U(c.genBy).name),fn:"go('client','"+c.id+"')",act:'Open lead'});
   });
+  /* inbound showing requests that came in through the public inventory link */
+  const canRoute=(me.role==='owner'||me.role==='manager');
+  S.appts.forEach(a=>{
+    if(!a.requested||!a.viaInventory||a.done)return;
+    const c=a.clientId?C(a.clientId):null; if(c&&isDormant(c))return;
+    const who=c?esc(c.name):'Someone';
+    const prop=a.propertyId?P(a.propertyId):null;
+    const where=esc(prop?prop.address:(a.note||'a home'));
+    const when=a.dt?fdate(a.dt.slice(0,10)):'';
+    if(!a.agentId){
+      if(canRoute)items.push({aid:null,sev:'rd',t:who+' requested a showing — needs an agent',s:where+(when?' · '+when:'')+' · new lead from the inventory link',fn:"go('client','"+(c?c.id:'')+"')",act:'Assign & confirm'});
+    }else{
+      items.push({aid:a.agentId,sev:'am',t:'Confirm showing with '+who,s:where+(when?' · '+when:'')+' · requested online',fn:"go('client','"+(c?c.id:'')+"')",act:'Confirm'});
+    }
+  });
   const w={rd:0,am:1};
   S.tasks.filter(t=>!t.done&&!isDormant(C(t.clientId))&&t.due<NOW().toISOString().slice(0,10)).forEach(t=>{
     const c=t.clientId?C(t.clientId):null;
