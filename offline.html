@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F172A">
+<title>Offline — Real Living</title>
+<style>
+  html,body{height:100%;margin:0}
+  body{display:flex;align-items:center;justify-content:center;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(180deg,#F8FAFC,#EEF2F7);color:#0F172A;padding:24px;text-align:center}
+  .card{max-width:340px}
+  .logo{width:72px;height:72px;border-radius:20px;margin:0 auto 20px;
+    background:linear-gradient(160deg,#3B5BFF,#253CC4);color:#fff;font-weight:800;font-size:30px;
+    display:flex;align-items:center;justify-content:center;letter-spacing:.5px;
+    box-shadow:0 12px 28px -10px rgba(59,91,255,.5)}
+  h1{font-size:20px;margin:0 0 8px}
+  p{font-size:14.5px;line-height:1.6;color:#64748B;margin:0 0 20px}
+  button{font:inherit;font-weight:700;background:#3B5BFF;color:#fff;border:none;border-radius:12px;
+    padding:12px 22px;cursor:pointer}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">RL</div>
+    <h1>You're offline</h1>
+    <p>The Real Living Business Suite needs a connection to load this. Once you're back online, tap to try again.</p>
+    <button onclick="location.reload()">Try again</button>
+  </div>
+</body>
+</html>
