@@ -2,7 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- PWA: installable app layer -->
+<link rel="manifest" href="/realliving-portal/manifest.json">
+<meta name="theme-color" content="#0F172A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Real Living">
+<link rel="apple-touch-icon" href="/realliving-portal/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/realliving-portal/icons/favicon-32.png">
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',function(){
+  navigator.serviceWorker.register('/realliving-portal/sw.js',{scope:'/realliving-portal/'}).catch(function(e){console.warn('[sw]',e&&e.message);});
+});}
+</script>
+<!-- /PWA -->
 <meta name="theme-color" content="#14172A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -823,12 +838,23 @@ function doLogin(){
   const pw=document.getElementById('li-pass').value;
   if(CLOUD){
     const email=document.getElementById('li-email').value.trim();
-    if(!email&&pw==='1234'){ /* dev door: local sandbox, never touches team data */
-      sessionStorage.setItem('rl_adm','1');sessionStorage.removeItem('rl_view');
-      DEV=true;SEAT_ID=null;me=ADMIN;enter();
-      setSyncDot('a','Dev sandbox — local data only, not synced');return;
+    if(!email&&pw==='1234'){
+      /* Dev sandbox door. It never syncs, but it does render whatever cloud data this
+         browser last cached, so it must not be reachable on the live site — otherwise
+         anyone on a shared or borrowed phone could open the CRM shell. Allow it only on a
+         local dev host; on production, fall through to a normal credential prompt. Owners
+         get the real view (with audit-logged Change View) by signing in with their account. */
+      var _localDev=(function(){try{var h=location.hostname;
+        return h===''||h==='localhost'||h==='127.0.0.1'||h==='[::1]'||/^192\.168\./.test(h)||/^10\./.test(h);
+      }catch(e){return false;}})();
+      if(_localDev){
+        sessionStorage.setItem('rl_adm','1');sessionStorage.removeItem('rl_view');
+        DEV=true;SEAT_ID=null;me=ADMIN;enter();
+        setSyncDot('a','Dev sandbox — local data only, not synced');return;
+      }
+      document.getElementById('li-err').textContent='Enter your email and password to sign in.';return;
     }
-    if(!email){document.getElementById('li-err').textContent='Enter your email — or leave it blank and use the dev PIN.';return}
+    if(!email){document.getElementById('li-err').textContent='Enter your email to sign in.';return}
     cloudLogin(email,pw);return;
   }
   if(pw!=='1234'){document.getElementById('li-err').textContent='Incorrect password.';return}
@@ -4159,7 +4185,7 @@ document.addEventListener('mousemove',e=>{
 if(CLOUD){
   document.getElementById('li-cloud').style.display='block';
   document.getElementById('li-pw-label').textContent='Password';
-  document.getElementById('li-hint').textContent='Sign in with your Real Living team account — or leave email blank and enter the dev PIN for the local sandbox.';
+  document.getElementById('li-hint').textContent='Sign in with your Real Living team account.';
   setSyncDot('a','Cloud connected — sign in to sync');
 }
 
