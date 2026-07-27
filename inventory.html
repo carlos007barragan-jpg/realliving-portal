@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F172A">
+<title>Available Homes — Real Living</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/realliving-portal/icons/favicon-32.png">
+<meta name="robots" content="noindex">
+<style>
+  :root{
+    --brand:#3B5BFF; --brand-dk:#253CC4; --ink:#0F172A; --body:#334155;
+    --mut:#64748B; --line:#E2E8F0; --bg:#F1F5F9; --card:#FFFFFF; --gold:#C8A44D;
+    --ok:#0E9F6E;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--body);background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased}
+  img{display:block;max-width:100%}
+  button{font:inherit;cursor:pointer}
+  a{color:inherit}
+
+  /* header */
+  header{position:sticky;top:0;z-index:20;background:rgba(15,23,42,.96);color:#fff;
+    backdrop-filter:saturate(140%) blur(6px);border-bottom:1px solid rgba(255,255,255,.08)}
+  .bar{max-width:1160px;margin:0 auto;padding:13px 18px;display:flex;align-items:center;gap:12px}
+  .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(160deg,var(--brand),var(--brand-dk));
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;letter-spacing:.3px;flex:0 0 auto}
+  .brandname{font-weight:700;color:#fff;font-size:15.5px;letter-spacing:.2px}
+  .brandsub{font-size:11.5px;color:#94A3B8;margin-top:1px}
+  .callbtn{margin-left:auto;background:var(--brand);color:#fff;border:none;border-radius:10px;
+    padding:9px 15px;font-weight:700;font-size:13.5px;text-decoration:none;display:inline-flex;align-items:center;gap:7px}
+  .callbtn.hide{display:none}
+
+  /* hero / intro */
+  .intro{max-width:1160px;margin:0 auto;padding:26px 18px 6px}
+  .intro h1{color:var(--ink);font-size:23px;margin:0 0 4px;letter-spacing:-.2px}
+  .intro p{margin:0;color:var(--mut);font-size:14.5px}
+  .pill{display:inline-block;background:#E0E7FF;color:#3730A3;font-size:12px;font-weight:700;
+    padding:3px 10px;border-radius:999px;margin-bottom:10px}
+
+  /* grid */
+  .wrap{max-width:1160px;margin:0 auto;padding:16px 18px 60px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    box-shadow:0 1px 2px rgba(15,23,42,.04);transition:transform .12s,box-shadow .12s;cursor:pointer}
+  .card:hover{transform:translateY(-3px);box-shadow:0 16px 34px -18px rgba(15,23,42,.35)}
+  .ph{aspect-ratio:16/10;background:linear-gradient(135deg,#EEF2F7,#DCE3EC);position:relative;overflow:hidden}
+  .ph img{width:100%;height:100%;object-fit:cover}
+  .ph .noimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#AEB9C7}
+  .price{position:absolute;left:12px;bottom:12px;background:rgba(15,23,42,.92);color:#fff;
+    font-weight:800;font-size:15px;padding:6px 12px;border-radius:9px;letter-spacing:.2px}
+  .price small{font-weight:600;opacity:.85;font-size:11px}
+  .cat{position:absolute;right:12px;top:12px;background:rgba(255,255,255,.94);color:#334155;
+    font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px}
+  .cbody{padding:13px 15px 15px}
+  .addr{color:var(--ink);font-weight:700;font-size:15px;line-height:1.35;margin:0 0 7px}
+  .facts{display:flex;gap:14px;color:var(--mut);font-size:13px;font-weight:600}
+  .facts span b{color:var(--body)}
+  .terms{margin-top:9px;font-size:12.5px;color:#3730A3;background:#EEF2FF;border-radius:8px;padding:6px 10px;font-weight:600}
+
+  .state{text-align:center;color:var(--mut);padding:70px 20px}
+  .spin{width:30px;height:30px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;
+    margin:0 auto 14px;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* modal */
+  .ov{position:fixed;inset:0;z-index:40;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);
+    display:none;align-items:flex-end;justify-content:center}
+  .ov.on{display:flex}
+  .sheet{background:#fff;width:100%;max-width:640px;max-height:94vh;overflow:auto;border-radius:18px 18px 0 0;
+    box-shadow:0 -10px 40px rgba(0,0,0,.3)}
+  @media(min-width:680px){.ov{align-items:center}.sheet{border-radius:18px}}
+  .sheet .hero{aspect-ratio:16/10;background:#E2E8F0;position:relative}
+  .sheet .hero img{width:100%;height:100%;object-fit:cover}
+  .x{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:50%;border:none;
+    background:rgba(15,23,42,.6);color:#fff;font-size:19px;line-height:1}
+  .thumbs{display:flex;gap:8px;padding:10px 16px 0;overflow:auto}
+  .thumbs img{width:70px;height:52px;object-fit:cover;border-radius:7px;border:2px solid transparent;cursor:pointer;flex:0 0 auto}
+  .thumbs img.sel{border-color:var(--brand)}
+  .mbody{padding:16px 20px 22px}
+  .mbody h2{color:var(--ink);margin:0 0 4px;font-size:20px}
+  .mfacts{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  .chip{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--body)}
+  .mprice{color:var(--ink);font-weight:800;font-size:24px;margin:6px 0 2px}
+  .cta{width:100%;background:var(--brand);color:#fff;border:none;border-radius:12px;padding:15px;
+    font-weight:800;font-size:16px;margin-top:14px}
+  .cta.sec{background:#fff;color:var(--brand);border:1.5px solid var(--brand);margin-top:8px}
+
+  /* form */
+  label{display:block;font-size:13px;font-weight:700;color:var(--ink);margin:14px 0 5px}
+  input,textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:12px;font:inherit;
+    color:var(--ink);background:#fff}
+  input:focus,textarea:focus{outline:none;border-color:var(--brand)}
+  textarea{min-height:70px;resize:vertical}
+  .err{color:#DC2626;font-size:13px;margin-top:10px;font-weight:600}
+  .thanks{text-align:center;padding:26px 10px}
+  .thanks .ok{width:56px;height:56px;border-radius:50%;background:#DCFCE7;color:var(--ok);
+    display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px}
+  .thanks h2{color:var(--ink);margin:0 0 6px}
+  footer{max-width:1160px;margin:0 auto;padding:26px 18px 40px;color:var(--mut);font-size:12.5px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="logo">RL</div>
+    <div>
+      <div class="brandname" id="hname">Real Living</div>
+      <div class="brandsub">Available Homes</div>
+    </div>
+    <a class="callbtn hide" id="callBtn" href="#">Call or text</a>
+  </div>
+</header>
+
+<div class="intro" id="intro"></div>
+<div class="wrap"><div id="content"><div class="state"><div class="spin"></div>Loading available homes…</div></div></div>
+
+<footer id="foot"></footer>
+
+<!-- property detail -->
+<div class="ov" id="ov"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const FN='https://zfflgvjnkcjnbwydurlp.supabase.co/functions/v1/inventory';
+const KEY='sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf';
+const LIST=new URLSearchParams(location.search).get('list')||'';
+let DATA=null, CUR=null;
+
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>(typeof n==='number'&&n>0)?'$'+n.toLocaleString('en-US'):null;
+const houseSvg='<svg class="noimg" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></svg>';
+
+function priceLabel(p){
+  if(p.price) return money(p.price);
+  if(p.ownerFinance){
+    const bits=[];
+    if(p.down) bits.push(money(p.down)+' down');
+    if(p.monthly) bits.push(money(p.monthly)+'/mo');
+    return bits.join(' · ')||'Owner finance';
+  }
+  return null;
+}
+
+async function load(){
+  try{
+    const url=FN+(LIST?('?list='+encodeURIComponent(LIST)):'?mode=all');
+    const r=await fetch(url,{headers:{apikey:KEY}});
+    const d=await r.json();
+    if(!r.ok){ fail(d.error||'This link is no longer available.'); return; }
+    DATA=d; render();
+  }catch(e){ fail('We could not load the homes right now. Please try again in a moment.'); }
+}
+function fail(msg){
+  document.getElementById('content').innerHTML='<div class="state">'+esc(msg)+'</div>';
+}
+
+function render(){
+  const co=DATA.company||{};
+  document.getElementById('hname').textContent=co.name||'Real Living';
+  // contact button
+  const cb=document.getElementById('callBtn');
+  if(co.phone){ cb.href='tel:'+co.phone.replace(/[^\d+]/g,''); cb.classList.remove('hide'); cb.textContent='Call or text'; }
+  // intro
+  const intro=document.getElementById('intro');
+  if(DATA.mode==='custom'){
+    intro.innerHTML='<span class="pill">Hand-picked for you'+(DATA.recipient?' · '+esc(DATA.recipient):'')+'</span>'+
+      '<h1>'+(DATA.recipient?esc(DATA.recipient)+', these '+'are for you':'A few homes picked for you')+'</h1>'+
+      '<p>'+(DATA.note?esc(DATA.note):'Tap any home to see photos and request a showing.')+'</p>';
+  }else{
+    intro.innerHTML='<h1>Available Homes</h1><p>Our current inventory. Tap any home to see photos and request a time to see it.</p>';
+  }
+  // grid
+  const props=DATA.properties||[];
+  if(!props.length){ document.getElementById('content').innerHTML='<div class="state">No homes are available on this link right now — please check back soon.</div>'; }
+  else{
+    document.getElementById('content').innerHTML='<div class="grid">'+props.map((p,i)=>card(p,i)).join('')+'</div>';
+  }
+  // footer
+  const f=[];
+  if(co.phone) f.push('Call or text: <b style="color:var(--ink)">'+esc(co.phone)+'</b>');
+  if(co.email) f.push('<a href="mailto:'+esc(co.email)+'" style="color:var(--brand);font-weight:600">'+esc(co.email)+'</a>');
+  document.getElementById('foot').innerHTML=(f.join(' &nbsp;·&nbsp; ')||'')+'<div style="margin-top:10px">© '+new Date().getFullYear()+' '+(esc(co.name)||'Real Living')+'. Homes shown are subject to availability and prior sale.</div>';
+}
+
+function card(p,i){
+  const pl=priceLabel(p);
+  const cover=p.cover?'<img src="'+esc(p.cover)+'" loading="lazy" onerror="this.style.display=\'none\'">':'';
+  return '<div class="card" onclick="openProp('+i+')">'+
+    '<div class="ph">'+cover+(p.cover?'':'<div class="noimg">'+houseSvg+'</div>')+
+      (pl?'<div class="price">'+esc(pl)+(p.ownerFinance&&!p.price?'':'')+'</div>':'<div class="price"><small>Call for price</small></div>')+
+      (p.category?'<div class="cat">'+esc(p.category)+'</div>':'')+'</div>'+
+    '<div class="cbody"><p class="addr">'+esc(p.address||'Address on request')+'</p>'+
+      '<div class="facts">'+(p.beds!=null?'<span><b>'+esc(p.beds)+'</b> bd</span>':'')+
+        (p.baths!=null?'<span><b>'+esc(p.baths)+'</b> ba</span>':'')+
+        (p.sqft?'<span><b>'+Number(p.sqft).toLocaleString()+'</b> sqft</span>':'')+'</div>'+
+      (p.ownerFinance&&p.price?'<div class="terms">Owner financing available</div>':'')+
+    '</div></div>';
+}
+
+/* ---- property detail sheet ---- */
+function openProp(i){
+  CUR=DATA.properties[i];
+  const p=CUR, pl=priceLabel(p);
+  const photos=p.photos&&p.photos.length?p.photos:[];
+  const main=photos[0]||'';
+  const gal=photos.length?
+    '<div class="hero"><img id="mainImg" src="'+esc(main)+'"><button class="x" onclick="closeOv()">×</button></div>'+
+      (photos.length>1?'<div class="thumbs">'+photos.map((u,k)=>'<img src="'+esc(u)+'" class="'+(k===0?'sel':'')+'" onclick="swap('+k+',this)">').join('')+'</div>':'')
+    :'<div class="hero" style="display:flex;align-items:center;justify-content:center;color:#AEB9C7">'+houseSvg+'<button class="x" onclick="closeOv()">×</button></div>';
+  const facts=[];
+  if(p.beds!=null)facts.push('<span class="chip">'+esc(p.beds)+' bed</span>');
+  if(p.baths!=null)facts.push('<span class="chip">'+esc(p.baths)+' bath</span>');
+  if(p.sqft)facts.push('<span class="chip">'+Number(p.sqft).toLocaleString()+' sqft</span>');
+  if(p.category)facts.push('<span class="chip">'+esc(p.category)+'</span>');
+  document.getElementById('sheet').innerHTML=gal+
+    '<div class="mbody">'+
+      (pl?'<div class="mprice">'+esc(pl)+'</div>':'<div class="mprice" style="font-size:18px;color:var(--mut)">Call for price</div>')+
+      '<h2>'+esc(p.address||'Address on request')+'</h2>'+
+      '<div class="mfacts">'+facts.join('')+'</div>'+
+      (p.ownerFinance?'<div class="terms">Owner financing available'+((p.down||p.monthly)?' — '+[p.down?money(p.down)+' down':'',p.monthly?money(p.monthly)+'/mo':''].filter(Boolean).join(' · '):'')+'</div>':'')+
+      (p.desc?'<p style="color:var(--body);margin-top:12px">'+esc(p.desc)+'</p>':'')+
+      '<button class="cta" onclick="openInterest()">I\u2019m interested</button>'+
+    '</div>';
+  document.getElementById('ov').classList.add('on');
+}
+function swap(k,el){ document.getElementById('mainImg').src=el.src; document.querySelectorAll('.thumbs img').forEach(t=>t.classList.remove('sel')); el.classList.add('sel'); }
+function closeOv(){ document.getElementById('ov').classList.remove('on'); }
+document.getElementById('ov').addEventListener('click',e=>{ if(e.target.id==='ov')closeOv(); });
+
+/* ---- interested form ---- */
+function openInterest(){
+  const p=CUR;
+  const today=new Date(); today.setDate(today.getDate()+1);
+  const min=today.toISOString().slice(0,10);
+  document.getElementById('sheet').innerHTML=
+    '<div class="mbody">'+
+      '<button class="x" style="position:static;float:right;background:#E2E8F0;color:#334155" onclick="openProp(idxOf())">×</button>'+
+      '<h2 style="font-size:19px">I\u2019m interested</h2>'+
+      '<p style="color:var(--mut);font-size:14px;margin:4px 0 0">'+esc(p.address||'')+'</p>'+
+      '<label>Your name</label><input id="f-name" autocomplete="name">'+
+      '<label>Phone</label><input id="f-phone" type="tel" inputmode="tel" autocomplete="tel">'+
+      '<label>Email</label><input id="f-email" type="email" inputmode="email" autocomplete="email">'+
+      '<label>What day would you like to see it?</label><input id="f-date" type="date" min="'+min+'">'+
+      '<label>Anything we should know? (optional)</label><textarea id="f-msg" placeholder="Best time of day, questions, etc."></textarea>'+
+      '<div class="err" id="f-err" style="display:none"></div>'+
+      '<button class="cta" id="f-send" onclick="submitInterest()">Request this showing</button>'+
+      '<button class="cta sec" onclick="openProp(idxOf())">Back to home</button>'+
+    '</div>';
+}
+function idxOf(){ return DATA.properties.indexOf(CUR); }
+
+async function submitInterest(){
+  const g=id=>document.getElementById(id).value.trim();
+  const name=g('f-name'), phone=g('f-phone'), email=g('f-email'), date=g('f-date'), message=g('f-msg');
+  const err=document.getElementById('f-err');
+  const show=m=>{ err.textContent=m; err.style.display='block'; };
+  if(!name){ show('Please add your name.'); return; }
+  if(!phone && !email){ show('Please add a phone or email so we can reach you.'); return; }
+  if(!date){ show('Please pick a day you\u2019d like to see it.'); return; }
+  const btn=document.getElementById('f-send'); btn.disabled=true; btn.textContent='Sending…'; err.style.display='none';
+  try{
+    const r=await fetch(FN,{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({action:'interested',propertyId:CUR.id,recipient:DATA.recipient||'',name,phone,email,date,message})});
+    const d=await r.json();
+    if(!r.ok){ show(d.error||'Something went wrong — please try again.'); btn.disabled=false; btn.textContent='Request this showing'; return; }
+    const co=DATA.company||{};
+    document.getElementById('sheet').innerHTML='<div class="thanks">'+
+      '<div class="ok">✓</div><h2>Thank you'+(name?', '+esc(name.split(' ')[0]):'')+'!</h2>'+
+      '<p style="color:var(--mut);max-width:340px;margin:0 auto">We\u2019ve got your request to see this home. Someone from our team will reach out to confirm your day and time.</p>'+
+      (co.phone?'<p style="margin-top:16px">Questions now? <a href="tel:'+esc(co.phone.replace(/[^\d+]/g,''))+'" style="color:var(--brand);font-weight:700">'+esc(co.phone)+'</a></p>':'')+
+      '<button class="cta sec" style="max-width:220px;margin:18px auto 0" onclick="closeOv()">Keep browsing</button>'+
+    '</div>';
+  }catch(e){ show('Network error — please try again.'); btn.disabled=false; btn.textContent='Request this showing'; }
+}
+
+load();
+</script>
+</body>
+</html>
