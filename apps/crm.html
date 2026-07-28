@@ -421,6 +421,7 @@ let SEAT_ID=null; /* set from the signed-in user's profile in cloud mode */
 let DEV=false;     /* true only for the local admin/dev door — enables role preview */
 let _attnTeam=false; /* owner/manager toggle: show the whole team's overdue work, not just mine */
 let editingNote=null; /* id of the note currently being edited inline on a client profile */
+let shareMode=false, shareSel={}, shareResult=null, shareLinks=null; /* inventory custom-link builder */
 /* Who is really signed in, kept apart from `me` so viewing as someone else can never
    be used to climb: impersonation rewrites `me`, never this. */
 let REAL_OWNER=false, REAL_NAME='';
@@ -2174,6 +2175,7 @@ function vProps(){
     '<button class="ttab'+(propCat?'':' on')+'" onclick="propCat=\'\';go(\'props\')">All · '+list.length+'</button>'+
     catsPresent.map(ct=>'<button class="ttab'+(propCat===ct?' on':'')+'" onclick="propCat=\''+ct+'\';go(\'props\')">'+esc(ct)+' · '+list.filter(p=>p.category===ct).length+'</button>').join('')+'</div>';
   if(propCat)list=list.filter(p=>p.category===propCat);
+  if(propTab==='avail')h+=shareBlock();
   /* what's blocking a marketed home from showing on the websites */
   if(propTab==='avail'&&canSeeWholeBook()){
     const noPrice=list.filter(p=>!((p.listPrice||p.arv)>=20000));
@@ -2187,12 +2189,14 @@ function vProps(){
         (noPhoto.length>6?' <span class="mut">+'+(noPhoto.length-6)+' more</span>':'')+'</div>':'')+'</div>';
   }
   const anyInvest=list.some(isInvestProp), showAcq=canSeeAcq();
-  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Address</th><th>Category</th><th>Bd/Ba</th>'+
+  h+='<div class="card" style="padding:0;overflow:auto"><table><tr>'+(shareMode?'<th style="width:34px"></th>':'')+'<th>Address</th><th>Category</th><th>Bd/Ba</th>'+
     (anyInvest?(showAcq?'<th>Acq price</th>':'')+'<th>Rehab</th><th>ARV</th><th>'+(showAcq?'Our spread':'Buyer spread')+'</th>':'')+
     '<th>Price</th><th>Status</th><th>Transactions</th></tr>'+
     list.map(p=>{const ds=S.deals.filter(d=>d.propertyId===p.id&&d.pipe!=='h2m_acq');
       const inv=isInvestProp(p), dash='<td class="mut">—</td>';
-      return '<tr class="rowlink" onclick="go(\'prop\',\''+p.id+'\')"><td>'+esc(p.address)+(p.photos&&p.photos.length?' <span class="tag" style="font-size:10px">'+p.photos.length+' 📷</span>':'')+'</td><td>'+(p.category?'<span class="tag">'+esc(p.category)+'</span>':'<span class="mut">—</span>')+'</td><td class="mut">'+p.beds+'/'+p.baths+'</td>'+
+      const rowClick=shareMode?("toggleShareSel('"+p.id+"')"):("go('prop','"+p.id+"')");
+      const cbCell=shareMode?('<td style="width:34px" onclick="event.stopPropagation();toggleShareSel(\''+p.id+'\')"><input type="checkbox" id="cbx_'+p.id+'"'+(shareSel[p.id]?' checked':'')+' onclick="event.stopPropagation();toggleShareSel(\''+p.id+'\')"></td>'):'';
+      return '<tr class="rowlink" onclick="'+rowClick+'">'+cbCell+'<td>'+esc(p.address)+(p.photos&&p.photos.length?' <span class="tag" style="font-size:10px">'+p.photos.length+' 📷</span>':'')+'</td><td>'+(p.category?'<span class="tag">'+esc(p.category)+'</span>':'<span class="mut">—</span>')+'</td><td class="mut">'+p.beds+'/'+p.baths+'</td>'+
       (anyInvest?(inv
         ?(showAcq?'<td class="money">'+money(p.acqPrice)+'</td>':'')+'<td class="money">'+money(p.rehab)+'</td><td class="money">'+money(p.arv)+'</td><td class="money">'+money(showAcq?ourSpread(p):buyerSpread(p))+'</td>'
         :(showAcq?dash:'')+dash+dash+dash):'')+
@@ -2201,6 +2205,85 @@ function vProps(){
       '<td><span class="tag'+(propArchived(p)?'':' gr')+'">'+esc(p.status)+'</span></td><td>'+(ds.length?'<span class="tag bl">×'+ds.length+'</span>':'<span class="mut">—</span>')+'</td></tr>'}).join('')+'</table></div>'+
     (anyInvest&&!showAcq?'<div class="mut" style="font-size:12px;margin-top:8px">Buyer spread is what the investor is left with: ARV minus our price minus the rehab. What we paid for the property is internal to acquisitions.</div>':'')+
     (anyInvest&&list.some(p=>!isInvestProp(p))?'<div class="mut" style="font-size:12px;margin-top:8px">Rehab, ARV and spread are investor numbers — they stay blank on owner-finance and on-market homes, which are sold on price and terms.</div>':'');
+  return h;
+}
+/* ---------- inventory share links ---------- */
+function INV_URL(){ try{ return location.href.split('/apps/')[0]+'/inventory.html'; }catch(e){ return 'inventory.html'; } }
+function copyText(t){ try{ navigator.clipboard.writeText(t); toast('Copied'); }catch(e){ toast('Copy failed — select the text manually'); } }
+function copyGeneralLink(){ copyText(INV_URL()); }
+async function invApi(body){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return{error:'Custom links need the Business Suite login.'};
+    const res=await fetch(SUPABASE_URL+'/functions/v1/inventory',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify(body)});
+    return await res.json();
+  }catch(e){ return {error:'Network error — try again.'}; }
+}
+function startShare(){ shareMode=true; shareSel={}; shareResult=null; shareLinks=null; go('props'); }
+function cancelShare(){ shareMode=false; shareSel={}; go('props'); }
+function toggleShareSel(id){
+  shareSel[id]=!shareSel[id];
+  const cb=document.getElementById('cbx_'+id); if(cb)cb.checked=!!shareSel[id];
+  const n=Object.keys(shareSel).filter(k=>shareSel[k]).length;
+  const lbl=document.getElementById('shareCount'); if(lbl)lbl.textContent=n+' selected';
+  const btn=document.getElementById('shareCreateBtn'); if(btn)btn.disabled=!n;
+}
+async function createCustomLink(){
+  const ids=Object.keys(shareSel).filter(k=>shareSel[k]);
+  if(!ids.length){ toast('Tick at least one home.'); return; }
+  const recip=((document.getElementById('shareRecip')||{}).value||'').trim();
+  const btn=document.getElementById('shareCreateBtn'); if(btn){ btn.disabled=true; btn.textContent='Creating…'; }
+  const r=await invApi({action:'createShare',propertyIds:ids,recipient:recip});
+  if(r&&r.ok&&r.code){ shareMode=false; shareSel={}; shareResult={url:INV_URL()+'?list='+r.code,recip:recip}; go('props'); }
+  else{ toast((r&&r.error)||'Could not create the link.'); if(btn){ btn.disabled=false; btn.textContent='Create link'; } }
+}
+async function loadShareLinks(){
+  toast('Loading links…');
+  const r=await invApi({action:'listShares'});
+  if(r&&r.ok){ shareLinks=r.links||[]; go('props'); }
+  else toast((r&&r.error)||'Could not load links.');
+}
+async function revokeLink(code){
+  if(!confirm('Revoke this link? Anyone who has it will no longer see the homes.'))return;
+  const r=await invApi({action:'revokeShare',code:code});
+  if(r&&r.ok){ if(shareLinks)shareLinks=shareLinks.filter(l=>l.code!==code); toast('Link revoked'); go('props'); }
+  else toast((r&&r.error)||'Could not revoke.');
+}
+function shareBlock(){
+  const noSess=(typeof DEV!=='undefined'&&DEV);
+  let h='<div class="card" style="margin-bottom:14px">'+
+    '<div class="sect-head" style="margin-bottom:'+((shareMode||shareResult||shareLinks)?'10px':'0')+'"><h2 style="font-size:16px">Share inventory</h2><span class="spacer"></span>'+
+    (!shareMode?('<button class="btn ghost small" style="margin-right:8px" onclick="copyGeneralLink()">Copy general link</button>'+
+       '<button class="btn ghost small" style="margin-right:8px" onclick="loadShareLinks()">Manage links</button>'+
+       '<button class="btn small" onclick="startShare()">Create custom link</button>')
+     :'<button class="btn ghost small" onclick="cancelShare()">Cancel</button>')+'</div>';
+  if(noSess)h+='<div class="mut" style="font-size:12px;color:var(--amber)">Custom links need the Business Suite login — the admin door can\'t create them. The general link still works.</div>';
+  if(shareMode){
+    const n=Object.keys(shareSel).filter(k=>shareSel[k]).length;
+    h+='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+      '<span id="shareCount" class="mut" style="font-weight:600">'+n+' selected</span><span class="spacer"></span>'+
+      '<input id="shareRecip" placeholder="For (buyer\'s name)" style="max-width:220px">'+
+      '<button class="btn small" id="shareCreateBtn" onclick="createCustomLink()"'+(n?'':' disabled')+'>Create link</button>'+
+      '<div class="mut" style="font-size:12px;flex-basis:100%;margin-top:2px">Tick the homes below for this buyer, add their name, then create the link.</div></div>';
+  }
+  if(shareResult){
+    h+='<div style="margin-top:10px;background:var(--bg);border-radius:10px;padding:12px">'+
+      '<div class="eyebrow" style="margin-bottom:6px">Link ready'+(shareResult.recip?' for '+esc(shareResult.recip):'')+' — copy and send it</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><input readonly value="'+esc(shareResult.url)+'" style="flex:1;min-width:200px" onclick="this.select()">'+
+      '<button class="btn small" onclick="copyText(\''+shareResult.url+'\')">Copy</button>'+
+      '<button class="btn ghost small" onclick="shareResult=null;go(\'props\')">Done</button></div></div>';
+  }
+  if(shareLinks){
+    h+='<div style="margin-top:10px">'+(shareLinks.length?
+      '<table style="width:100%"><tr><th style="text-align:left">For</th><th>Homes</th><th>Created</th><th></th></tr>'+
+      shareLinks.map(l=>'<tr><td>'+esc(l.recipient||'—')+'</td><td class="mut" style="text-align:center">'+l.count+'</td><td class="mut">'+(l.createdAt?fdate(l.createdAt):'')+'</td>'+
+        '<td style="text-align:right;white-space:nowrap"><span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="copyText(INV_URL()+\'?list='+l.code+'\')">copy</span> &nbsp;·&nbsp; <span style="color:#DC2626;cursor:pointer;text-decoration:underline" onclick="revokeLink(\''+l.code+'\')">revoke</span></td></tr>').join('')+'</table>'
+      :'<div class="mut" style="font-size:13px">No custom links yet.</div>')+
+      '<button class="btn ghost small" style="margin-top:8px" onclick="shareLinks=null;go(\'props\')">Hide</button></div>';
+  }
+  h+='</div>';
   return h;
 }
 function rmProp(id){
