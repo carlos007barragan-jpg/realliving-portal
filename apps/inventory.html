@@ -111,7 +111,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,
   <div id="listview">
     <div class="head">
       <h1>🏠 Inventory</h1><span class="sub">Live from the CRM — Properties</span>
-      <span class="spacer"></span><span class="sub" id="who"></span>
+      <span class="spacer"></span><button class="btn ghost" onclick="copyGeneralLink()" style="margin-right:12px">Copy general link</button><span class="sub" id="who"></span>
     </div>
     <div class="kpis" id="kpis"></div>
     <div class="bar">
@@ -134,7 +134,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,
   <span class="n" id="selN">0 selected</span>
   <button class="btn ghost" onclick="clearSel()">Clear</button>
   <span class="spacer"></span>
-  <button class="btn" onclick="openSheet()">Build a sheet to send &rarr;</button>
+  <button class="btn" onclick="liveLink()">Create a live link &rarr;</button>
+  <button class="btn ghost" onclick="openSheet()">…or send as a picture</button>
 </div>
 
 <div class="ovl" id="ovl" onclick="if(event.target===this)closeOvl()">
@@ -281,6 +282,7 @@ function drawDetail(){
       '<div class="actions">'+
         '<button class="btn" onclick="shareOne(\''+p.id+'\')">\ud83d\udce4 Send this property</button>'+
         '<button class="btn ghost" onclick="copyOne(\''+p.id+'\')">Copy the details</button>'+
+        '<button class="btn ghost" onclick="linkOne(\''+p.id+'\')">Copy a live link</button>'+
         '<button class="btn ghost" onclick="toggleSel(\''+p.id+'\')">'+(on?'\u2713 On your sheet':'+ Add to a sheet')+'</button>'+
       '</div>'+
     '</div></div>';
@@ -407,6 +409,53 @@ function openSheet(){
   const ps=SEL.map(P).filter(Boolean);if(!ps.length)return;
   const caption=ps.map(textOne).join('\n\n\u2014 \u2014 \u2014\n\n');
   shareShot(flyerMany(ps),'real-living-'+ps.length+'-properties',caption);
+}
+/* ---- live shareable links (general + custom), alongside the image flyers ---- */
+function INV_URL(){ try{ return location.href.split('/apps/')[0]+'/inventory.html'; }catch(e){ return '../inventory.html'; } }
+function copyGeneralLink(){ try{ navigator.clipboard.writeText(INV_URL()); toast('General link copied \u2014 send it to anyone'); }catch(e){ toast('Copy failed'); } }
+async function invApi(body){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return{error:'Sign in through the Suite first.'};
+    const r=await fetch('https://zfflgvjnkcjnbwydurlp.supabase.co/functions/v1/inventory',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify(body)});
+    return await r.json();
+  }catch(e){ return {error:'Network error \u2014 try again.'}; }
+}
+function liveLink(){
+  if(!SEL.length){ toast('Tick some homes first.'); return; }
+  $('ovl').style.display='block';
+  $('modal').innerHTML='<h3>Create a live link</h3>'+
+    '<div class="hint">A private page showing just these '+SEL.length+' home'+(SEL.length>1?'s':'')+'. They can tap \u201cI\u2019m interested\u201d and pick a day \u2014 it lands on your dashboard. If one sells, it drops off automatically.</div>'+
+    '<label style="display:block;font-size:13px;font-weight:700;margin:12px 0 5px">For (buyer\u2019s name)</label>'+
+    '<input id="lk-recip" placeholder="e.g. Mike Ruiz" style="width:100%">'+
+    '<div class="actions" style="margin-top:14px"><button class="btn" id="lk-go" onclick="doCreateLink()">Create link</button>'+
+    '<button class="btn ghost" onclick="closeOvl()">Cancel</button></div>';
+  setTimeout(function(){var e=$('lk-recip');if(e)e.focus();},40);
+}
+async function doCreateLink(){
+  var recip=(($('lk-recip')||{}).value||'').trim();
+  var btn=$('lk-go'); if(btn){ btn.disabled=true; btn.textContent='Creating\u2026'; }
+  var r=await invApi({action:'createShare',propertyIds:SEL.slice(),recipient:recip});
+  if(r&&r.ok&&r.code){ showLinkResult(INV_URL()+'?list='+r.code,recip); }
+  else{ toast((r&&r.error)||'Could not create the link.'); if(btn){ btn.disabled=false; btn.textContent='Create link'; } }
+}
+function showLinkResult(url,recip){
+  $('modal').innerHTML='<h3>Link ready'+(recip?' for '+esc(recip):'')+'</h3>'+
+    '<div class="hint">Send this to the buyer. It stays current \u2014 sold homes drop off on their own.</div>'+
+    '<input readonly value="'+esc(url)+'" style="width:100%;margin:10px 0" onclick="this.select()">'+
+    '<div class="actions">'+
+      (navigator.share?'<button class="btn" onclick="navigator.share({title:\'Real Living homes\',url:\''+url+'\'}).catch(function(){})">\ud83d\udce4 Send</button>':'')+
+      '<button class="btn'+(navigator.share?' ghost':'')+'" onclick="navigator.clipboard.writeText(\''+url+'\').then(function(){toast(\'Link copied\')})">Copy link</button>'+
+      '<button class="btn ghost" onclick="closeOvl();clearSel()">Done</button>'+
+    '</div>';
+}
+async function linkOne(id){
+  toast('Creating link\u2026');
+  var r=await invApi({action:'createShare',propertyIds:[id],recipient:''});
+  if(r&&r.ok&&r.code){ var url=INV_URL()+'?list='+r.code; try{ navigator.clipboard.writeText(url); toast('Live link copied'); }catch(e){ toast(url); } }
+  else toast((r&&r.error)||'Could not create link.');
 }
 
 (async()=>{
