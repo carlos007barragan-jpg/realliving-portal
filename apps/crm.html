@@ -2175,7 +2175,6 @@ function vProps(){
     '<button class="ttab'+(propCat?'':' on')+'" onclick="propCat=\'\';go(\'props\')">All · '+list.length+'</button>'+
     catsPresent.map(ct=>'<button class="ttab'+(propCat===ct?' on':'')+'" onclick="propCat=\''+ct+'\';go(\'props\')">'+esc(ct)+' · '+list.filter(p=>p.category===ct).length+'</button>').join('')+'</div>';
   if(propCat)list=list.filter(p=>p.category===propCat);
-  if(propTab==='avail')h+=shareBlock();
   /* what's blocking a marketed home from showing on the websites */
   if(propTab==='avail'&&canSeeWholeBook()){
     const noPrice=list.filter(p=>!((p.listPrice||p.arv)>=20000));
