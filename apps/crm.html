@@ -964,7 +964,7 @@ const workingClients=()=>S.clients.filter(c=>!isDormant(c));
 function allowedPipes(u){
   if(!u)return [];
   if(u.role==='owner'||u.id==='admin')return Object.keys(PIPES);
-  if(u.role==='manager'||u.role==='agent'||u.role==='marketing')return (u.pipes&&u.pipes.length?u.pipes.filter(p=>PIPES[p]):BIZPIPES[u.business])||[];
+  if(u.role==='manager'||u.role==='agent'||u.role==='marketing')return (u.pipes&&u.pipes.length?u.pipes.filter(p=>PIPES[p]):(u.business==='ALL'?Object.keys(PIPES):BIZPIPES[u.business]))||[];
   return [];
 }
 function myPipes(){return allowedPipes(me)}
