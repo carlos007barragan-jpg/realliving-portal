@@ -964,7 +964,7 @@ const workingClients=()=>S.clients.filter(c=>!isDormant(c));
 function allowedPipes(u){
   if(!u)return [];
   if(u.role==='owner'||u.id==='admin')return Object.keys(PIPES);
-  if(u.role==='manager'||u.role==='agent')return (u.pipes&&u.pipes.length?u.pipes.filter(p=>PIPES[p]):BIZPIPES[u.business])||[];
+  if(u.role==='manager'||u.role==='agent'||u.role==='marketing')return (u.pipes&&u.pipes.length?u.pipes.filter(p=>PIPES[p]):BIZPIPES[u.business])||[];
   return [];
 }
 function myPipes(){return allowedPipes(me)}
@@ -1240,7 +1240,7 @@ function vDash(){
   else if(me.role==='manager')h+=vPulse(S.users.filter(u=>u.business===me.business));
   else{
     const acts=S.acts.slice().sort((a,b)=>b.ts.localeCompare(a.ts)).filter(a=>{
-      if(me.role==='marketing')return a.clientId&&C(a.clientId)&&C(a.clientId).genBy===me.id;
+      if(me.role==='marketing')return true;
       const d=a.dealId?D(a.dealId):null;
       return d&&d.agentId===me.id;
     }).slice(0,6);
@@ -1359,7 +1359,7 @@ function myTasks(){
   let ts=S.tasks.slice();
   if(me.role==='agent')ts=ts.filter(t=>t.agentId===me.id);
   else if(me.role==='manager')ts=ts.filter(t=>{const u=U(t.agentId);return u&&u.business===me.business});
-  else if(me.role==='marketing')ts=ts.filter(t=>t.agentId===me.id);
+  /* appointment setter coordinates the whole team — sees all tasks */
   return ts.sort((a,b)=>(a.done?1:0)-(b.done?1:0)||a.due.localeCompare(b.due));
 }
 const taskLabel=t=>(t.plan==='numbers'&&t.dealId&&D(t.dealId)&&canSetNumbers())
@@ -1475,13 +1475,17 @@ function itFinish(){
     logAct(null,c.id,'Client created via guided intake.');
   }
   let who=IT.agent||(me.role==='agent'?me.id:(me.id==='admin'?realUid():me.id));
-  if(U(who)&&U(who).role==='marketing'){const h=S.users.find(u=>u.role==='agent'&&u.business==='RL')||S.users.find(u=>u.role==='manager'&&u.business==='RL')||S.users.find(u=>u.role==='owner');if(h)who=h.id;}
+  /* appointment setter drops the lead; each opportunity routes to that vertical's closer */
+  const bizHandler=b=>S.users.find(u=>u.role==='manager'&&u.business===b)||S.users.find(u=>u.role==='agent'&&u.business===b)||S.users.find(u=>u.role==='owner')||S.users[0];
+  const setterMode=U(who)&&U(who).role==='marketing';
   Object.keys(IT.opps).forEach(p=>{
-    const d={id:uid('d'),clientId:c.id,pipe:p,type:PIPES[p].types[0],stage:0,agentId:who,propertyId:null,
+    const h=setterMode?bizHandler(PIPES[p].biz):null;
+    const aid=h?h.id:who;
+    const d={id:uid('d'),clientId:c.id,pipe:p,type:PIPES[p].types[0],stage:0,agentId:aid,propertyId:null,
       propInterest:IT.area||'',budget:+(IT.budget||0)||0,down:+(IT.down||0)||0,closeDate:'',titleOffice:'',revenue:0,
       createdAt:new Date().toISOString(),hist:[{s:0,at:new Date().toISOString()}]};
     S.deals.push(d);
-    logAct(d.id,c.id,'Opportunity opened via intake — '+PIPES[p].name+', with '+U(who).name+'.');
+    logAct(d.id,c.id,'Opportunity opened via intake — '+PIPES[p].name+', routed to '+(U(aid)||{name:'\u2014'}).name+'.');
   });
   if(me.role==='marketing'||(me.id==='admin'&&false)){firePlaybook('mkt',c,me.id==='admin'?realUid():me.id);}
   else Object.keys(IT.opps).forEach(p=>firePlaybook(pbKey(p)||'rl',c,who));
@@ -1914,7 +1918,7 @@ function vClient(id){
   const open=ds.filter(d=>!isFinal(d)),won=ds.filter(d=>isWon(d)&&d.pipe!=='h2m_acq'),lost=ds.filter(isLost);
   const life=won.reduce((a,d)=>a+(d.revenue||0),0);
   const bizs=[...new Set(ds.map(d=>PIPES[d.pipe].biz))];
-  const canNote=me.role!=='marketing'||c.genBy===me.id;
+  const canNote=me.role!=='marketing'||c.genBy===me.id||allowedPipes(me).length>0;
   const tlAll=S.acts.filter(a=>a.clientId===id);
   const initials=c.name.split(' ').filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase();
   let h='<button class="back" onclick="go(\'clients\')">← All contacts</button>';
