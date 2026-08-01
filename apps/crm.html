@@ -1879,7 +1879,7 @@ function vClients(){
   let list=activeL?listMembers(activeL.q):S.clients.slice();
   const dormN=S.clients.filter(c=>isDormant(c)&&!c.pastClient).length;
   const pastN=S.clients.filter(c=>c.pastClient).length;
-  list=list.filter(c=>dormView==='past'?c.pastClient:(dormView?isDormant(c)&&!c.pastClient:!isDormant(c)));
+  list=list.filter(c=>clientQ?true:(dormView==='past'?c.pastClient:(dormView?isDormant(c)&&!c.pastClient:!isDormant(c))));
   list=list.filter(c=>!clientQ||c.name.toLowerCase().includes(clientQ)||c.phone.includes(clientQ)||(c.email||'').toLowerCase().includes(clientQ))
     .sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   let h='<div class="sect-head"><h2>Contacts</h2><span class="cnt">'+list.length+(dormView==='past'?' past clients — they have bought from us before':(dormView?' dormant — parked until someone reheats them':(activeL?' in "'+esc(activeL.name)+'"':' being worked')))+'</span><span class="spacer"></span>'+
@@ -3498,12 +3498,11 @@ function mAddProp(editId){
   modal('<h2>'+(p?'Edit property':'New property')+'</h2>'+
   '<label>Address</label><input id="mp-addr" placeholder="Street, city, state zip" value="'+esc(v('address'))+'">'+
   '<div class="frow"><div><label>Category — this decides which numbers you fill in</label><select id="mp-cat" onchange="mpMoney()"><option value=""'+(v('category')?'':' selected')+'>— not set —</option>'+PCATS.map(ct=>'<option'+(v('category')===ct?' selected':'')+'>'+ct+'</option>').join('')+'</select></div>'+
-  (p?'<div><label>Status</label><select id="mp-status">'+PSTATUSES.map(st=>'<option'+(st===p.status?' selected':'')+'>'+st+'</option>').join('')+(PSTATUSES.includes(p.status)?'':'<option selected>'+esc(p.status)+'</option>')+'</select></div>':
-     /* Adding a property used to always open an H2M acquisition deal, whatever the
-        property actually was — so an RL listing or a straight piece of inventory
-        turned up in the H2M pipeline. Ask instead, and default to not opening one. */
-     '<div><label>Also open a deal for this?</label><select id="mp-pipe"><option value="">No — just add it to the property list</option>'+
-     Object.keys(PIPES).map(k=>'<option value="'+k+'">'+esc(PIPES[k].name)+'</option>').join('')+'</select></div>')+'</div>'+
+  '<div><label>Status — you choose where it lands</label><select id="mp-status">'+PSTATUSES.map(st=>'<option'+((p?st===p.status:st==='Acquisition — Off-Market Lead')?' selected':'')+'>'+st+'</option>').join('')+((p&&!PSTATUSES.includes(p.status))?'<option selected>'+esc(p.status)+'</option>':'')+'</select></div></div>'+
+     /* A new property no longer forces a status or an H2M acquisition deal — the person inputting
+        inventory picks the status above; opening a deal is opt-in on its own row below. */
+     (p?'':'<div class="frow"><div><label>Also open a deal for this? (optional)</label><select id="mp-pipe"><option value="">No — just add it to the property list</option>'+
+     Object.keys(PIPES).map(k=>'<option value="'+k+'">'+esc(PIPES[k].name)+'</option>').join('')+'</select></div></div>')+
   '<div class="frow"><div><label>Beds</label><input id="mp-beds" type="number" value="'+v('beds',3)+'"></div><div><label>Baths</label><input id="mp-baths" type="number" value="'+v('baths',1)+'"></div>'+
   '<div><label>Square feet</label><input id="mp-sqft" type="number" value="'+(v('sqft')||'')+'"></div></div>'+
   '<div id="mp-money"></div>'+
@@ -3519,7 +3518,7 @@ function mAddProp(editId){
   '<label>Google Drive photo folder — the link the team opens to download photos for Facebook</label>'+
   '<input id="mp-drive" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(v('driveUrl'))+'">'+
   '<label>Photo URLs — one per line, first is the cover</label><textarea id="mp-photos" rows="4" placeholder="https://…/front.jpg&#10;https://…/kitchen.jpg">'+esc(p&&p.photos?p.photos.join('\n'):(v('photo')||''))+'</textarea>'+
-  '<div class="mut" style="font-size:12px;margin-top:8px">'+(p?'Changes go live on the websites within a minute of saving.':'An acquisition deal opens automatically in H2M · Acquisitions.')+'</div>'+
+  '<div class="mut" style="font-size:12px;margin-top:8px">'+(p?'Changes go live on the websites within a minute of saving.':'It goes straight to the property list at the status you pick — no deal opens unless you choose one above.')+'</div>'+
   '<button class="btn" style="margin-top:18px" onclick="saveProp(\''+(editId||'')+'\')">'+(p?'Save changes':'Add property')+'</button>');
   mpMoney();
 }
