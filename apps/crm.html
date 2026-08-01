@@ -1216,9 +1216,13 @@ function vDash(){
     const open=mine.filter(d=>!isFinal(d));
     const myAppts=S.appts.filter(a=>a.agentId===me.id&&inThisWeek(a.dt)).length;
     const myClosings=mine.filter(d=>isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d))).length;
-    h+='<div class="grid cards4"><div class="card"><div class="eyebrow">My active deals</div><div class="big">'+open.length+'</div><div class="sub">across '+BIZ[me.business]+'</div></div>'+
-       '<div class="card"><div class="eyebrow">My open pipeline</div><div class="big">'+money(open.reduce((a,d)=>a+(d.revenue||0),0))+'</div><div class="sub">expected on close</div></div>'+
-       '<div class="card"><div class="eyebrow">My YTD income</div><div class="big">'+money(mine.filter(d=>isFinal(d)&&closedDate(d)&&inThisYear(closedDate(d))).reduce((a,d)=>a+(d.revenue||0),0))+'</div><div class="sub">closed volume '+NOW().getFullYear()+'</div></div></div>';
+    /* Agents see their OWN realized commission only — nothing populates until a deal is closed.
+       Revenue is the business's internal number and is never shown here as the agent's earnings. */
+    const myCommMo=mine.filter(d=>isWon(d)&&closedDate(d)&&inThisMonth(closedDate(d))).reduce((a,d)=>a+agentPay(d),0);
+    const myCommYtd=mine.filter(d=>isWon(d)&&closedDate(d)&&inThisYear(closedDate(d))).reduce((a,d)=>a+agentPay(d),0);
+    h+='<div class="grid cards4"><div class="card"><div class="eyebrow">My active deals</div><div class="big">'+open.length+'</div><div class="sub">in progress</div></div>'+
+       '<div class="card"><div class="eyebrow">My commission \u2014 this month</div><div class="big">'+money(myCommMo)+'</div><div class="sub">on deals I have closed</div></div>'+
+       '<div class="card"><div class="eyebrow">My commission \u2014 YTD</div><div class="big">'+money(myCommYtd)+'</div><div class="sub">earned '+NOW().getFullYear()+'</div></div></div>';
     h+='<div class="sect"><div class="sect-head"><h2>My scoreboard</h2></div><div class="card" style="padding:6px 20px">'+
       '<div class="kpirow"><span class="lab">Appointments<small>this week</small></span>'+dotStrip(myAppts,T.agentApptsWk)+'<span class="val">'+myAppts+' / '+T.agentApptsWk+'</span></div>'+
       '<div class="kpirow"><span class="lab">Closings<small>this month</small></span>'+dotStrip(myClosings,T.agentClosingsMo)+'<span class="val">'+myClosings+' / '+T.agentClosingsMo+'</span></div></div></div>';
@@ -2852,10 +2856,16 @@ function vCommissions(){
   const pill=me.role==='agent'?'Your pay YTD '+money(agent):'YTD '+money(gross)+' · house '+money(gross-agent);
   let h='<div class="sect-head" style="margin-top:4px"><h2>Commissions</h2><span class="cnt">closed ledger with splits'+(me.role==='agent'?' · yours':'')+'</span><span class="spacer"></span><span class="pill">'+pill+'</span></div>';
   if(!ds.length)return h+'<div class="empty">No closed deals yet.</div>';
-  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Closed</th><th>Contact</th><th>Business</th><th>Team member</th><th>Split</th><th>Revenue</th><th>Agent pay</th><th>House</th></tr>'+
-    ds.map(d=>{const ap=agentPay(d);
-      return '<tr class="rowlink" onclick="openDeal(\''+d.id+'\')"><td class="mut">'+fdate(closedDate(d))+'</td><td>'+esc(dealTitle(d))+'</td><td>'+BIZ[PIPES[d.pipe].biz]+'</td><td class="mut">'+esc(U(d.agentId).name)+'</td>'+
-      '<td class="mut">'+payLabel(d.pipe)+'</td><td class="money">'+(d.needsNumbers?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">pending</span>':money(d.revenue))+'</td><td class="money">'+money(ap)+'</td><td class="mut">'+money((d.revenue||0)-ap)+'</td></tr>'}).join('')+'</table></div>'+
+  const isAg=me.role==='agent';
+  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Closed</th><th>Contact</th><th>Business</th>'+(isAg?'':'<th>Team member</th>')+'<th>Split</th>'+(isAg?'':'<th>Revenue</th>')+'<th>'+(isAg?'Your pay':'Agent pay')+'</th>'+(isAg?'':'<th>House</th>')+'</tr>'+
+    ds.map(d=>{const ap=agentPay(d);const pend='<span class="tag" style="border-color:var(--amber);color:var(--amber)">pending</span>';
+      return '<tr class="rowlink" onclick="openDeal(\''+d.id+'\')"><td class="mut">'+fdate(closedDate(d))+'</td><td>'+esc(dealTitle(d))+'</td><td>'+BIZ[PIPES[d.pipe].biz]+'</td>'+
+      (isAg?'':'<td class="mut">'+esc(U(d.agentId).name)+'</td>')+
+      '<td class="mut">'+payLabel(d.pipe)+'</td>'+
+      (isAg?'':'<td class="money">'+(d.needsNumbers?pend:money(d.revenue))+'</td>')+
+      '<td class="money">'+(d.needsNumbers?pend:money(ap))+'</td>'+
+      (isAg?'':'<td class="mut">'+money((d.revenue||0)-ap)+'</td>')+
+      '</tr>'}).join('')+'</table></div>'+
     '<div class="mut" style="font-size:12px;margin-top:8px">Ownership sets each pipeline to a percentage split or a flat fee in Settings → Commission splits.</div>';
   return h;
 }
