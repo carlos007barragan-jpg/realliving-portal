@@ -1198,6 +1198,14 @@ function vDash(){
     h+='<div class="sect"><div class="card"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">Revenue Trend</h2><span class="cnt">'+tDesc+(dashFilter==='ALL'?'':' · '+BIZ[dashFilter])+'</span><span class="spacer"></span>'+
       rangeBtn('D','Daily')+rangeBtn('W','Weekly')+rangeBtn('M','Monthly')+rangeBtn('Y','Yearly')+'</div>'+
       lineChart(tLabels,[{name:'Revenue',color:'#B08A36',vals:tVals,tips:tTips}],v=>v>=1000?'$'+Math.round(v/1000)+'K':'$'+Math.round(v))+'</div></div>';
+    /* Owner money-out view — what the business has paid the team in commissions this year */
+    const paid={};let paidTot=0;
+    S.deals.filter(d=>isWon(d)&&closedDate(d)&&inThisYear(closedDate(d))&&d.pipe!=='h2m_acq').forEach(d=>{const ap=agentPay(d);paid[d.agentId]=(paid[d.agentId]||0)+ap;paidTot+=ap;});
+    const paidRows=Object.keys(paid).sort((a,b)=>paid[b]-paid[a]);
+    h+='<div class="sect"><div class="card"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">Commissions paid out \u2014 '+NOW().getFullYear()+'</h2><span class="cnt">to the team, from closed deals</span><span class="spacer"></span><span class="pill">'+money(paidTot)+' total</span></div>'+
+      (paidRows.length?'<div style="overflow:auto"><table style="width:100%"><tr><th style="text-align:left">Team member</th><th style="text-align:right">Commission paid</th></tr>'+
+        paidRows.map(aid=>'<tr><td>'+esc((U(aid)||{name:'\u2014'}).name)+'</td><td class="money" style="text-align:right">'+money(paid[aid])+'</td></tr>').join('')+'</table></div>':'<div class="empty">No commissions paid out yet this year.</div>')+
+      '</div></div>';
   }
   if(me.role==='manager'){
     const pipes=myPipes();let open=0,openN=0,closedN=0,closed=0;
