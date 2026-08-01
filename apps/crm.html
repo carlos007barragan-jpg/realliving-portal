@@ -1892,6 +1892,7 @@ function reviewAsk(d){
 }
 /* ================= CLIENTS ================= */
 let clientQ='';
+let payAgent=null;
 function vClients(){
   const activeL=S.smartlists.find(x=>x.id===slSel);
   let list=activeL?listMembers(activeL.q):S.clients.slice();
@@ -2840,11 +2841,34 @@ function splitPct(pipe){return Math.max(0,Math.min(100,(S.splits&&S.splits[pipe]
 /* each pipeline pays the agent either a % of revenue or a flat fee per closing */
 function payMode(pipe){return (S.payMode&&S.payMode[pipe]==='flat')?'flat':'pct'}
 function flatFee(pipe){return Math.max(0,(S.payFlat&&S.payFlat[pipe]!=null)?S.payFlat[pipe]:0)}
-function agentPay(d){
+/* Per-person payout engine. Each person can carry their own rate inside each pipeline
+   (percentage, flat fee, or a monthly-reset tier they build). A payout confirmed on the
+   deal by ownership at close always wins; otherwise the person's own rate, then the pipeline default. */
+function agentRateFor(aid,pipe){return (S.agentRates&&S.agentRates[aid]&&S.agentRates[aid][pipe])||null;}
+function tierFeeFor(d,aid){
+  const r=agentRateFor(aid,d.pipe); if(!r||r.mode!=='tier'||!r.tiers||!r.tiers.length)return 0;
+  const cd=closedDate(d); if(!cd)return 0;
+  const ym=cd.slice(0,7);
+  const sm=S.deals.filter(x=>x.agentId===aid&&x.pipe===d.pipe&&isWon(x)&&closedDate(x)&&closedDate(x).slice(0,7)===ym);
+  sm.sort((a,b)=>(closedDate(a)+'|'+a.id).localeCompare(closedDate(b)+'|'+b.id));
+  const idx=sm.findIndex(x=>x.id===d.id); const nth=idx>=0?idx+1:1;
+  const tiers=r.tiers.slice().sort((a,b)=>a.upTo-b.upTo);
+  const t=tiers.find(t=>nth<=t.upTo)||tiers[tiers.length-1];
+  return Math.max(0,(t&&t.fee)||0);
+}
+function payoutOf(d,aid){
   const rev=d.revenue||0;
-  if(payMode(d.pipe)==='flat')return Math.min(flatFee(d.pipe),rev); /* never pay out more than came in */
+  if(d.payouts&&d.payouts.length){const po=d.payouts.find(x=>x.agentId===aid);if(po)return Math.max(0,po.amount||0);}
+  const r=agentRateFor(aid,d.pipe);
+  if(r&&r.mode&&r.mode!=='inherit'){
+    if(r.mode==='flat')return Math.min(r.flat||0,rev);
+    if(r.mode==='pct')return Math.round(rev*(r.pct||0)/100);
+    if(r.mode==='tier')return tierFeeFor(d,aid);
+  }
+  if(payMode(d.pipe)==='flat')return Math.min(flatFee(d.pipe),rev);
   return Math.round(rev*splitPct(d.pipe)/100);
 }
+function agentPay(d){return payoutOf(d,d.agentId);}
 const payLabel=pipe=>payMode(pipe)==='flat'?money(flatFee(pipe))+' flat':splitPct(pipe)+'% / '+(100-splitPct(pipe))+'%';
 function setPayMode(pipe,mode){
   S.payMode=S.payMode||{};S.payMode[pipe]=mode;
@@ -2990,7 +3014,7 @@ function vSettings(){
   else h+='<div class="pipetabs" style="margin-bottom:16px">'+stab('general','General')+stab('workflows','Workflows')+stab('comm','Commissions')+stab('team','Team')+stab('integrations','Integrations')+stab('data','Data')+'</div>';
   if(setTab==='general')h+=setGeneral();
   if(setTab==='workflows')h+=setWorkflows();
-  if(setTab==='comm')h+=setComm();
+  if(setTab==='comm')h+=setComm()+setAgentPay();
   if(setTab==='team')h+='<div class="sect">'+vTeam()+'</div>';
   if(setTab==='integrations')h+=setIntegrations();
   if(setTab==='data')h+=setData();
@@ -3144,6 +3168,55 @@ function setComm(){
       '</div>'}).join('')+'</div>'+
     '<div class="mut" style="font-size:11.5px;margin-top:12px">Switching a pipeline between percentage and flat fee saves right away; the amount saves when you hit <b style="color:var(--ink)">Save splits</b>. A flat fee never pays out more than the revenue that came in on that file.</div></div>';
 }
+
+function setAgentPay(){
+  const agents=S.users.filter(u=>u.id!=='admin'&&!u.deleted&&u.role!=='marketing');
+  if(!agents.length)return '<div class="card" style="margin-top:14px"><div class="empty">Add team members to set per-person payouts.</div></div>';
+  if(!payAgent||!agents.some(u=>u.id===payAgent))payAgent=agents[0].id;
+  S.agentRates=S.agentRates||{};
+  const rates=S.agentRates[payAgent]||{};
+  let h='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">Per-person payouts</h2><span class="spacer"></span><button class="btn small" onclick="saveAgentPay()">Save payouts</button></div>'+
+    '<div class="mut" style="font-size:12.5px;margin-bottom:12px">Each person can have their own payout inside each pipeline. Leave one on <b>Pipeline default</b> to use the split above. <b>Tier</b> pays a set fee per deal that steps up as they close more \u2014 the count resets every month.</div>'+
+    '<label>Team member</label><select onchange="payAgent=this.value;go(\'settings\')" style="max-width:300px;margin-bottom:14px">'+
+      agents.map(u=>'<option value="'+u.id+'"'+(u.id===payAgent?' selected':'')+'>'+esc(u.name)+' \u00b7 '+esc(u.role)+'</option>').join('')+'</select>'+
+    '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">';
+  Object.keys(PIPES).forEach(p=>{
+    const r=rates[p]||{mode:'inherit'}; const mode=r.mode||'inherit';
+    h+='<div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px">'+
+      '<label style="margin-bottom:6px">'+PIPES[p].name+'</label>'+
+      '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">'+
+        [['inherit','Default'],['pct','%'],['flat','Flat'],['tier','Tier']].map(o=>'<button class="btn '+(mode===o[0]?'':'ghost ')+'small" style="padding:5px 11px" onclick="setAgentPayMode(\''+p+'\',\''+o[0]+'\')">'+o[1]+'</button>').join('')+'</div>';
+    if(mode==='pct')h+='<div style="display:flex;align-items:center;gap:8px"><input id="ap-pct-'+p+'" type="number" min="0" max="100" value="'+(r.pct!=null?r.pct:splitPct(p))+'" style="max-width:90px"><span class="mut" style="font-size:12.5px">% of revenue</span></div>';
+    else if(mode==='flat')h+='<div style="display:flex;align-items:center;gap:8px"><span class="mut">$</span><input id="ap-flat-'+p+'" type="number" min="0" step="50" value="'+(r.flat!=null?r.flat:flatFee(p))+'" style="max-width:120px"><span class="mut" style="font-size:12.5px">per closing</span></div>';
+    else if(mode==='tier'){
+      const tiers=(r.tiers&&r.tiers.length)?r.tiers:[{upTo:3,fee:0}];
+      h+='<div>'+tiers.map((t,i)=>tierRow(p,i,t)).join('')+'</div>'+
+        '<button class="btn ghost small" style="margin-top:6px" onclick="addTier(\''+p+'\')">+ Add tier</button>'+
+        '<div class="mut" style="font-size:11.5px;margin-top:6px">Deals up to each number pay that fee. Resets every month.</div>';
+    } else h+='<div class="mut" style="font-size:12.5px">Uses the pipeline split above ('+payLabel(p)+').</div>';
+    h+='</div>';
+  });
+  return h+'</div></div>';
+}
+function tierRow(p,i,t){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'+
+  '<span class="mut" style="font-size:12px">up to</span><input class="ap-upto" data-p="'+p+'" type="number" min="1" value="'+(t.upTo!=null?t.upTo:'')+'" style="max-width:64px"><span class="mut" style="font-size:12px">deals \u2192 $</span>'+
+  '<input class="ap-fee" data-p="'+p+'" type="number" min="0" value="'+(t.fee!=null?t.fee:'')+'" style="max-width:90px">'+
+  '<button class="btn ghost small" style="padding:3px 9px;border-color:var(--red);color:var(--red)" onclick="rmTier(\''+p+'\','+i+')">\u2715</button></div>';}
+function readAgentPayCard(p){
+  S.agentRates=S.agentRates||{};S.agentRates[payAgent]=S.agentRates[payAgent]||{};
+  const r=S.agentRates[payAgent][p]; if(!r||r.mode==='inherit')return;
+  if(r.mode==='pct'){const e=document.getElementById('ap-pct-'+p);if(e)r.pct=Math.max(0,Math.min(100,parseFloat(e.value)||0));}
+  else if(r.mode==='flat'){const e=document.getElementById('ap-flat-'+p);if(e)r.flat=Math.max(0,parseFloat(e.value)||0);}
+  else if(r.mode==='tier'){
+    const ups=[].slice.call(document.querySelectorAll('.ap-upto[data-p="'+p+'"]'));
+    const fes=[].slice.call(document.querySelectorAll('.ap-fee[data-p="'+p+'"]'));
+    if(ups.length)r.tiers=ups.map((u,i)=>({upTo:Math.max(1,parseInt(u.value)||1),fee:Math.max(0,parseFloat((fes[i]||{}).value)||0)}));
+  }
+}
+function setAgentPayMode(p,mode){readAgentPayCard(p);S.agentRates[payAgent]=S.agentRates[payAgent]||{};const r=S.agentRates[payAgent][p]||{};r.mode=mode;if(mode==='tier'&&(!r.tiers||!r.tiers.length))r.tiers=[{upTo:3,fee:0}];S.agentRates[payAgent][p]=r;go('settings');}
+function addTier(p){readAgentPayCard(p);const r=S.agentRates[payAgent][p];r.tiers=r.tiers||[];const last=r.tiers[r.tiers.length-1];r.tiers.push({upTo:(last?(last.upTo+3):3),fee:0});go('settings');}
+function rmTier(p,i){readAgentPayCard(p);const r=S.agentRates[payAgent][p];if(r&&r.tiers){r.tiers.splice(i,1);if(!r.tiers.length)r.tiers=[{upTo:3,fee:0}];}go('settings');}
+function saveAgentPay(){Object.keys(PIPES).forEach(p=>readAgentPayCard(p));save();toast('Payouts saved \u2014 the ledger recalculates instantly');go('settings');}
 function setIntegrations(){
   const cr=S.targets.callRecord===true;
   return '<div class="card" style="margin-bottom:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">Phone tree — office line</h2></div>'+
