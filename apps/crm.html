@@ -1218,11 +1218,17 @@ function vDash(){
     const myClosings=mine.filter(d=>isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d))).length;
     /* Agents see their OWN realized commission only — nothing populates until a deal is closed.
        Revenue is the business's internal number and is never shown here as the agent's earnings. */
-    const myCommMo=mine.filter(d=>isWon(d)&&closedDate(d)&&inThisMonth(closedDate(d))).reduce((a,d)=>a+agentPay(d),0);
-    const myCommYtd=mine.filter(d=>isWon(d)&&closedDate(d)&&inThisYear(closedDate(d))).reduce((a,d)=>a+agentPay(d),0);
-    h+='<div class="grid cards4"><div class="card"><div class="eyebrow">My active deals</div><div class="big">'+open.length+'</div><div class="sub">in progress</div></div>'+
-       '<div class="card"><div class="eyebrow">My commission \u2014 this month</div><div class="big">'+money(myCommMo)+'</div><div class="sub">on deals I have closed</div></div>'+
-       '<div class="card"><div class="eyebrow">My commission \u2014 YTD</div><div class="big">'+money(myCommYtd)+'</div><div class="sub">earned '+NOW().getFullYear()+'</div></div></div>';
+    const wonMine=mine.filter(d=>isWon(d)&&closedDate(d));
+    const myCommMo=wonMine.filter(d=>inThisMonth(closedDate(d))).reduce((a,d)=>a+agentPay(d),0);
+    const myCommYtd=wonMine.filter(d=>inThisYear(closedDate(d))).reduce((a,d)=>a+agentPay(d),0);
+    const myClosedYtd=wonMine.filter(d=>inThisYear(closedDate(d))).length;
+    const myCommAll=wonMine.reduce((a,d)=>a+agentPay(d),0);
+    h+='<div class="grid cards4">'+
+       '<div class="card"><div class="eyebrow">Commission \u2014 this month</div><div class="big">'+money(myCommMo)+'</div><div class="sub">on deals I have closed</div></div>'+
+       '<div class="card"><div class="eyebrow">Commission \u2014 YTD</div><div class="big">'+money(myCommYtd)+'</div><div class="sub">earned '+NOW().getFullYear()+'</div></div>'+
+       '<div class="card"><div class="eyebrow">Deals closed \u2014 YTD</div><div class="big">'+myClosedYtd+'</div><div class="sub">'+wonMine.length+' all-time</div></div>'+
+       '<div class="card"><div class="eyebrow">Active deals</div><div class="big">'+open.length+'</div><div class="sub">in progress</div></div></div>';
+    h+='<div class="mut" style="font-size:12.5px;margin:8px 2px 0">Lifetime with us: <b style="color:var(--ink)">'+money(myCommAll)+'</b> earned across <b style="color:var(--ink)">'+wonMine.length+'</b> closed deal'+(wonMine.length===1?'':'s')+'.</div>';
     h+='<div class="sect"><div class="sect-head"><h2>My scoreboard</h2></div><div class="card" style="padding:6px 20px">'+
       '<div class="kpirow"><span class="lab">Appointments<small>this week</small></span>'+dotStrip(myAppts,T.agentApptsWk)+'<span class="val">'+myAppts+' / '+T.agentApptsWk+'</span></div>'+
       '<div class="kpirow"><span class="lab">Closings<small>this month</small></span>'+dotStrip(myClosings,T.agentClosingsMo)+'<span class="val">'+myClosings+' / '+T.agentClosingsMo+'</span></div></div></div>';
@@ -2929,7 +2935,7 @@ function wallChecks(){
     ['Agents are walled to their granted pipelines',asRole('u4',()=>myPipes().every(p=>allowedPipes(me).includes(p)))],
     ['Managers: Settings limited to Team',asRole('u3',()=>{const h=vSettings();return h.indexOf('Commission splits')<0&&h.indexOf('Import contacts')<0&&h.indexOf('Team')>-1})],
     ['Managers cannot touch ownership seats',asRole('u3',()=>!canManageSeat(S.users.find(u=>u.id==='u1'))&&!canManageSeat(S.users.find(u=>u.id==='u2')))],
-    ['Role preview is dead on real accounts',viewAs.toString().indexOf('if(!DEV)return')>-1],
+    ['View As is owner-and-dev only, audit-logged',viewAs.toString().indexOf('if(!DEV&&!REAL_OWNER)return')>-1],
     ['Dev tools hidden outside this door',(function(){const d0=DEV;let ok;try{DEV=false;ok=!pagesFor().some(it=>it.k==='devview')&&vDevView().indexOf('Not available')>-1}finally{DEV=d0}return ok})()]
   ];
 }
