@@ -3170,7 +3170,7 @@ function setComm(){
 }
 
 function setAgentPay(){
-  const agents=S.users.filter(u=>u.id!=='admin'&&!u.deleted&&u.role!=='marketing');
+  const agents=S.users.filter(u=>u.id!=='admin'&&!u.deleted);
   if(!agents.length)return '<div class="card" style="margin-top:14px"><div class="empty">Add team members to set per-person payouts.</div></div>';
   if(!payAgent||!agents.some(u=>u.id===payAgent))payAgent=agents[0].id;
   S.agentRates=S.agentRates||{};
