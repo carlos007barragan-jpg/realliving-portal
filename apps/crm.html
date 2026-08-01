@@ -1813,7 +1813,7 @@ function doCloseOut(id,stage){
     if(c){
       c.dormant=true;
       const killed=S.tasks.filter(t=>t.clientId===c.id&&!t.done);
-      killed.forEach(t=>{const i=S.tasks.indexOf(t);if(i>-1)S.tasks.splice(i,1)});
+      killed.forEach(t=>{const i=S.tasks.indexOf(t);if(i>-1){S.tasks.splice(i,1);markDel('tasks',t.id)}});
     }
     toast('Closed out and parked as dormant — nothing deleted');
   } else {
@@ -2109,7 +2109,7 @@ function toggleDormant(cid){
   if(c.dormant){
     /* parking a lead clears its open follow-up so nobody's dashboard nags about it */
     const killed=S.tasks.filter(t=>t.clientId===cid&&!t.done);
-    killed.forEach(t=>{const i=S.tasks.indexOf(t);if(i>-1)S.tasks.splice(i,1)});
+    killed.forEach(t=>{const i=S.tasks.indexOf(t);if(i>-1){S.tasks.splice(i,1);markDel('tasks',t.id)}});
     logAct(null,cid,'Parked as dormant'+(killed.length?' — '+killed.length+' open follow-up cleared':''));
   } else logAct(null,cid,'Reheated — back in the working list');
   save();toast(c.dormant?'Parked as dormant':'Reheated — this lead is back in play');go('client',cid);
@@ -2127,7 +2127,7 @@ function bulkDormant(makeDormant){
     c.dormant=!!makeDormant;
     if(makeDormant){
       const killed=S.tasks.filter(t=>t.clientId===c.id&&!t.done);
-      killed.forEach(t=>{const i=S.tasks.indexOf(t);if(i>-1)S.tasks.splice(i,1);cleared++});
+      killed.forEach(t=>{const i=S.tasks.indexOf(t);if(i>-1){S.tasks.splice(i,1);markDel('tasks',t.id)}cleared++});
     }
   });
   save();toast((makeDormant?'Parked ':'Reheated ')+list.length+' contact'+(list.length===1?'':'s')+(cleared?' · '+cleared+' follow-up cleared':''));
@@ -2317,7 +2317,7 @@ function rmProp(id){
       (live?' ('+live+' still open)':'')+'. Deleting it unlinks them — the deals themselves stay on their clients.\n\nDelete anyway? Archive keeps the record and the history.'))return;
   } else if(!confirm('Delete '+p.address+' permanently? Archive keeps it out of the way without losing it.'))return;
   S.deals.forEach(d=>{if(d.propertyId===p.id){d.propertyId=null;if(!d.propInterest)d.propInterest=p.address}});
-  S.properties=S.properties.filter(x=>x.id!==p.id);
+  S.properties=S.properties.filter(x=>x.id!==p.id);markDel('properties',p.id);
   (S.deletedProps=S.deletedProps||[]).push({id:p.id,address:p.address,by:me.id,at:new Date().toISOString()});
   logAct(null,null,'Property deleted by '+me.name+' — '+p.address+(ds.length?' ('+ds.length+' transaction(s) unlinked)':'')+'.');
   save();closeAll();go('props');toast('Deleted — '+p.address);
@@ -2592,7 +2592,7 @@ function saveList(){
   S.smartlists.push(l);slSel=l.id;
   save();closeAll();go('clients');toast('Smart list saved');
 }
-function rmList(id){S.smartlists=S.smartlists.filter(l=>l.id!==id);if(slSel===id)slSel=null;save();go('clients');}
+function rmList(id){S.smartlists=S.smartlists.filter(l=>l.id!==id);markDel('smartlists',id);if(slSel===id)slSel=null;save();go('clients');}
 /* ---------- call session (power dialer over any smart list) ---------- */
 let csQ=[],csI=0;
 function startSession(){
@@ -3370,7 +3370,7 @@ function vTeam(){
 function rmUser(id){
   const u=S.users.find(x=>x.id===id);if(!u||!canManageSeat(u)){toast('Only ownership can manage that seat');return}
   if(!confirm('Remove this user? Their deals stay, unassigned to them.'))return;
-  S.users=S.users.filter(x=>x.id!==id);save();renderWho();go('settings');
+  S.users=S.users.filter(x=>x.id!==id);markDel('users',id);save();renderWho();go('settings');
 }
 /* ================= DEAL DRAWER ================= */
 /* Put an archived or sold deal back onto the pipeline board at its last stage so it can
@@ -3480,7 +3480,7 @@ function saveDeal(id){
 }
 function rmDeal(id){
   const d=D(id);if(!confirm('Delete this deal? The client record stays.'))return;
-  S.deals=S.deals.filter(x=>x.id!==id);logAct(null,d.clientId,'Deal deleted: '+PIPES[d.pipe].name+' — '+d.type+'.');
+  S.deals=S.deals.filter(x=>x.id!==id);markDel('deals',id);logAct(null,d.clientId,'Deal deleted: '+PIPES[d.pipe].name+' — '+d.type+'.');
   save();closeAll();refresh();
 }
 /* ================= MODALS ================= */
@@ -4187,7 +4187,7 @@ function rmAppt(id){
   const a=S.appts.find(x=>x.id===id);if(!a)return;
   if(me.role==='agent'&&a.agentId!==me.id){toast('Not your appointment');return}
   if(!confirm('Cancel this appointment?'))return;
-  S.appts=S.appts.filter(x=>x.id!==id);
+  S.appts=S.appts.filter(x=>x.id!==id);markDel('appts',id);
   logAct(null,a.clientId,'Appointment cancelled — '+a.type+' on '+fdate(a.dt)+'.');
   save();refresh();toast('Appointment cancelled');
 }
@@ -4268,13 +4268,20 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='li-pa
 const SYNC_COLS=['clients','deals','properties','acts','appts','touches','users','tasks','smartlists'];
 let _snap={},_del={},_pushQ={},_lastPull='1970-01-01T00:00:00Z',_syncTimer=null,_pushing=false;
 function snapKey(o){return JSON.stringify(o)}
+/* Deletions are EXPLICIT. Only a real remove (rmProp, rmDeal, rmUser, rmList,
+   rmAppt, or a cleared follow-up) calls markDel. The sync NEVER infers a delete
+   from an id missing in memory — a stale or partial local copy must never be able
+   to wipe a record for the whole team. */
+function markDel(col,id){(_del[col]=_del[col]||{})[id]=new Date().toISOString();if(_snap[col])delete _snap[col][id];}
 function stampChanges(){
   const now=new Date().toISOString();
   SYNC_COLS.forEach(col=>{
     const cur={},prev=_snap[col]||{};
     (S[col]||[]).forEach(r=>{cur[r.id]=snapKey(r)});
     for(const id in cur)if(cur[id]!==prev[id]){(_pushQ[col]=_pushQ[col]||{})[id]=now;}
-    for(const id in prev)if(!(id in cur)){(_del[col]=_del[col]||{})[id]=now;}
+    /* An id present before but missing now is NOT treated as a deletion. That
+       inference is what let a thinned/stale in-memory array delete live records
+       team-wide. Real deletes are queued explicitly via markDel(). */
     _snap[col]=cur;
   });
   const tKey=snapKey(S.targets);
@@ -4334,10 +4341,18 @@ function applyRemote(rows){
     const arr=S[r.collection];const i=arr.findIndex(x=>x.id===r.id);
     const pendingLocal=_pushQ[r.collection]&&_pushQ[r.collection][r.id]&&_pushQ[r.collection][r.id]>r.updated_at;
     if(pendingLocal)return; /* our newer local edit wins; it will push */
-    if(r.deleted){if(i>-1){arr.splice(i,1);changed=true}}
-    else if(i>-1){if(snapKey(arr[i])!==snapKey(r.data)){arr[i]=r.data;changed=true}}
-    else{arr.push(r.data);changed=true}
-    (_snap[r.collection]=_snap[r.collection]||{})[r.id]=snapKey(r.data);
+    if(r.deleted){
+      if(i>-1){arr.splice(i,1);changed=true}
+      /* drop it from the snapshot instead of recording snap({}) — otherwise the
+         next stampChanges would see it as "was here, now gone" and re-push the
+         delete forever, which is how one bad delete used to cascade in waves. */
+      if(_snap[r.collection])delete _snap[r.collection][r.id];
+      if(_del[r.collection])delete _del[r.collection][r.id];
+    } else {
+      if(i>-1){if(snapKey(arr[i])!==snapKey(r.data)){arr[i]=r.data;changed=true}}
+      else{arr.push(r.data);changed=true}
+      (_snap[r.collection]=_snap[r.collection]||{})[r.id]=snapKey(r.data);
+    }
   });
   return changed;
 }
