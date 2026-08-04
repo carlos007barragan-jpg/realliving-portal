@@ -2401,19 +2401,25 @@ async function addPhotos(pid,input){
   const blocked=await storageReady();
   if(blocked){toast(blocked);input.value='';return}
   p.photos=p.photos||[];let done=0,failed=0,lastErr='';
+  let _tok='';try{const {data:{session:_s}}=await sb.auth.getSession();_tok=(_s&&_s.access_token)||'';}catch(_e){}
   for(const f of files){
     const mime=guessMime(f);
     if(!mime){toast('"'+f.name+'" doesn\'t look like a photo — skipped');failed++;continue}
     toast('Uploading '+(done+failed+1)+' of '+files.length+' — '+f.name);
     const path=pid+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,7)+'-'+f.name.replace(/[^A-Za-z0-9._-]/g,'_').slice(-60);
     let error=null;
+    const _enc=path.split('/').map(encodeURIComponent).join('/');
+    const _ep=SUPABASE_URL+'/storage/v1/object/'+PHOTO_BUCKET+'/'+_enc;
     try{
-      const res=await sb.storage.from(PHOTO_BUCKET).upload(path,f,{contentType:mime,upsert:true});
-      error=res.error;
+      /* Upload straight to Storage with the signed-in user's token attached EXPLICITLY.
+         The storage client was sending some sessions' uploads without the auth header, so
+         they arrived anonymous and RLS rejected them (400 "violates row-level security").
+         An explicit Authorization: Bearer <token> guarantees the request is authenticated. */
+      const res=await fetch(_ep,{method:'POST',headers:{'apikey':SUPABASE_ANON_KEY,'authorization':'Bearer '+(_tok||SUPABASE_ANON_KEY),'content-type':mime,'x-upsert':'true'},body:f});
+      if(!res.ok){let m='';try{m=(await res.json()).message||'';}catch(_){}error={message:m||('HTTP '+res.status)};}
     }catch(e){error={message:String(e&&e.message||e)}}
     if(error){lastErr=uploadHint(error.message);failed++;continue}
-    const {data}=sb.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-    if(data&&data.publicUrl){p.photos.push(data.publicUrl);done++}else{failed++;lastErr='Uploaded but could not read the link back.'}
+    p.photos.push(SUPABASE_URL+'/storage/v1/object/public/'+PHOTO_BUCKET+'/'+_enc);done++;
   }
   p.photo=p.photos[0]||null;
   if(done)logAct(null,null,done+' photo'+(done>1?'s':'')+' added to '+p.address+' by '+me.name+'.');
