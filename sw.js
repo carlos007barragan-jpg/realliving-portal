@@ -11,7 +11,7 @@
 
    Bump CACHE_VERSION to force every client onto a fresh cache on the next visit. */
 
-const CACHE_VERSION = 'rl-suite-v1';
+const CACHE_VERSION = 'rl-suite-v2-hardreset';
 const BASE = '/realliving-portal/';
 const PRECACHE = [
   BASE,
