@@ -14,7 +14,23 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/realliving-portal/icons/favicon-32.png">
 <script>
 if('serviceWorker' in navigator){window.addEventListener('load',function(){
-  navigator.serviceWorker.register('/realliving-portal/sw.js',{scope:'/realliving-portal/'}).catch(function(e){console.warn('[sw]',e&&e.message);});
+  navigator.serviceWorker.register('/realliving-portal/sw.js',{scope:'/realliving-portal/'}).then(function(reg){
+    // Force any waiting worker to activate immediately.
+    function prod(w){ if(w) w.postMessage({type:'SKIP_WAITING'}); }
+    if(reg.waiting) prod(reg.waiting);
+    reg.addEventListener('updatefound',function(){
+      var nw=reg.installing;
+      if(nw) nw.addEventListener('statechange',function(){ if(nw.state==='installed') prod(reg.waiting||nw); });
+    });
+    // Check for a new version right away and periodically.
+    try{ reg.update(); }catch(e){}
+    setInterval(function(){ try{ reg.update(); }catch(e){} }, 60000);
+  }).catch(function(e){console.warn('[sw]',e&&e.message);});
+  // When the new worker takes control, reload once so every open tab jumps to fresh code.
+  var _reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',function(){
+    if(_reloaded) return; _reloaded=true; window.location.reload();
+  });
 });}
 </script>
 <!-- /PWA -->
