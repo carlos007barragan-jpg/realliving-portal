@@ -933,6 +933,45 @@ async function cloudResume(){
   }catch(e){console.error('[sso resume]',e);}
 }
 if(typeof window!=='undefined')setTimeout(()=>{cloudResume()},50);
+/* ===== Auto-update ==========================================================
+   Service worker is network-first, so a fresh load always gets newest code. The
+   gap is a tab left open for hours that never reloads — exactly how the upload
+   fix failed to reach people. Refresh to pick up a new deploy, but ONLY when
+   safe: never mid-upload, never with a dialog open, never while typing. */
+(function(){
+  if(typeof window==='undefined')return;
+  var SELF=location.pathname.split('?')[0], baseTag=null, pending=false;
+  function tag(){return fetch(SELF+'?_u='+Date.now(),{method:'HEAD',cache:'no-store'})
+    .then(function(r){return r.headers.get('etag')||r.headers.get('last-modified')||null;})
+    .catch(function(){return null;});}
+  function busy(){try{
+    if(window.__uploading)return true;
+    var m=document.getElementById('modal'); if(m&&m.classList.contains('on'))return true;
+    var el=document.activeElement;
+    if(el&&/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)&&!el.readOnly&&el.type!=='button'&&el.type!=='checkbox')return true;
+    return false;
+  }catch(e){return false;}}
+  function pill(){
+    if(document.getElementById('rl-upd'))return;
+    var d=document.createElement('div');d.id='rl-upd';
+    d.style.cssText='position:fixed;right:16px;bottom:16px;z-index:9999;background:var(--gold2,#C8A44D);color:#1b1b1b;padding:10px 14px;border-radius:10px;font:600 13px system-ui,-apple-system,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer';
+    d.textContent='Update available \u2014 tap to refresh';
+    d.onclick=function(){location.reload();};
+    document.body.appendChild(d);
+  }
+  function check(){
+    if(pending||document.hidden)return; pending=true;
+    tag().then(function(t){pending=false;
+      if(!t)return;
+      if(baseTag===null){baseTag=t;return;}
+      if(t!==baseTag){ if(busy())pill(); else location.reload(); }
+    });
+  }
+  setInterval(check,4*60*1000);
+  window.addEventListener('focus',check);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)check();});
+  check();
+})();
 function viewAs(id){
   if(!DEV&&!REAL_OWNER)return;
   /* leave a trail — stepping into someone's account should never be silent */
@@ -2398,8 +2437,9 @@ function uploadHint(msg){
 async function addPhotos(pid,input){
   const p=P(pid);if(!p||!canEditProps())return;
   const files=[...(input.files||[])];if(!files.length)return;
+  window.__uploading=true;
   const blocked=await storageReady();
-  if(blocked){toast(blocked);input.value='';return}
+  if(blocked){window.__uploading=false;toast(blocked);input.value='';return}
   p.photos=p.photos||[];let done=0,failed=0,lastErr='';
   let _tok='';try{const {data:{session:_s}}=await sb.auth.getSession();_tok=(_s&&_s.access_token)||'';}catch(_e){}
   for(const f of files){
@@ -2423,7 +2463,7 @@ async function addPhotos(pid,input){
   }
   p.photo=p.photos[0]||null;
   if(done)logAct(null,null,done+' photo'+(done>1?'s':'')+' added to '+p.address+' by '+me.name+'.');
-  input.value='';
+  input.value='';window.__uploading=false;
   if(done)save();
   go('prop',pid);
   toast(done
