@@ -4381,9 +4381,24 @@ async function pullAll(first){
        fine, a re-sync landed inside the debounce window and erased it. Flush before the
        rebuild, and keep anything still queued afterwards rather than erasing over it. */
     if(first&&hasQueued())await pushChanges();
-    const q=sb.from('records').select('*');
-    const {data,error}=first?await q:await q.gt('updated_at',_lastPull);
-    if(error)throw error;
+    /* PostgREST returns at most 1000 rows per select. The records table now holds more
+       than 1000 rows across all collections, so a single select silently dropped whatever
+       landed past row 1000 — which is exactly why properties and clients "disappeared" from
+       the CRM while Inventory Check (one per-collection query, safely under the cap) still
+       saw them. Page through every row, ordered by the primary key (collection,id) so pages
+       can never skip or repeat a row. */
+    let data=[];
+    { const PAGE=1000; let _from=0;
+      for(;;){
+        let pq=sb.from('records').select('*').order('collection',{ascending:true}).order('id',{ascending:true}).range(_from,_from+PAGE-1);
+        if(!first)pq=pq.gt('updated_at',_lastPull);
+        const {data:_page,error}=await pq;
+        if(error)throw error;
+        data=data.concat(_page||[]);
+        if(!_page||_page.length<PAGE)break;
+        _from+=PAGE;
+      }
+    }
     if(first){
       /* if the cloud is empty, this device seeds it (first team login) */
       if(!data.length){stampChanges();SYNC_COLS.forEach(col=>{(S[col]||[]).forEach(r=>{(_pushQ[col]=_pushQ[col]||{})[r.id]=new Date().toISOString()})});(_pushQ.meta={targets:new Date().toISOString()});await pushChanges();return}
