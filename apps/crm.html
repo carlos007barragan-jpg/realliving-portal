@@ -2366,7 +2366,15 @@ const PHOTO_BUCKET='property-photos';
 async function storageReady(){
   if(!CLOUD||!sb)return 'This copy of the CRM is running offline — open it from the Business Suite to upload files.';
   try{
-    const {data:{session}}=await sb.auth.getSession();
+    let {data:{session}}=await sb.auth.getSession();
+    /* An idle session whose access token has expired gets rejected by storage as if it were
+       anonymous — the upload fails with an RLS/JWT error and the user is told to sign in again
+       for no clear reason. If the token is missing or within 2 minutes of expiry, refresh it
+       first from the stored refresh token so a valid login keeps working without a re-login. */
+    { const _exp=session&&session.expires_at?session.expires_at*1000:0;
+      if(session&&(!_exp||_exp-Date.now()<120000)){
+        try{const {data:_rd,error:_re}=await sb.auth.refreshSession();if(!_re&&_rd&&_rd.session)session=_rd.session;}catch(_e){}
+      } }
     if(!session)return 'Uploads need your Business Suite login. You came in through the admin door, so there\'s no file access on this session — sign in at the portal (or paste image links under Edit property).';
   }catch(e){return 'Could not check your login: '+(e.message||e)}
   return null;
