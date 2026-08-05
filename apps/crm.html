@@ -466,6 +466,7 @@ const PIPES={
 const BIZPIPES={ASAP:['asap'],H2M:['h2m_acq','h2m_dispo','h2m_ws','h2m_of'],RL:['rl_buy','rl_list','tc']};
 const SOURCES=['Facebook Ads','Google Ads','Zillow','Realtor.com','Referral','Sign Call','Cold Call','Direct Mail','Website','Open House','Past Client','Other'];
 /* How we classify a contact — who we bought from / sold to, and how. Shown as a badge. */
+const CRM_BUILD='0805-uploadfix2';
 const CTYPES=['Retail Buyer','Investor','Buyer — Owner Finance','Buyer','Seller — Owner Finance','Seller — Wholesale','Seller','Other'];
 
 function seed(){
@@ -2456,7 +2457,7 @@ async function addPhotos(pid,input){
   const blocked=await storageReady();
   if(blocked){window.__uploading=false;toast(blocked);input.value='';return}
   p.photos=p.photos||[];let done=0,failed=0,lastErr='';
-  let _tok='';try{const {data:{session:_s}}=await sb.auth.getSession();_tok=(_s&&_s.access_token)||'';}catch(_e){}
+  let _tok='';try{let _s=(await sb.auth.getSession()).data.session;if(!_s||!_s.access_token){try{_s=(await sb.auth.refreshSession()).data.session;}catch(_e){}}_tok=(_s&&_s.access_token)||'';}catch(_e){}
   for(const f of files){
     const mime=guessMime(f);
     if(!mime){toast('"'+f.name+'" doesn\'t look like a photo — skipped');failed++;continue}
@@ -2483,7 +2484,7 @@ async function addPhotos(pid,input){
   go('prop',pid);
   toast(done
     ? done+' photo'+(done>1?'s':'')+' added'+(failed?' · '+failed+' failed: '+lastErr:'')
-    : 'Upload failed — '+(lastErr||'nothing went through'));
+    : 'Upload failed — '+(lastErr||'nothing went through')+'  ['+CRM_BUILD+' · '+(_tok?'signed in':'NO LOGIN TOKEN')+']');
 }
 function movePhoto(pid,i,dir){
   const p=P(pid);if(!p||!canEditProps())return;
