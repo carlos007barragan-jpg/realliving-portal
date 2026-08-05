@@ -460,6 +460,8 @@ const PIPES={
 };
 const BIZPIPES={ASAP:['asap'],H2M:['h2m_acq','h2m_dispo','h2m_ws','h2m_of'],RL:['rl_buy','rl_list','tc']};
 const SOURCES=['Facebook Ads','Google Ads','Zillow','Realtor.com','Referral','Sign Call','Cold Call','Direct Mail','Website','Open House','Past Client','Other'];
+/* How we classify a contact — who we bought from / sold to, and how. Shown as a badge. */
+const CTYPES=['Retail Buyer','Investor','Buyer — Owner Finance','Buyer','Seller — Owner Finance','Seller — Wholesale','Seller','Other'];
 
 function seed(){
   const now=Date.now(), d=(days)=>new Date(now-days*864e5).toISOString();
@@ -1971,7 +1973,7 @@ function vClients(){
       (slSel===l.id&&me.role!=='marketing'?' <span onclick="event.stopPropagation();rmList(\''+l.id+'\')" title="Delete list" style="opacity:.6">×</span>':'')+'</button>').join('')+
     '<button class="ttab" onclick="mAddList()">+ New list</button>'+
     (list.length?'<button class="ttab" style="border-color:var(--gold2);color:var(--gold2)" onclick="startSession()">▸ Start call session</button>':'')+'</div>';
-  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Contact</th><th>Phone</th><th>Source</th><th>Last activity</th><th>Active deals</th><th>Businesses</th></tr>'+
+  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Contact</th><th>Phone</th><th>Source</th><th>Type</th><th>Last activity</th><th>Active deals</th><th>Businesses</th></tr>'+
     list.map(c=>{const ds=S.deals.filter(d=>d.clientId===c.id);const open=ds.filter(d=>!isFinal(d));
       const bizs=[...new Set(ds.map(d=>PIPES[d.pipe].biz))];
       const last=lastActivityTs(c.id);const days=last?Math.floor((Date.now()-new Date(last))/864e5):null;
@@ -1980,11 +1982,13 @@ function vClients(){
       '<td><div style="display:flex;align-items:center;gap:11px"><span class="avx">'+esc(c.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase())+'</span>'+
       '<span class="rowacts"><button class="btn ghost small" title="Call" onclick="event.stopPropagation();mCall(\''+c.id+'\')">📞</button><button class="btn ghost small" title="Text" onclick="event.stopPropagation();mSendText(\''+c.id+'\')">💬</button></span>'+
       '<span>'+esc(c.name)+'<small style="display:block;color:var(--mut);font-size:11.5px">'+esc(c.email||'')+'</small></span></div></td>'+
-      '<td class="mut">'+esc(c.phone)+'</td><td class="mut">'+esc(c.source)+'</td>'+
+      '<td class="mut">'+esc(c.phone)+'</td><td class="mut">'+esc(c.source)+'</td><td>'+(ctypeBadge(c)||'<span class="mut">&mdash;</span>')+'</td>'+
       '<td style="font-size:12.5px;color:'+(isDormant(c)?'var(--mut)':((days===null||days>=30)?'var(--red)':'var(--mut)'))+'">'+(isDormant(c)?'dormant':lastTxt)+'</td>'+
       '<td>'+(open.length||'—')+'</td><td>'+(bizs.length?bizs.map(bz=>'<span class="tag" style="border-color:'+BIZCOLOR[bz]+';color:'+BIZCOLOR[bz]+'">'+BIZ[bz]+'</span>').join(' '):'<span class="mut">—</span>')+'</td></tr>'}).join('')+'</table></div>';
   return h;
 }
+function ctypeColor(t){if(/seller/i.test(t))return '#c98a2b';if(/buyer|investor|retail/i.test(t))return '#2f9e64';return 'var(--mut)';}
+function ctypeBadge(c){if(!c||!c.ctype)return '';var col=ctypeColor(c.ctype);return '<span class="tag" style="border-color:'+col+';color:'+col+';background:'+col+'14;font-weight:600">'+esc(c.ctype)+'</span> ';}
 function kv(k,v){return '<div><small>'+esc(k)+'</small>'+(v?esc(v):'—')+'</div>'}
 function vClient(id){
   const c=C(id);if(!c)return '<div class="empty">Client not found.</div>';
@@ -1998,7 +2002,7 @@ function vClient(id){
   let h='<button class="back" onclick="go(\'clients\')">← All contacts</button>';
   /* header band */
   h+='<div class="prof-head"><div class="avatar">'+esc(initials)+'</div><div style="flex:1;min-width:220px"><h1>'+esc(c.name)+'</h1>'+
-     '<div class="meta" style="margin-top:5px">'+(c.pastClient?'<span class="tag gr">Past client — has bought from us</span> ':'')+(c.auditNeeded?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">Needs audit — imported deal parked here</span> ':(isDormant(c)?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">Dormant — not being worked</span> ':''))+(c.archived?'<span class="tag" style="border-color:var(--mut);color:var(--mut)">Archived in previous CRM</span> ':'')+'<span class="tag">'+esc(c.source)+'</span> '+bizs.map(b=>'<span class="tag" style="background:'+BIZCOLOR[b]+'18;border-color:'+BIZCOLOR[b]+'55;color:'+BIZCOLOR[b]+'">'+BIZ[b]+'</span>').join(' ')+
+     '<div class="meta" style="margin-top:5px">'+ctypeBadge(c)+(c.pastClient?'<span class="tag gr">Past client — has bought from us</span> ':'')+(c.auditNeeded?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">Needs audit — imported deal parked here</span> ':(isDormant(c)?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">Dormant — not being worked</span> ':''))+(c.archived?'<span class="tag" style="border-color:var(--mut);color:var(--mut)">Archived in previous CRM</span> ':'')+'<span class="tag">'+esc(c.source)+'</span> '+bizs.map(b=>'<span class="tag" style="background:'+BIZCOLOR[b]+'18;border-color:'+BIZCOLOR[b]+'55;color:'+BIZCOLOR[b]+'">'+BIZ[b]+'</span>').join(' ')+
      (open.length?' <span class="tag gr">'+open.length+' active deal'+(open.length===1?'':'s')+'</span>':'')+'</div></div>'+
      '<button class="btn ghost small" onclick="mCall(\''+c.id+'\')">Call</button>'+
      '<button class="btn ghost small" onclick="mSendText(\''+c.id+'\')">Text</button>'+
@@ -2026,7 +2030,7 @@ function vClient(id){
   /* ---- LEFT: about the person ---- */
   h+='<div>';
   h+='<div class="card"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">About</h2><span class="spacer"></span><button class="btn ghost small" onclick="mEditClient(\''+c.id+'\')">Edit</button></div><div class="kv">'+
-    kv('Phone',c.phone)+kv('Email',c.email)+kv('Address',c.address)+'</div></div>';
+    kv('Client type',c.ctype)+kv('Phone',c.phone)+kv('Email',c.email)+kv('Address',c.address)+'</div></div>';
   h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Spouse / co-borrower</h2></div>'+
     (c.spouseName?'<div class="kv">'+kv('Name',c.spouseName)+kv('Phone',c.spousePhone)+kv('Email',c.spouseEmail)+'</div>':'<div class="empty" style="padding:10px 0">None on file — add via Edit.</div>')+'</div>';
   h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Lead info</h2></div><div class="kv">'+
@@ -3576,6 +3580,7 @@ function mAddClient(edit){
   '<div class="frow"><div><label>Spouse name</label><input id="mc-sname" value="'+esc(c.spouseName)+'"></div><div><label>Spouse phone</label><input id="mc-sphone" value="'+esc(c.spousePhone)+'"></div></div>'+
   '<label>Spouse email</label><input id="mc-semail" value="'+esc(c.spouseEmail)+'">'+
   '<label>Lead source</label><select id="mc-src">'+SOURCES.map(s=>'<option'+(s===c.source?' selected':'')+'>'+s+'</option>').join('')+'</select>'+
+  '<label>Client type</label><select id="mc-ctype"><option value="">(not set)</option>'+CTYPES.map(t=>'<option'+(t===c.ctype?' selected':'')+'>'+t+'</option>').join('')+'</select>'+
   (edit?'':'<label>Route to vertical</label><select id="mc-route"><option value="">— just add the contact —</option>'+
     Object.entries(LEAD_TARGETS).map(([p,l])=>'<option value="'+p+'">'+l+'</option>').join('')+'</select>')+
   (edit?'':'<div class="mut" style="font-size:12px;margin-top:8px">Lead credit locks to you ('+esc(me.name)+') at creation. Routing opens a deal in that pipeline and hands it to that vertical\'s team.</div>')+
@@ -3585,9 +3590,9 @@ function mEditClient(id){mAddClient(id)}
 function saveClient(edit){
   const g=x=>document.getElementById(x).value.trim();
   if(!g('mc-name')){toast('Name is required');return}
-  if(edit){const c=C(edit);Object.assign(c,{name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail'),source:g('mc-src')});
+  if(edit){const c=C(edit);Object.assign(c,{name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail'),source:g('mc-src'),ctype:g('mc-ctype')});
     save();closeAll();go('client',edit);toast('Client updated');return}
-  const c={id:uid('c'),name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail'),source:g('mc-src'),genBy:me.id,createdAt:new Date().toISOString(),docs:[],interests:[]};
+  const c={id:uid('c'),name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail'),source:g('mc-src'),ctype:g('mc-ctype'),genBy:me.id,createdAt:new Date().toISOString(),docs:[],interests:[]};
   S.clients.unshift(c);logAct(null,c.id,'Client created — source '+c.source+'.');startLeadPlan(c,null,myPipes()[0]);
   const routeEl=document.getElementById('mc-route');
   if(routeEl&&routeEl.value)routeLead(c,routeEl.value);
