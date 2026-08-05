@@ -11,7 +11,7 @@
 
    Bump CACHE_VERSION to force every client onto a fresh cache on the next visit. */
 
-const CACHE_VERSION = 'rl-suite-v2-hardreset';
+const CACHE_VERSION = 'rl-suite-v3-nostale';
 const BASE = '/realliving-portal/';
 const PRECACHE = [
   BASE,
@@ -78,7 +78,7 @@ self.addEventListener('fetch', (event) => {
      Fresh when online; cached copy only as an offline fallback; offline.html if we
      have neither and it's a navigation. */
   event.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'reload' })
       .then((res) => {
         if (res && res.status === 200 && res.type === 'basic') {
           const copy = res.clone();
