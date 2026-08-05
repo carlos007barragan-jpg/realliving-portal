@@ -971,7 +971,7 @@ if(typeof window!=='undefined')setTimeout(()=>{cloudResume()},50);
     tag().then(function(t){pending=false;
       if(!t)return;
       if(baseTag===null){baseTag=t;return;}
-      if(t!==baseTag){ if(busy())pill(); else location.reload(); }
+      if(t!==baseTag){ pill(); }  /* only ever OFFER an update — never reload on our own */
     });
   }
   setInterval(check,4*60*1000);
