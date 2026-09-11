@@ -466,7 +466,7 @@ const PIPES={
 const BIZPIPES={ASAP:['asap'],H2M:['h2m_acq','h2m_dispo','h2m_ws','h2m_of'],RL:['rl_buy','rl_list','tc']};
 const SOURCES=['Facebook Ads','Google Ads','Zillow','Realtor.com','Referral','Sign Call','Cold Call','Direct Mail','Website','Open House','Past Client','Other'];
 /* How we classify a contact — who we bought from / sold to, and how. Shown as a badge. */
-const CRM_BUILD='0806-suite-upload';
+const CRM_BUILD='0815-scripts';
 const CTYPES=['Retail Buyer','Investor','Buyer — Owner Finance','Buyer','Seller — Owner Finance','Seller — Wholesale','Seller','Other'];
 
 function seed(){
@@ -654,7 +654,7 @@ function hasQueued(){
   for(const c in _del)for(const _ in _del[c])return true;
   return false;
 }
-function uid(p){S.seq++;return p+S.seq}
+function uid(p){/* Globally-unique id. The old p+S.seq used a per-device counter that was never synced, so two devices minted the same id and last-write-wins silently erased one person's note/activity/task. Timestamp+counter+random can't collide across devices. */S.seq++;return p+Date.now().toString(36)+S.seq.toString(36)+Math.random().toString(36).slice(2,5);}
 /* ---------- lookups ---------- */
 const U=id=>id==='admin'?ADMIN:(S.users.find(u=>u.id===id)||{name:'—'});
 const C=id=>S.clients.find(c=>c.id===id);
@@ -1011,7 +1011,7 @@ function viewBanner(){
 }
 function logout(){try{if(sb)sb.auth.signOut();}catch(e){}sessionStorage.removeItem('rl_adm');sessionStorage.removeItem('rl_view');setTimeout(()=>location.reload(),150)}
 function realUid(){return SEAT_ID||(me&&me.id!=='admin'?me.id:'u1')}
-const hideMoney=()=>me.role==='marketing';
+const hideMoney=()=>me.role==='marketing'||me.role==='va';
 const dealMoneyHidden=d=>hideMoney()||(me.role==='agent'&&d.agentId!==me.id);
 /* inventory archive: sold or explicitly archived files live in Archive (owners/managers only) */
 const propArchived=p=>p.archived===true||/^\s*sold\s*$/i.test(p.status||'');
@@ -1027,7 +1027,7 @@ const workingClients=()=>S.clients.filter(c=>!isDormant(c));
 function allowedPipes(u){
   if(!u)return [];
   if(u.role==='owner'||u.id==='admin')return Object.keys(PIPES);
-  if(u.role==='manager'||u.role==='agent'||u.role==='marketing')return (u.pipes&&u.pipes.length?u.pipes.filter(p=>PIPES[p]):(u.business==='ALL'?Object.keys(PIPES):BIZPIPES[u.business]))||[];
+  if(u.role==='manager'||u.role==='agent'||u.role==='marketing'||u.role==='va')return (u.pipes&&u.pipes.length?u.pipes.filter(p=>PIPES[p]):(u.business==='ALL'?Object.keys(PIPES):BIZPIPES[u.business]))||[];
   return [];
 }
 function myPipes(){return allowedPipes(me)}
@@ -1279,7 +1279,14 @@ function vDash(){
     const crew=S.users.filter(u=>u.business===me.business&&u.role!=='marketing');
     h+='<div class="sect">'+vRadar(4)+'</div>';
     h+=vAgentBoard(crew);
-    h+='<div class="two sect">'+vApptList('team')+vClosingTimeline('team')+'</div>';
+    {const today=NOW().toISOString().slice(0,10);
+     const stalled=S.deals.filter(d=>pipes.includes(d.pipe)&&!isFinal(d)&&!isArchived(d)&&S.tasks.some(t=>t.clientId===d.clientId&&!t.done&&t.due<today));
+     h+='<div class="sect"><div class="sect-head"><h2>Stalled leads</h2><span class="cnt">past their next action — need a nudge</span></div><div class="card" style="padding:6px 20px">';
+     if(!stalled.length){h+='<div class="allclear"><span class="sdot g"></span>Nothing stalled — the team is on top of their next actions.</div>';}
+     else{h+=stalled.slice(0,10).map(d=>{const c=d.clientId?C(d.clientId):null;const ov=S.tasks.filter(t=>t.clientId===d.clientId&&!t.done&&t.due<today).sort((a,b)=>a.due.localeCompare(b.due))[0];return '<div class="kpirow"><span class="lab" style="flex:1">'+(c?'<span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+c.id+'\')">'+esc(c.name)+'</span>':esc(dealTitle(d)))+'<small>'+esc(PIPES[d.pipe].name)+' · '+esc(U(d.agentId).name)+(ov?' · overdue since '+fdate(ov.due):'')+'</small></span></div>';}).join('');
+       if(stalled.length>10)h+='<div class="mut" style="font-size:12px;margin-top:6px">+ '+(stalled.length-10)+' more stalled</div>';}
+     h+='</div></div>';}
+        h+='<div class="two sect">'+vApptList('team')+vClosingTimeline('team')+'</div>';
   }
   if(me.role==='agent'){
     h+=vMyDay();
@@ -1303,7 +1310,18 @@ function vDash(){
     h+='<div class="sect"><div class="sect-head"><h2>My scoreboard</h2></div><div class="card" style="padding:6px 20px">'+
       '<div class="kpirow"><span class="lab">Appointments<small>this week</small></span>'+dotStrip(myAppts,T.agentApptsWk)+'<span class="val">'+myAppts+' / '+T.agentApptsWk+'</span></div>'+
       '<div class="kpirow"><span class="lab">Closings<small>this month</small></span>'+dotStrip(myClosings,T.agentClosingsMo)+'<span class="val">'+myClosings+' / '+T.agentClosingsMo+'</span></div></div></div>';
-    h+='<div class="two sect">'+vApptList(me.id)+vClosingTimeline(me.id)+'</div>';
+    {const today=NOW().toISOString().slice(0,10);
+     const isTod=ts=>(ts||'').slice(0,10)===today;
+     const myTT=S.touches.filter(t=>t.agentId===me.id&&isTod(t.ts));
+     const fups=myTT.length;
+     const invT=myTT.filter(t=>{const cc=t.clientId?C(t.clientId):null;return cc&&getCtypes(cc).some(x=>/investor/i.test(x));}).length;
+     const apptsSet=S.acts.filter(a=>a.by===me.id&&isTod(a.ts)&&/appointment (booked|set)/i.test(a.text||'')).length;
+     const fT=T.agTouchesDay||10,iT=T.agInvestorDay||3,aT=T.agApptDay||1;
+     h+='<div class="sect"><div class="sect-head"><h2>Win the day</h2><span class="cnt">daily targets</span></div><div class="card" style="padding:6px 20px">'+
+       '<div class="kpirow"><span class="lab">Follow-up touches<small>today</small></span>'+dotStrip(fups,fT)+'<span class="val">'+fups+' / '+fT+'</span></div>'+
+       '<div class="kpirow"><span class="lab">Investor touches<small>today</small></span>'+dotStrip(invT,iT)+'<span class="val">'+invT+' / '+iT+'</span></div>'+
+       '<div class="kpirow"><span class="lab">Appointments set<small>today</small></span>'+dotStrip(apptsSet,aT)+'<span class="val">'+apptsSet+' / '+aT+'</span></div></div></div>';}
+        h+='<div class="two sect">'+vApptList(me.id)+vClosingTimeline(me.id)+'</div>';
   }
   if(me.role==='marketing'){
     h+=vMyDay();
@@ -1315,6 +1333,21 @@ function vDash(){
        '<div class="card"><div class="eyebrow">Top source</div><div class="big" style="font-size:22px">'+esc(Object.entries(bySrc).sort((a,b)=>b[1].n-a[1].n)[0]?.[0]||'—')+'</div><div class="sub">by lead volume</div></div></div>';
     h+='<div class="sect"><div class="sect-head"><h2>Lead pace</h2></div><div class="card" style="padding:6px 20px">'+
       '<div class="kpirow"><span class="lab">New leads<small>this month vs target</small></span>'+dotStrip(leadsMo,T.leadsMo)+'<span class="val">'+leadsMo+' / '+T.leadsMo+'</span></div></div></div>';
+  }
+  if(me.role==='va'){
+    h+=vMyDay();
+    const today=NOW().toISOString().slice(0,10);
+    const isTod=ts=>(ts||'').slice(0,10)===today;
+    const myTT=S.touches.filter(t=>t.agentId===me.id&&isTod(t.ts));
+    const calls=myTT.filter(t=>t.kind==='call_out'||t.kind==='call_in').length;
+    const advanced=S.deals.filter(d=>d.agentId===me.id&&(d.hist||[]).some(hh=>hh.s>=1&&isTod(hh.at))).length;
+    const cT=T.vaCallsDay||5,qT=T.vaQualDay||3;
+    h+='<div class="grid cards4"><div class="card"><div class="eyebrow">Qualifying calls — today</div><div class="big">'+calls+'</div><div class="sub">target '+cT+'</div></div>'+
+       '<div class="card"><div class="eyebrow">Leads advanced — today</div><div class="big">'+advanced+'</div><div class="sub">to Qualified / next step</div></div>'+
+       '<div class="card"><div class="eyebrow">Touches — today</div><div class="big">'+myTT.length+'</div><div class="sub">calls + texts logged</div></div></div>';
+    h+='<div class="sect"><div class="sect-head"><h2>Win the day</h2><span class="cnt">your VA scoreboard</span></div><div class="card" style="padding:6px 20px">'+
+       '<div class="kpirow"><span class="lab">Qualifying calls<small>today</small></span>'+dotStrip(calls,cT)+'<span class="val">'+calls+' / '+cT+'</span></div>'+
+       '<div class="kpirow"><span class="lab">Leads moved to Qualified / Not-a-Fit<small>today</small></span>'+dotStrip(advanced,qT)+'<span class="val">'+advanced+' / '+qT+'</span></div></div></div>';
   }
   /* team pulse for leadership, recent activity for individual contributors */
   if(me.role==='owner')h+=vPulse(S.users);
@@ -1592,47 +1625,54 @@ function routeLead(c,pipe){
 }
 const PLAYBOOKS={
   mkt:[
-    {off:0,t:'First call — qualify {first} and gauge what they need'},
-    {off:1,t:'Second attempt if no answer — call + text {first}'},
-    {off:2,t:'Set the appointment with an agent → the handoff'}
+    {off:0,t:"Call {first} within 30 min — qualify and gauge what they need (speed standard)"},
+    {off:0,t:"Intro text right after the call",auto:"sms",tpl:"Hi {first}, it's {agent} with Real Living — saw you reached out. Good time for a quick call so I can point you to the right homes?"},
+    {off:1,t:"Second attempt if no answer — call + text {first}"},
+    {off:2,t:"Set the appointment with an agent — booking it IS the handoff"}
   ],
   rl:[
-    {off:0,t:'Outbound reach — call {first} (new lead, speed matters)'},
-    {off:0,t:'Intro text after the call',auto:'sms',tpl:'Hi {first}, it\'s {agent} with Real Living — great connecting today. Text me here anytime with questions!'},
-    {off:1,t:'Follow-up call if no contact yet'},
-    {off:2,t:'Set the first appointment with {first}',auto:'sms',tpl:'Hi {first}, it\'s {agent} with Real Living — just checking in. Any questions I can answer for you?'},
-    {off:3,t:'Prepare & print the client packet for {first} (Document Hub → Client Packet)'},
-    {off:7,t:'One-week follow-up call — where are they at?'}
+    {off:0,t:"Call {first} within 30 min — capture cleanly, buyer or seller (speed standard)"},
+    {off:0,t:"Intro text after the call",auto:"sms",tpl:"Hi {first}, it's {agent} with Real Living — great connecting. Are you pre-approved yet, or would you like an intro to a lender? Either way I'll get you to the right person on our team."},
+    {off:1,t:"Follow-up call if no contact — then hand off to the licensed agent"},
+    {off:3,t:"Buyers: send 2 matching listings. Sellers: send recent comparable sales",auto:"sms",tpl:"Hi {first}, {agent} here — lined up a couple that fit what you described. Want me to send them over?"},
+    {off:7,t:"One-week follow-up call — where are they at?"},
+    {off:14,t:"Send {first} a market update for their area"},
+    {off:30,t:"Move {first} to Nurture — monthly market-update touch"}
   ],
   asap:[
-    {off:0,t:'Intro call — {first}\'s lending needs & timeline'},
-    {off:0,t:'Send doc checklist text',auto:'sms',tpl:'Hi {first}, it\'s {agent} with ASAP Lending — to get you moving I\'ll need pay stubs, W-2s and 2 months of bank statements. Text photos right here!'},
-    {off:1,t:'Collect docs from {first} — pay stubs, W-2s, bank statements'},
-    {off:2,t:'Run credit & pre-qualification for {first}'},
-    {off:3,t:'Issue the pre-approval letter to {first}'},
-    {off:7,t:'One-week check-in — rate watch & next steps'}
+    {off:0,t:"Call {first} within 30 min of application — speed is the product"},
+    {off:0,t:"Send the doc checklist",auto:"sms",tpl:"Hi {first}, it's {agent} with ASAP Lending — to move fast I'll need the purchase contract, scope of work, your ID and proof of funds. Text photos right here!"},
+    {off:1,t:"Collect docs from {first} — chase whatever's missing"},
+    {off:2,t:"Call {first} if docs aren't in — clear the holdup"},
+    {off:4,t:"Confirm {first}'s close date — flag any doc still needed to hit it"},
+    {off:7,t:"One-week check-in — rate watch and next steps"}
   ],
   h2m_of:[
-    {off:0,t:'Intro call — {first}\'s owner-finance situation & goals'},
-    {off:1,t:'Collect proof of down payment & income from {first}'},
-    {off:2,t:'Match {first} to available owner-finance inventory'},
-    {off:3,t:'Present terms to {first} — down, rate, monthly'},
-    {off:5,t:'Prepare the contract packet (Contract for Deed / Lease Option)'},
-    {off:7,t:'Follow-up call — move {first} to Terms Agreed'}
+    {off:0,t:"Call {first} within 30 min — owner-finance inquiry on {prop}"},
+    {off:0,t:"Intro text after the call",auto:"sms",tpl:"Hi {first}, it's {agent} with Real Living — saw you asked about one of our owner-finance homes. Still available — want to see it this week?"},
+    {off:1,t:"Follow-up call if no answer",auto:"sms",tpl:"Quick one {first} — is owner financing what you're after, or are you open to other options? Want to send you the right homes."},
+    {off:3,t:"Text {first} a second matching home with down + monthly numbers"},
+    {off:7,t:"Call {first} — one-week check-in",auto:"sms",tpl:"Not trying to bug you {first} — if the timing's off just tell me when and I'll reach back out then."},
+    {off:14,t:"Text {first} an update on {prop} (price/status) or a new one nearby"},
+    {off:30,t:"Move {first} to Nurture — one matching home + a 'still on track?' text each month"}
   ],
   prop:[
-    {off:0,t:'Call the seller — property condition, motivation, timeline'},
-    {off:0,t:'Order photos / drive-by on {prop}'},
-    {off:1,t:'Run comps & ARV on {prop}'},
-    {off:2,t:'Make the offer on {prop}'},
-    {off:4,t:'Follow up on the offer — negotiate or re-anchor'},
-    {off:7,t:'Re-engage the seller if no contract yet'}
+    {off:0,t:"Call the seller — situation, motivation, condition, timeline on {prop}"},
+    {off:0,t:"Capture address, owner name and number in the CRM; book the walkthrough on {prop}"},
+    {off:1,t:"Escalate {prop} to Laylani / manager for numbers, then update the seller"},
+    {off:2,t:"Deliver the offer on {prop} — walk the seller through it"},
+    {off:5,t:"Follow up on the offer for {prop} — answer questions, re-anchor if needed"},
+    {off:10,t:"Re-engage the seller — our offer's still on the table"},
+    {off:30,t:"Move to Nurture — touch every 30 days while they still own {prop}"}
   ],
   dispo:[
-    {off:0,t:'Call {first} — capture their buy-box (areas, price, strategy)'},
-    {off:1,t:'Send {first} matching inventory'},
-    {off:3,t:'Follow up on the inventory sent — any offers?'},
-    {off:7,t:'Weekly investor check-in — new deals for {first}'}
+    {off:0,t:"Call {first} — capture their buy-box (areas, price, condition, volume)"},
+    {off:0,t:"Text {first} — position us as deal source + funding",auto:"sms",tpl:"Hi {first}, {agent} with Real Living — we source off-market deals, fund them with our own hard money, and list the finished product. What's your buy-box so I only send what fits?"},
+    {off:2,t:"Send {first} one deal that fits with real numbers (ARV, rehab, our price, spread)"},
+    {off:3,t:"Call {first} — did it pencil? What would need to change?"},
+    {off:10,t:"Send {first} a different deal"},
+    {off:21,t:"Offer hard money if funding's the holdup",auto:"sms",tpl:"{first}, if funding's ever the holdup we've got hard money that can close as soon as title's ready — want the terms?"},
+    {off:30,t:"Move {first} to Nurture — weekly 'what's coming' text + first look at new inventory"}
   ]
 };
 function PB(key){return (S.playbooks&&S.playbooks[key])||PLAYBOOKS[key]}
@@ -1660,7 +1700,7 @@ function firePlaybook(key,c,who,propLabel){
 function startLeadPlan(c,forceWho,pipe){
   const creator=me.id==='admin'?realUid():me.id;
   const creatorRole=U(creator)?U(creator).role:'owner';
-  if(creatorRole==='marketing'&&!forceWho){firePlaybook('mkt',c,creator);return}
+  if((creatorRole==='marketing'||creatorRole==='va')&&!forceWho){firePlaybook('mkt',c,creator);return}
   const who=forceWho||creator;
   const key=pbKey(pipe||myPipes()[0])||'rl';
   firePlaybook(key,c,who);
@@ -1927,14 +1967,38 @@ function saveDealNumbers(id){
   if(t){t.done=true;t.doneAt=new Date().toISOString();}
   save();closeAll();refresh();toast('Recorded — '+U(d.agentId).name+' is owed '+money(pay));
 }
+function fireStagePlay(d,prevIdx,idx){
+  if(S.targets&&S.targets.autoPlan===false)return;
+  if(idx<=prevIdx)return;                 /* only when a deal moves FORWARD */
+  if(idx===0||isFinal(d))return;          /* skip New and closed/final stages */
+  const who=d.agentId; if(!who)return;
+  const tag='pbs-'+d.id+'-'+idx;
+  if(S.tasks.some(t=>t.plan===tag&&!t.done))return;   /* one set per stage, no doubles */
+  const c=d.clientId?C(d.clientId):null;
+  const to=PIPES[d.pipe].stages[idx];
+  const fn=c?((c.name||'').split(' ')[0]||'the client'):'the client';
+  const steps=[
+    {off:0,t:'Advance '+fn+' \u2014 now at '+to+'. Book or complete the next step and log the touch.'},
+    {off:3,t:'Follow up with '+fn+' if still at '+to+' \u2014 re-book the next step.'}
+  ];
+  if(/show|appt|appointment|consult/i.test(to)){
+    steps.push({off:0,t:'Confirm time + address with '+fn+' for the '+to.toLowerCase()+'.'});
+    steps.push({off:1,t:'After the '+to.toLowerCase()+': send '+fn+' the numbers and set the decision call.'});
+  }
+  const meId=(me.id==='admin'?realUid():me.id);
+  steps.forEach(function(pp){S.tasks.push({id:uid('t'),title:pp.t,clientId:c?c.id:null,agentId:who,due:new Date(Date.now()+pp.off*864e5).toISOString().slice(0,10),done:false,createdAt:new Date().toISOString(),by:meId,plan:tag});});
+  if(c)logAct(d.id,c.id,'Stage workflow \u2014 '+steps.length+' next-step task'+(steps.length===1?'':'s')+' queued for '+to+'.');
+}
 function moveStage(d,stage,fromCloseOut){
   if(d.stage===stage)return;
+  const prevIdx=d.stage;
   const from=PIPES[d.pipe].stages[d.stage],to=PIPES[d.pipe].stages[stage];
   d.stage=stage;
   (d.hist=d.hist||[{s:0,at:d.createdAt}]).push({s:stage,at:new Date().toISOString()});
   if(isFinal(d)&&!d.closedAt)d.closedAt=new Date().toISOString();
   if(!isFinal(d)&&d.closedAt)delete d.closedAt;
   logAct(d.id,d.clientId,'Moved '+PIPES[d.pipe].name+' deal: '+from+' → '+to+'.');
+  try{fireStagePlay(d,prevIdx,stage);}catch(e){}
   if(isWon(d)&&/closed|won|sold|servicing/i.test(to)&&!/lost|dead/i.test(to))reviewAsk(d);
   save();if(!fromCloseOut)toast('Moved to '+to);
 }
@@ -2002,6 +2066,33 @@ function ctToggle(el){el.classList.toggle('on');}
 function ctSel(){return [].slice.call(document.querySelectorAll('#mc-ctypes .ctchip.on')).map(function(x){return x.getAttribute('data-val');});}
 function filterType(v){ctypeFilter=v;go('clients');}
 function kv(k,v){return '<div><small>'+esc(k)+'</small>'+(v?esc(v):'—')+'</div>'}
+const SCRIPTS={
+h2m_of:{name:"Owner Finance",q:["Timeline - buying in 30, 90 days, or just looking?","What areas are you open to?","Comfortable monthly payment (not the max)?","Down payment set aside now? Most fall $5k-$20k.","Looked at bank financing, or is owner finance what you want?"],g:"$5k+ down now or within 30 days, wants in 90 days, monthly fits inventory",y:"Down payment 60-90 days out, or monthly is tight for their area - flag timeline",r:"No down payment and no plan, or 6+ months out - Nurture (these convert later)",next:"Book a showing on 1-2 matching homes, not a list of 10. Confirm the down payment on site and ask for the application or deposit if they love it."},
+dispo:{name:"Investor / Flipper",q:["Buy box - areas, price range, condition?","How many a year now, and how many do you want?","Funding - cash, hard money, or private?","Exit - flip and sell, or hold and rent?","Who lists your finished projects?","Last deal - bought for, put in, sold for?"],g:"Closed 2+ flips, has funds or wants hard money, clear buy box (Investor - Active)",y:"New investor, some capital, hungry (Investor - New) - pair with hard money",r:"Wants deals but no funds and no plan - Nurture",next:"Send ONE deal that fits with real numbers (ARV, rehab, our price, spread). Offer to walk it this week; note hard money can close as soon as title is ready."},
+prop:{name:"Wholesale - Seller",q:["Why are you thinking about selling? (motivation - most important)","Condition - what would it need?","Anyone living there right now?","Is there a mortgage, and roughly what is owed?","If we made it easy - cash, your timeline - what number works?","When do you want this done by?"],g:"Clear motivation, equity exists, wants out in 60 days - escalate to Laylani same day",y:"Motivated but price expectation high - note their number, follow up when reality sets in",r:"No motivation, retail expectations, just curious - Nurture",next:"Book a walkthrough (video if out of state). Get address, owner name and number into the CRM today. Laylani or the manager runs numbers and makes the offer."},
+asap:{name:"Hard-Money Applicant",q:["What is the property, and is it under contract yet?","Purchase price, rehab budget, projected sale price?","How much of your own money are you bringing?","How many projects have you completed?","Timeline - when do you need to close?","Exit - sell or refinance, and who is listing it?"],g:"Under contract, numbers pencil, skin in the game, done this before - send to Laylani same day",y:"Good deal, first-timer or thin on cash - flag for review",r:"No deal yet, no capital, numbers do not work - move to Investor - New and send a deal that works",next:"Complete the application and collect docs (contract, scope, ID, proof of funds). Set a docs-in-by date. Speed is the product."},
+rl:{name:"On-Market Buyer / Seller",q:["Pre-approved, or want a lender intro? (Maya at Capital Corner, Tarah at Fairway; ITIN to Julio at Guild)","Areas and price range?","When do you want to be in a home or be moved?","Working with another agent?","Have a home to sell first? (that is a listing)"],g:"Pre-approved or motivated seller, 90-day timeline, not committed elsewhere - hand to licensed agent same day",y:"Not pre-approved, 3-6 months out - lender intro first",r:"Under contract with another agent - Not a Fit (represented)",next:"Buyer: lender intro if needed, then first showing booked. Seller: listing appointment booked with a CMA and pricing plan."},
+mkt:{name:"New Lead - Qualify and Hand Off",q:["Confirm what they reached out about","Timeline and what they need","Book the appointment with the right agent"],g:"Real and ready - book the appointment (that is the handoff)",y:"Real but not ready - Nurture with a monthly touch",r:"Not a real inquiry - Not a Fit",next:"Booking the appointment with an agent IS the handoff - the agent type sequence starts from there."}
+};
+function pbKeyFor(c,open){
+  if(open&&open.length){var k=pbKey(open[0].pipe);if(k)return k;}
+  var ct=getCtypes(c).join(' ').toLowerCase();
+  if(/investor/.test(ct))return 'dispo';
+  if(/owner finance|owner-finance/.test(ct))return 'h2m_of';
+  if(/wholesale/.test(ct))return 'prop';
+  return 'rl';
+}
+function vScript(c,open){
+  var key=pbKeyFor(c,open);var sc=SCRIPTS[key];if(!sc)return '';
+  var stage=(open&&open.length)?PIPES[open[0].pipe].stages[open[0].stage]:'New';
+  var qs=sc.q.map(function(x){return '<li>'+esc(x)+'</li>';}).join('');
+  return '<div class="card" style="margin-bottom:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Playbook \u2014 '+sc.name+'</h2><span class="cnt">stage: '+esc(stage)+'</span></div>'+
+    '<div class="mut" style="font-size:12px;margin-bottom:4px">Qualifying questions</div><ul class="tl" style="margin:0 0 10px">'+qs+'</ul>'+
+    '<div class="kpirow"><span class="sdot g"></span><span class="lab" style="flex:1"><b style="color:var(--green)">Green</b> \u2014 '+esc(sc.g)+'</span></div>'+
+    '<div class="kpirow"><span class="sdot" style="background:var(--amber)"></span><span class="lab" style="flex:1"><b style="color:var(--amber)">Yellow</b> \u2014 '+esc(sc.y)+'</span></div>'+
+    '<div class="kpirow"><span class="sdot" style="background:var(--red)"></span><span class="lab" style="flex:1"><b style="color:var(--red)">Red</b> \u2014 '+esc(sc.r)+'</span></div>'+
+    '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line)"><span class="mut" style="font-size:12px">Convert - the next step</span><div style="font-size:13px;margin-top:2px">'+esc(sc.next)+'</div></div></div>';
+}
 function vClient(id){
   const c=C(id);if(!c)return '<div class="empty">Client not found.</div>';
   const ds=S.deals.filter(d=>d.clientId===id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
@@ -2041,6 +2132,7 @@ function vClient(id){
   h+='<div class="prof3">';
   /* ---- LEFT: about the person ---- */
   h+='<div>';
+  h+=vScript(c,open);
   h+='<div class="card"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">About</h2><span class="spacer"></span><button class="btn ghost small" onclick="mEditClient(\''+c.id+'\')">Edit</button></div><div class="kv">'+
     kv('Client type',getCtypes(c).join(', '))+kv('Phone',c.phone)+kv('Email',c.email)+kv('Address',c.address)+'</div></div>';
   h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Spouse / co-borrower</h2></div>'+
@@ -3906,7 +3998,7 @@ function mAddUser(editId){
   if(!editId&&CLOUD&&!DEV){toast('Invite new members from the Business Suite — Settings → Team');return}
   const u=editId?S.users.find(x=>x.id===editId):null;
   if(u&&!canManageSeat(u)){toast('Only ownership can edit that seat');return}
-  const roles=(me.role==='manager')?['agent','marketing']:['owner','manager','agent','marketing'];
+  const roles=(me.role==='manager')?['agent','marketing','va']:['owner','manager','agent','marketing','va'];
   modal('<h2>'+(u?'Edit team member':'Add team member')+'</h2>'+
   '<label>Name</label><input id="mu-name" value="'+(u?esc(u.name):'')+'"><label>Email</label><input id="mu-email" value="'+(u?esc(u.email):'')+'">'+
   '<div class="frow"><div><label>Cell phone (tree + click-to-call ring this)</label><input id="mu-phone" value="'+(u?esc(u.phone||''):'')+'" placeholder="+1 816 555 0100"></div>'+
@@ -4322,12 +4414,17 @@ function mTargets(){
   '<div><label>Closings / month</label><input id="mt-close" type="number" value="'+T.closingsMo+'"></div>'+
   '<div><label>Open pipeline minimum ($)</label><input id="mt-pipe" type="number" value="'+T.pipelineMin+'"></div>'+
   '<div><label>Per agent: appointments / week</label><input id="mt-aappts" type="number" value="'+T.agentApptsWk+'"></div>'+
-  '<div><label>Per agent: closings / month</label><input id="mt-aclose" type="number" value="'+T.agentClosingsMo+'"></div></div>'+
+  '<div><label>Per agent: closings / month</label><input id="mt-aclose" type="number" value="'+T.agentClosingsMo+'"></div>'+
+  '<div><label>VA: qualifying calls / day</label><input id="mt-vacalls" type="number" value="'+(T.vaCallsDay||5)+'"></div>'+
+  '<div><label>VA: leads to Qualified / day</label><input id="mt-vaqual" type="number" value="'+(T.vaQualDay||3)+'"></div>'+
+  '<div><label>Agent: follow-up touches / day</label><input id="mt-touches" type="number" value="'+(T.agTouchesDay||10)+'"></div>'+
+  '<div><label>Agent: investor touches / day</label><input id="mt-inv" type="number" value="'+(T.agInvestorDay||3)+'"></div>'+
+  '<div><label>Agent: appointments set / day</label><input id="mt-aappt" type="number" value="'+(T.agApptDay||1)+'"></div></div>'+
   '<button class="btn" style="margin-top:18px" onclick="saveTargets()">Save targets</button>');
 }
 function saveTargets(){
   const g=x=>Math.max(1,parseInt(document.getElementById(x).value)||1);
-  S.targets={leadsMo:g('mt-leads'),apptsWk:g('mt-appts'),closingsMo:g('mt-close'),pipelineMin:g('mt-pipe'),agentApptsWk:g('mt-aappts'),agentClosingsMo:g('mt-aclose')};
+  S.targets=Object.assign({},S.targets,{leadsMo:g('mt-leads'),apptsWk:g('mt-appts'),closingsMo:g('mt-close'),pipelineMin:g('mt-pipe'),agentApptsWk:g('mt-aappts'),agentClosingsMo:g('mt-aclose'),vaCallsDay:g('mt-vacalls'),vaQualDay:g('mt-vaqual'),agTouchesDay:g('mt-touches'),agInvestorDay:g('mt-inv'),agApptDay:g('mt-aappt')});
   save();closeAll();refresh();toast('Targets updated');
 }
 /* ================= GLOBAL SEARCH ================= */
