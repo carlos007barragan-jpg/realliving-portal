@@ -101,6 +101,21 @@ nav{flex:1;padding:10px 10px;overflow:auto}
 #gresults .gr{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px}
 #gresults .gr:hover{background:var(--goldsoft)}
 #gresults .gr small{display:block;color:var(--mut);margin-top:2px}
+.bellbtn{position:relative;background:none;border:0;cursor:pointer;padding:7px;border-radius:8px;display:flex;align-items:center}
+.bellbtn:hover{background:var(--goldsoft)}
+.bellbtn svg{width:20px;height:20px;fill:none;stroke:var(--mut);stroke-width:1.8}
+.bellbadge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1}
+#bellwrap{position:relative;margin-left:12px;flex-shrink:0}
+.bellpanel{position:absolute;top:120%;right:0;width:340px;max-height:440px;overflow:auto;background:#fff;border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow);z-index:40;display:none;padding:4px}
+.bellpanel .bhead{display:flex;align-items:center;padding:9px 11px 7px;border-bottom:1px solid var(--line)}
+.bellpanel .bhead h4{font-size:14px;margin:0;flex:1}
+.bellpanel .bitem{padding:9px 11px;border-radius:8px;cursor:pointer;border-bottom:1px solid var(--line)}
+.bellpanel .bitem:last-child{border-bottom:0}
+.bellpanel .bitem:hover{background:var(--goldsoft)}
+.bellpanel .bitem.unread{background:rgba(169,129,47,.13)}
+.bellpanel .bitem b{font-weight:600;font-size:13px;color:var(--ink)}
+.bellpanel .bitem small{display:block;color:var(--mut);margin-top:2px;font-size:12px}
+.bellpanel .bempty{padding:22px 12px;text-align:center;color:var(--mut);font-size:13px}
 #main{grid-column:2;overflow:auto;padding:24px 26px 60px}
 /* ---------- shared ---------- */
 .grid{display:grid;gap:14px}
@@ -410,6 +425,13 @@ select.tfilter{padding:7px 9px}
       <input id="gs-in" placeholder="Search clients, properties, deals…" autocomplete="off">
       <div id="gresults"></div>
     </div>
+    <div id="bellwrap">
+      <button id="bellbtn" class="bellbtn" title="New leads" onclick="toggleBell(event)">
+        <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+        <span id="bellbadge" class="bellbadge" style="display:none">0</span>
+      </button>
+      <div id="bellpanel" class="bellpanel"></div>
+    </div>
   </header>
   <main id="main"></main>
 </div>
@@ -466,7 +488,7 @@ const PIPES={
 const BIZPIPES={ASAP:['asap'],H2M:['h2m_acq','h2m_dispo','h2m_ws','h2m_of'],RL:['rl_buy','rl_list','tc']};
 const SOURCES=['Facebook Ads','Google Ads','Zillow','Realtor.com','Referral','Sign Call','Cold Call','Direct Mail','Website','Open House','Past Client','Other'];
 /* How we classify a contact — who we bought from / sold to, and how. Shown as a badge. */
-const CRM_BUILD='0815-scripts';
+const CRM_BUILD='0816-crmbell';
 const CTYPES=['Retail Buyer','Investor','Buyer — Owner Finance','Buyer','Seller — Owner Finance','Seller — Wholesale','Seller','Other'];
 
 function seed(){
@@ -1102,6 +1124,47 @@ function renderNav(){
 let page='dash', propTab='avail', propCat='', profFull=false, histFull=false, dormView=false, pageArg=null, pipeSel=null, bizSel=null, boardFilter='', dashFilter='ALL', scAg='ALL', scDays=7, velPipe='h2m_dispo', repTab='perf', trendRange='M', profTab='all', calMode='month', calOff=0, calWOff=0, calBiz='ALL', setTab='general', fuDone=false, commKind='ALL';
 function refresh(){go(page,pageArg)}
 (function(){const _go=null})();
+function bellSeenKey(){return 'rl_bell_'+(me.id==='admin'?realUid():me.id);}
+function bellLastSeen(){try{return localStorage.getItem(bellSeenKey())||'1970-01-01T00:00:00.000Z';}catch(e){return '1970-01-01T00:00:00.000Z';}}
+function bellFeed(){
+  const meId=me.id==='admin'?realUid():me.id;
+  const cutoff=NOW().getTime()-14*864e5;
+  let items=S.clients.filter(c=>!c.archived&&c.createdAt&&new Date(c.createdAt).getTime()>=cutoff).map(c=>{
+    const dl=S.deals.filter(d=>d.clientId===c.id).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''))[0];
+    return {id:c.id,name:c.name,source:c.source,assignee:dl?dl.agentId:c.genBy,ts:c.createdAt,pipe:dl?dl.pipe:null};
+  });
+  if(me.role==='agent'||me.role==='va'){items=items.filter(x=>x.assignee===meId);}
+  else if(me.role==='marketing'){items=items.filter(x=>{const c=C(x.id);return x.assignee===meId||(c&&c.genBy===meId);});}
+  else if(me.role==='manager'){const mp=myPipes();items=items.filter(x=>!x.pipe||mp.includes(x.pipe));}
+  return items.sort((a,b)=>(b.ts||'').localeCompare(a.ts||'')).slice(0,40);
+}
+function bellPanelHtml(feed,seen){
+  let h='<div class="bhead"><h4>New leads</h4><span class="mut" style="font-size:11px">last 14 days</span></div>';
+  if(!feed.length){h+='<div class="bempty">No new leads in the last 14 days.</div>';return h;}
+  h+=feed.map(x=>{const un=(x.ts||'')>seen;const ag=U(x.assignee);return '<div class="bitem'+(un?' unread':'')+'" onclick="bellOpen(\''+x.id+'\')"><b>'+esc(x.name)+'</b><small>'+esc(x.source||'lead')+' \u00b7 assigned to '+esc(ag?ag.name:'unassigned')+' \u00b7 '+fdate(x.ts)+'</small></div>';}).join('');
+  return h;
+}
+function renderBell(){
+  const btn=document.getElementById('bellbtn');if(!btn)return;
+  const feed=bellFeed();const seen=bellLastSeen();
+  const unread=feed.filter(x=>(x.ts||'')>seen).length;
+  const badge=document.getElementById('bellbadge');
+  if(badge){if(unread>0){badge.style.display='flex';badge.textContent=unread>99?'99+':String(unread);}else{badge.style.display='none';}}
+  const p=document.getElementById('bellpanel');
+  if(p&&p.style.display==='block')p.innerHTML=bellPanelHtml(feed,seen);
+}
+function toggleBell(e){
+  if(e)e.stopPropagation();
+  const p=document.getElementById('bellpanel');if(!p)return;
+  if(p.style.display==='block'){p.style.display='none';return;}
+  const prevSeen=bellLastSeen();
+  p.innerHTML=bellPanelHtml(bellFeed(),prevSeen);
+  p.style.display='block';
+  try{localStorage.setItem(bellSeenKey(),NOW().toISOString());}catch(e2){}
+  const badge=document.getElementById('bellbadge');if(badge)badge.style.display='none';
+}
+function bellOpen(id){const p=document.getElementById('bellpanel');if(p)p.style.display='none';go('client',id);}
+document.addEventListener('click',function(e){const w=document.getElementById('bellwrap');const p=document.getElementById('bellpanel');if(p&&p.style.display==='block'&&w&&!w.contains(e.target))p.style.display='none';});
 function renderWho(){
   const w=document.getElementById('whoami');
   w.innerHTML='<div class="nm">'+esc(DEV&&PREVIEW_LABEL&&me.id!=='admin'?PREVIEW_LABEL:me.name)+'</div><div class="rl">'+esc(me.role)+(me.business?' · '+me.business:'')+'</div>'+
@@ -1124,7 +1187,7 @@ function go(k,arg){
   document.body.classList.remove('side-open');
   try{viewBanner()}catch(e){}
   page=k;pageArg=arg;if(k==='biz')bizSel=arg;
-  renderNav();closeAll();
+  renderNav();closeAll();try{renderBell();}catch(_e){}
   const M=document.getElementById('main');
   const crumb=k==='biz'?BIZ[arg]:{dash:'Dashboard',xsearch:'Cross-Search',leads:'My Leads',clients:'Contacts',props:'Properties',reports:'Reports',calendar:'Calendar',comms:'Communications',commissions:'Commissions',followups:'Follow-Ups',settings:'Settings',devview:'Change View',client:'Contact Profile',prop:'Property'}[k]||'';
   document.getElementById('crumb').textContent=crumb;
@@ -3671,7 +3734,7 @@ function editorOpen(){
   const m=document.getElementById('modal');
   return !!(m&&m.classList.contains('on'));
 }
-function closeAll(){document.getElementById('drawer').classList.remove('on');document.getElementById('modal').classList.remove('on');document.getElementById('ovl').style.display='none';document.getElementById('gresults').style.display='none';
+function closeAll(){var _bp=document.getElementById('bellpanel');if(_bp)_bp.style.display='none';document.getElementById('drawer').classList.remove('on');document.getElementById('modal').classList.remove('on');document.getElementById('ovl').style.display='none';document.getElementById('gresults').style.display='none';
   /* a sync arrived while the editor was open — bring the page up to date now that it is safe */
   if(_deferRefresh){_deferRefresh=false;setTimeout(refresh,0);}}
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',2200)}
