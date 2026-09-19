@@ -257,6 +257,21 @@ input,select,textarea{font-family:inherit}
 .fr.ftot{border-top:1px solid var(--line);margin-top:6px;padding-top:8px}.fr.ftot .fl{color:var(--ink);font-weight:700}.fr.ftot .fv{font-size:15px}
 .ctc-box{margin-top:14px;padding:14px;background:var(--bg);border-radius:12px}.ctc-box .co-row{border:none}
 .co-row.ctc{border-top:1px solid var(--line);margin-top:6px;padding-top:10px;font-size:15px;color:var(--ink)}.co-row.ctc b{font-size:18px;color:var(--brand)}
+#viewCalc{--gold:#B8972A;--off:#F9F7F2;--bd:rgba(0,0,0,.08);--dgreen:#1A6B2A;--dred:#B82020}
+#viewCalc .calc-out{background:var(--off);border:1px solid var(--bd)}
+#viewCalc .ct{font-size:14px;font-weight:800;color:#0E0E0E;padding-bottom:10px;border-bottom:2px solid var(--gold);margin-bottom:12px}
+#viewCalc .fee-hdr{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--gold);margin:12px 0 5px}
+#viewCalc .fr{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;color:#4b5563;gap:10px;border-bottom:1px dashed var(--bd)}
+#viewCalc .fee-sec .fr:last-child{border-bottom:none}
+#viewCalc .fr .fl{padding-right:6px}#viewCalc .fr .fv{font-weight:700;color:#0E0E0E;white-space:nowrap}
+#viewCalc .fr .fvg{font-weight:800;color:var(--dgreen);white-space:nowrap;font-size:14px}
+#viewCalc .ctc{margin-top:12px;padding:14px;background:#fff;border:1px solid var(--bd);border-radius:8px}
+#viewCalc .ctc-t{font-size:11px;font-weight:800;color:#0E0E0E;margin-bottom:8px}
+#viewCalc .cr{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:#4b5563}
+#viewCalc .cr .cl{padding-right:6px}#viewCalc .cr .cv{font-weight:700;color:#0E0E0E;white-space:nowrap}
+#viewCalc .cr:last-child{border-top:1px solid var(--bd);margin-top:5px;padding-top:9px;font-size:14px;font-weight:800}
+#viewCalc .cr:last-child .cv{font-size:17px}
+#viewCalc .locked{background:var(--off)!important}#viewCalc .locked input{color:var(--gold)!important}
 </style>
 </head>
 <body>
@@ -410,14 +425,8 @@ input,select,textarea{font-family:inherit}
           <div class="cf"><label data-t="dRhLbl">Rehab holdback</label><div class="cin locked"><span>$</span><input id="dRh" type="text" readonly value="—"></div></div>
         </div>
         <div class="calc-out">
-          <div class="ct-h" data-t="dBreakH">Full cost breakdown &amp; cash to close</div>
-          <div class="fbreak" id="dBreak"></div>
-          <div class="ctc-box">
-            <div class="co-row"><span data-t="dCashDown">Cash down</span><b>$5,000</b></div>
-            <div class="co-row"><span data-t="dGap">Purchase gap (out of pocket)</span><b id="oGap">—</b></div>
-            <div class="co-row"><span data-t="dCashFees">Admin + title + broker fee</span><b id="oCashFees">—</b></div>
-            <div class="co-row ctc"><span data-t="dCtc">Total cash to close</span><b id="oCtc">—</b></div>
-          </div>
+          <div class="ct" data-t="dBreakH">Full cost breakdown &amp; cash to close</div>
+          <div id="dBreak"></div>
           <button class="lbtn brand" id="dSubmit" onclick="submitDeal()" data-t="dSubmit" style="width:100%;margin-top:14px">Submit deal for financing</button>
           <div class="lok" id="dOk" style="margin-top:10px"></div>
           <div class="lerr" id="dErr" style="margin-top:10px"></div>
@@ -558,6 +567,7 @@ function applyLang(){
   var ge=document.getElementById('glang-en'), gs=document.getElementById('glang-es');
   if(ge){ ge.classList.toggle('on',LANG==='en'); gs.classList.toggle('on',LANG==='es'); }
   if(GATE){ renderGate(); } else if(ME){ renderAll(); }
+  try{ dcalc(); }catch(e){}
 }
 function setLang(l){ LANG=l; try{localStorage.setItem('rl_partner_lang',l)}catch(e){} applyLang(); }
 
@@ -760,31 +770,36 @@ var DA={LTV:65,INT:18,ADMINC:750,ADMINP:750,TITLE:4050,INS:150,TAX:150,COMM:6,CA
 function dcalc(){
   var pE=document.getElementById('dPrice'); if(!pE) return;
   var pr=+pE.value||0, arv=+document.getElementById('dArv').value||0, pts=+document.getElementById('dPts').value||0;
-  var loan=arv*DA.LTV/100, bF=loan*pts/100, rh=Math.max(loan-pr,0), gap=Math.max(pr-loan,0);
-  var mi=loan*DA.INT/100/12, totInt=mi*DA.HOLD, comm=arv*DA.COMM/100;
-  var allIn=totInt+DA.TAX*DA.HOLD+DA.INS*DA.HOLD+DA.ADMINC+DA.ADMINP+DA.TITLE+bF+comm;
-  var ctc=DA.CASHDOWN+gap+DA.ADMINC+DA.TITLE+bF, es=LANG==='es';
+  var loan=arv*DA.LTV/100, bF=loan*pts/100, gap=Math.max(pr-loan,0), rh=Math.max(loan-pr,0);
+  var mi=loan*DA.INT/100/12, tI=mi*DA.HOLD, tIns=DA.INS*DA.HOLD, tTax=DA.TAX*DA.HOLD, comm=arv*DA.COMM/100;
+  var allIn=tI+tIns+tTax+DA.ADMINC+DA.ADMINP+DA.TITLE+bF+comm, ctc=DA.CASHDOWN+gap+DA.ADMINC+DA.TITLE+bF, es=LANG==='es';
   document.getElementById('dLoan').value=arv?money2(loan):'—';
   document.getElementById('dRh').value=arv?money2(rh):'—';
-  function R(l,v,c){ return '<div class="fr'+(c?' '+c:'')+'"><span class="fl">'+l+'</span><span class="fv">'+v+'</span></div>'; }
+  var brk=document.getElementById('dBreak'); if(!brk) return;
+  if(!arv&&!pr){ brk.innerHTML='<p class="co-note" style="text-align:center;padding:34px 0">'+(es?'Ingresa el precio y el ARV para ver el desglose.':'Enter a price and ARV to see the breakdown.')+'</p>'; return; }
+  function fr(l,v,cls){ return '<div class="fr"><span class="fl">'+l+'</span><span class="'+(cls||'fv')+'">'+v+'</span></div>'; }
+  function cr(l,v,st){ return '<div class="cr"><span class="cl">'+l+'</span><span class="cv"'+(st?' style="'+st+'"':'')+'>'+v+'</span></div>'; }
   var h='';
-  h+='<div class="fsec">'+(es?'Financiamiento':'Financing')+'</div>';
-  h+=R(es?'Préstamo (65% del ARV)':'Loan amount (65% of ARV)', arv?money2(loan):'—');
-  h+=R(es?'Reserva de remodelación':'Rehab holdback', arv?money2(rh):'—');
-  h+='<div class="fsec">'+(es?'Costos':'Costs')+'</div>';
-  h+=R(es?'Título / cierre':'Title / closing', '−'+money2(DA.TITLE));
-  h+=R((es?'Comisión de broker (':'Broker fee (')+pts+(es?' puntos)':' points)'), bF>0?'−'+money2(bF):'$0');
-  h+=R(es?'Cargo admin. al cierre':'Admin fee at closing', '−'+money2(DA.ADMINC));
-  h+=R(es?'Cargo admin. al pago':'Admin fee at payoff', '−'+money2(DA.ADMINP));
-  h+=R((es?'Interés mensual (':'Monthly interest (')+DA.INT+'%)', money2(mi)+'/mo');
-  h+=R(es?'Impuestos mensuales':'Monthly taxes', money2(DA.TAX)+'/mo');
-  h+=R(es?'Seguro mensual':'Monthly insurance', money2(DA.INS)+'/mo');
-  h+=R((es?'Comisión (':'Commission (')+DA.COMM+(es?'% del ARV)':'% of ARV)'), '−'+money2(comm));
-  h+=R(es?'Costo total (6 meses)':'Total all-in (6-mo hold)', arv?money2(allIn):'—', 'ftot');
-  document.getElementById('dBreak').innerHTML=h;
-  document.getElementById('oGap').textContent=money2(gap);
-  document.getElementById('oCashFees').textContent=money2(DA.ADMINC+DA.TITLE+bF);
-  document.getElementById('oCtc').textContent=arv?money2(ctc):'—';
+  h+='<div class="fee-sec"><div class="fee-hdr">'+(es?'Financiamiento y costos de retención':'Financing & hold costs')+'</div>';
+  h+=fr((es?'Interés — ':'Interest — ')+DA.HOLD+(es?' meses @ ':' mo @ ')+DA.INT+'%','−'+money2(tI));
+  h+=fr((es?'Seguro — ':'Insurance — ')+DA.HOLD+(es?' meses @ $':' mo @ $')+DA.INS+'/mo','−'+money2(tIns));
+  h+=fr((es?'Impuestos — ':'Property taxes — ')+DA.HOLD+(es?' meses @ $':' mo @ $')+DA.TAX+'/mo','−'+money2(tTax));
+  h+=fr(es?'Cargo admin. al cierre':'Admin fee at closing','−'+money2(DA.ADMINC));
+  h+=fr(es?'Cargo admin. al pago':'Admin fee at payoff','−'+money2(DA.ADMINP));
+  h+='</div><div class="fee-sec" style="margin-top:7px"><div class="fee-hdr">'+(es?'Cierre y comisiones':'Closing & sale fees')+'</div>';
+  h+=fr(es?'Título / costos de cierre':'Title / closing costs','−'+money2(DA.TITLE));
+  h+=fr((es?'Comisión de broker (':'Broker fee (')+pts+(es?' puntos)':' points)'), bF>0?'−'+money2(bF):'$0');
+  h+=fr((es?'Comisión de venta (':'Commission at sale (')+DA.COMM+(es?'% del ARV)':'% of ARV)'),'−'+money2(comm));
+  h+=fr(es?'Costo total (escenario ARV medio)':'Total all-in costs (mid ARV scenario)', money2(allIn),'fvg');
+  h+='</div><div class="ctc"><div class="ctc-t">'+(es?'Efectivo para cerrar — tu desembolso en el cierre inicial':'Cash to Close — your out-of-pocket at initial closing')+'</div>';
+  h+=cr(es?'Precio de compra':'Purchase price', money2(pr));
+  h+=cr(es?'El préstamo cubre en el cierre':'Loan covers at closing','−'+money2(Math.min(pr,loan)));
+  if(gap>0) h+=cr(es?'Diferencia de compra (de tu bolsillo)':'Purchase gap (out of pocket)', money2(gap),'color:var(--dred)');
+  h+=cr(es?'Enganche':'Cash down payment', money2(DA.CASHDOWN));
+  h+=cr(es?'Admin + título + comisión broker':'Admin fee + title + broker fee', money2(DA.ADMINC+DA.TITLE+bF));
+  h+=cr(es?'Efectivo total para cerrar':'Total cash to close', money2(ctc),'color:var(--gold)');
+  h+='</div>';
+  brk.innerHTML=h;
 }
 async function submitDeal(){
   var err=document.getElementById('dErr'), ok=document.getElementById('dOk');
