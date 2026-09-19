@@ -189,6 +189,44 @@ input,select,textarea{font-family:inherit}
   .plist{grid-template-columns:1fr}.brand-block .brand-text{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.hubgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:4px}
+.hubtile{display:flex;gap:14px;align-items:flex-start;text-align:left;background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;cursor:pointer;transition:.15s;font-family:inherit}
+.hubtile:hover{border-color:var(--brand);box-shadow:0 8px 22px rgba(15,23,42,.07);transform:translateY(-1px)}
+.ht-ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto;color:#fff}
+.ht-ic svg{width:22px;height:22px}
+.ht-tx{display:flex;flex-direction:column;gap:3px}
+.ht-n{font-weight:700;font-size:15px;color:var(--ink)}
+.ht-d{font-size:12.5px;color:var(--muted);line-height:1.4}
+.t-green .ht-ic{background:#16A34A}.t-purple .ht-ic{background:#7C3AED}.t-blue .ht-ic{background:#3B5BFF}.t-sky .ht-ic,.sc-ic.t-sky{background:#0EA5E9}.sc-ic.t-indigo{background:#4F46E5}
+.backbtn{background:none;border:none;color:var(--muted);font-weight:600;font-size:13.5px;cursor:pointer;padding:4px 0;margin-bottom:12px;font-family:inherit}
+.backbtn:hover{color:var(--brand)}
+.calcwrap{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+@media(max-width:720px){.calcwrap{grid-template-columns:1fr}}
+.calc-card,.calc-out{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px}
+.calc-h{font-size:17px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.calc-sub{font-size:13px;color:var(--muted);margin-bottom:16px}
+.cf{margin-bottom:12px}.cf.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cf label{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:6px}
+.cin{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.cin span{padding:0 10px;color:var(--muted);font-weight:600;font-size:13px}
+.cin input{flex:1;border:none;outline:none;padding:10px 12px;font-size:14px;font-weight:600;color:var(--ink);width:100%;min-width:0;background:transparent}
+.calc-out{background:linear-gradient(160deg,#F5F8FF,#fff)}
+.co-main{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:12px}
+.co-k{font-size:12.5px;color:var(--muted);font-weight:600}
+.co-v{font-size:30px;font-weight:800;color:var(--brand);letter-spacing:-.02em;margin-top:2px}
+.co-row{display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;color:var(--muted)}
+.co-row b{color:var(--ink);font-weight:700}
+.co-note{font-size:11px;color:var(--muted-2);margin-top:12px;line-height:1.4}
+.sitegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.sitecard{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px;text-decoration:none;transition:.15s}
+.sitecard:hover{border-color:var(--brand);box-shadow:0 8px 22px rgba(15,23,42,.07)}
+.sc-ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;color:#fff;flex:0 0 auto}
+.sc-ic svg{width:20px;height:20px}
+.sc-tx{display:flex;flex-direction:column;flex:1}
+.sc-n{font-weight:700;font-size:14px;color:var(--ink)}
+.sc-u{font-size:12px;color:var(--muted)}
+.sc-ext{width:16px;height:16px;color:var(--muted);flex:0 0 auto}
 </style>
 </head>
 <body>
@@ -209,6 +247,10 @@ input,select,textarea{font-family:inherit}
     <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
     <symbol id="i-dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-calc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h4"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
     <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5 5l-3 7v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3-7a2 2 0 0 0-1.8-1H6.8A2 2 0 0 0 5 5Z"/></symbol>
   </defs>
@@ -299,13 +341,19 @@ input,select,textarea{font-family:inherit}
       <div class="refbox"><div class="k" data-t="yourCode">Your referral code</div><div class="code"><span id="refCode">—</span><button id="copyCode" data-t="copy">Copy</button></div></div>
     </div>
 
-    <div class="tabs">
-      <button class="tab on" id="tab-inv" onclick="showTab('inv')" data-t="tabInv">Browse Inventory</button>
-      <button class="tab" id="tab-refs" onclick="showTab('refs')" data-t="tabRefs">My Referrals</button>
+    <!-- ===== HOME HUB ===== -->
+    <div id="viewHome">
+      <div class="hubgrid">
+        <button class="hubtile t-green"  onclick="go('inv')"><span class="ht-ic"><svg><use href="#i-home"/></svg></span><span class="ht-tx"><span class="ht-n" data-t="tabInv">Browse Inventory</span><span class="ht-d" data-t="tInvD">See every available owner-finance home.</span></span></button>
+        <button class="hubtile t-purple" onclick="go('calc')"><span class="ht-ic"><svg><use href="#i-calc"/></svg></span><span class="ht-tx"><span class="ht-n" data-t="tCalc">Payment Calculator</span><span class="ht-d" data-t="tCalcD">Show buyers their monthly payment on any home.</span></span></button>
+        <button class="hubtile t-blue"   onclick="go('refs')"><span class="ht-ic"><svg><use href="#i-users"/></svg></span><span class="ht-tx"><span class="ht-n" data-t="tabRefs">My Referrals</span><span class="ht-d" data-t="tRefsD">Track the status of every buyer you've referred.</span></span></button>
+        <button class="hubtile t-sky"    onclick="go('sites')"><span class="ht-ic"><svg><use href="#i-globe"/></svg></span><span class="ht-tx"><span class="ht-n" data-t="tSites">Our Websites</span><span class="ht-d" data-t="tSitesD">Send buyers to our public sites.</span></span></button>
+      </div>
     </div>
 
-    <!-- INVENTORY -->
-    <div id="paneInv">
+    <!-- ===== INVENTORY ===== -->
+    <div id="viewInv" style="display:none">
+      <button class="backbtn" onclick="go('home')" data-t="backHome">← Portal home</button>
       <div class="toolbar">
         <div class="search"><svg><use href="#i-search"/></svg><input id="q" placeholder="Search by address or city…" oninput="renderListings()"></div>
         <div class="count-pill" id="invCount"></div>
@@ -313,9 +361,48 @@ input,select,textarea{font-family:inherit}
       <div class="plist" id="plist"></div>
     </div>
 
-    <!-- MY REFERRALS -->
-    <div id="paneRefs" style="display:none">
+    <!-- ===== PAYMENT CALCULATOR ===== -->
+    <div id="viewCalc" style="display:none">
+      <button class="backbtn" onclick="go('home')" data-t="backHome">← Portal home</button>
+      <div class="calcwrap">
+        <div class="calc-card">
+          <h2 class="calc-h" data-t="calcH">Owner-finance payment calculator</h2>
+          <p class="calc-sub" data-t="calcSub">Estimate a buyer's monthly payment. For illustration only.</p>
+          <div class="cf"><label data-t="cPrice">Home price</label><div class="cin"><span>$</span><input id="cPrice" type="number" inputmode="decimal" value="150000" oninput="calc()"></div></div>
+          <div class="cf two">
+            <div><label data-t="cDown">Down payment</label><div class="cin"><span>$</span><input id="cDown" type="number" inputmode="decimal" value="15000" oninput="calc('down')"></div></div>
+            <div><label data-t="cDownPct">Down %</label><div class="cin"><input id="cDownPct" type="number" inputmode="decimal" value="10" oninput="calc('pct')"><span>%</span></div></div>
+          </div>
+          <div class="cf two">
+            <div><label data-t="cRate">Interest rate</label><div class="cin"><input id="cRate" type="number" inputmode="decimal" step="0.1" value="9" oninput="calc()"><span>%</span></div></div>
+            <div><label data-t="cTerm">Term</label><div class="cin"><input id="cTerm" type="number" inputmode="numeric" value="30" oninput="calc()"><span data-t="yrs">yrs</span></div></div>
+          </div>
+          <div class="cf"><label data-t="cTax">Taxes + insurance</label><div class="cin"><span>$</span><input id="cTI" type="number" inputmode="decimal" value="0" oninput="calc()"></div></div>
+        </div>
+        <div class="calc-out">
+          <div class="co-main"><div class="co-k" data-t="coMonthly">Estimated monthly payment</div><div class="co-v" id="coMonthly">—</div></div>
+          <div class="co-row"><span data-t="coPI">Principal & interest</span><b id="coPI">—</b></div>
+          <div class="co-row"><span data-t="coTI">Taxes & insurance</span><b id="coTI">—</b></div>
+          <div class="co-row"><span data-t="coFin">Amount financed</span><b id="coFin">—</b></div>
+          <div class="co-row"><span data-t="coInt">Total interest paid</span><b id="coInt">—</b></div>
+          <p class="co-note" data-t="coNote">Estimate only — not a commitment to lend or specific terms.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== MY REFERRALS ===== -->
+    <div id="viewRefs" style="display:none">
+      <button class="backbtn" onclick="go('home')" data-t="backHome">← Portal home</button>
       <div class="rlist" id="rlist"></div>
+    </div>
+
+    <!-- ===== WEBSITES ===== -->
+    <div id="viewSites" style="display:none">
+      <button class="backbtn" onclick="go('home')" data-t="backHome">← Portal home</button>
+      <div class="sitegrid">
+        <a class="sitecard" href="https://reallivingkc.com" target="_blank" rel="noopener"><span class="sc-ic t-sky"><svg><use href="#i-home"/></svg></span><span class="sc-tx"><span class="sc-n">Real Living — Browse Homes</span><span class="sc-u">reallivingkc.com</span></span><svg class="sc-ext"><use href="#i-ext"/></svg></a>
+        <a class="sitecard" href="https://www.asapcapital.com" target="_blank" rel="noopener"><span class="sc-ic t-indigo"><svg><use href="#i-dollar"/></svg></span><span class="sc-tx"><span class="sc-n">ASAP Lending</span><span class="sc-u">asapcapital.com</span></span><svg class="sc-ext"><use href="#i-ext"/></svg></a>
+      </div>
     </div>
   </div>
 </div>
@@ -368,11 +455,24 @@ const T={
   gDeniedT:{en:'Not approved yet',es:'Aún no aprobada'},
   gDeniedB:{en:"Thanks for your interest{name}. Your affiliate application hasn't been approved at this time. Questions? Email team@reallivingkc.com.",es:'Gracias por tu interés{name}. Tu solicitud de afiliado no ha sido aprobada por ahora. ¿Preguntas? Escribe a team@reallivingkc.com.'},
   signOut:{en:'Sign out',es:'Cerrar sesión'},
-  heroSub:{en:"Here's your inventory and the status of every client you've referred.",es:'Aquí está tu inventario y el estado de cada cliente que has referido.'},
+  heroSub:{en:'Your affiliate portal — browse homes, run the numbers, and refer buyers.',es:'Tu portal de afiliado: explora casas, calcula pagos y refiere compradores.'},
   stAvail:{en:'Homes available',es:'Casas disponibles'},stRefs:{en:'Clients referred',es:'Clientes referidos'},
   stShow:{en:'Showings requested',es:'Visitas solicitadas'},yourCode:{en:'Your referral code',es:'Tu código de referido'},
   copy:{en:'Copy',es:'Copiar'},
   tabInv:{en:'Browse Inventory',es:'Ver Inventario'},tabRefs:{en:'My Referrals',es:'Mis Referidos'},
+  tInvD:{en:'See every available owner-finance home.',es:'Mira cada casa disponible con financiamiento del dueño.'},
+  tCalc:{en:'Payment Calculator',es:'Calculadora de pagos'},tCalcD:{en:'Show buyers their monthly payment on any home.',es:'Muestra a los compradores su pago mensual en cualquier casa.'},
+  tRefsD:{en:"Track the status of every buyer you've referred.",es:'Sigue el estado de cada comprador que refieres.'},
+  tSites:{en:'Our Websites',es:'Nuestros sitios'},tSitesD:{en:'Send buyers to our public sites.',es:'Envía compradores a nuestros sitios públicos.'},
+  backHome:{en:'← Portal home',es:'← Inicio del portal'},
+  calcH:{en:'Owner-finance payment calculator',es:'Calculadora de financiamiento del dueño'},
+  calcSub:{en:"Estimate a buyer's monthly payment. For illustration only.",es:'Estima el pago mensual del comprador. Solo ilustrativo.'},
+  cPrice:{en:'Home price',es:'Precio de la casa'},cDown:{en:'Down payment',es:'Enganche'},cDownPct:{en:'Down %',es:'Enganche %'},
+  cRate:{en:'Interest rate',es:'Tasa de interés'},cTerm:{en:'Term',es:'Plazo'},yrs:{en:'yrs',es:'años'},
+  cTax:{en:'Taxes + insurance',es:'Impuestos + seguro'},
+  coMonthly:{en:'Estimated monthly payment',es:'Pago mensual estimado'},coPI:{en:'Principal & interest',es:'Capital e interés'},
+  coTI:{en:'Taxes & insurance',es:'Impuestos y seguro'},coFin:{en:'Amount financed',es:'Monto financiado'},coInt:{en:'Total interest paid',es:'Interés total pagado'},
+  coNote:{en:'Estimate only — not a commitment to lend or specific terms.',es:'Solo estimación — no es un compromiso de préstamo ni de términos específicos.'},
   wantsBuy:{en:'Wants to buy',es:'Quiere comprar'},wantsShow:{en:'Wants a showing',es:'Quiere una visita'},wantsInfo:{en:'Just info',es:'Solo info'},
   clientName:{en:'Client name',es:'Nombre del cliente'},clientPhone:{en:'Client phone',es:'Teléfono del cliente'},
   clientEmail:{en:'Client email',es:'Correo del cliente'},note:{en:'Note for our team',es:'Nota para el equipo'},
@@ -489,6 +589,8 @@ async function enter(session){
   document.getElementById('refCode').textContent=(PARTNER&&PARTNER.referral_code)||'—';
   await Promise.all([loadListings(), loadMyReqs()]);
   renderAll();
+  try{ calc(); }catch(e){}
+  go('home');
 }
 async function ensurePartner(){
   const {data:row}=await sb.from('partners').select('*').eq('id',ME.id).maybeSingle();
@@ -578,11 +680,25 @@ function statusLabel(s){
 function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* ---------- tabs ---------- */
-function showTab(t){
-  document.getElementById('tab-inv').classList.toggle('on',t==='inv');
-  document.getElementById('tab-refs').classList.toggle('on',t==='refs');
-  document.getElementById('paneInv').style.display=t==='inv'?'block':'none';
-  document.getElementById('paneRefs').style.display=t==='refs'?'block':'none';
+function go(v){
+  var map={home:'viewHome',inv:'viewInv',calc:'viewCalc',refs:'viewRefs',sites:'viewSites'};
+  for(var k in map){ var el=document.getElementById(map[k]); if(el) el.style.display=(k===v)?'':'none'; }
+  window.scrollTo(0,0);
+}
+function money2(n){ if(n==null||isNaN(n)) return '—'; return '$'+Math.round(n).toLocaleString(); }
+function calc(src){
+  var pE=document.getElementById('cPrice'); if(!pE) return;
+  var price=+pE.value||0, down=+document.getElementById('cDown').value||0, pct=+document.getElementById('cDownPct').value||0;
+  if(src==='down'){ pct=price?down/price*100:0; document.getElementById('cDownPct').value=Math.round(pct*10)/10; }
+  else { down=Math.round(price*pct/100); document.getElementById('cDown').value=down; }
+  var fin=Math.max(price-down,0);
+  var r=(+document.getElementById('cRate').value||0)/100/12, n=(+document.getElementById('cTerm').value||0)*12, ti=+document.getElementById('cTI').value||0;
+  var pi=(r>0&&n>0)?fin*r/(1-Math.pow(1+r,-n)):(n>0?fin/n:0);
+  document.getElementById('coMonthly').textContent=money2(pi+ti);
+  document.getElementById('coPI').textContent=money2(pi);
+  document.getElementById('coTI').textContent=money2(ti);
+  document.getElementById('coFin').textContent=money2(fin);
+  var it=pi*n-fin; document.getElementById('coInt').textContent=money2(it>0?it:0);
 }
 
 /* ---------- request modal ---------- */
@@ -623,7 +739,7 @@ document.getElementById('rmSubmit').onclick=async()=>{
   if(error){ err.textContent=error.message; err.classList.add('show'); return; }
   closeReq();
   toast(LANG==='es'?'¡Referido enviado! Nuestro equipo dará seguimiento.':'Referral sent! Our team will follow up.');
-  await loadMyReqs(); renderAll(); showTab('refs');
+  await loadMyReqs(); renderAll(); go('refs');
 };
 
 /* ---------- misc ---------- */
