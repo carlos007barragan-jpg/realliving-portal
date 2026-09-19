@@ -128,6 +128,10 @@ tbody tr:hover{background:#FAFBFF}
 .qsec+.qsec{border-top:8px solid var(--bg-2)}
 .qsec-h{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:700;color:var(--ink-2);padding:15px 16px 9px}
 .qsec-h .cnt{background:var(--brand);color:#fff;font-size:11px;font-weight:800;padding:1px 8px;border-radius:999px}
+.dealsum{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.dealsum span{font-size:11px;font-weight:600;color:var(--ink-2);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap}
+.dealsum span.mg-pos{color:#16A34A;border-color:#BBF7D0;background:#F0FDF4}
+.dealsum span.mg-neg{color:#DC2626;border-color:#FECACA;background:#FEF2F2}
 </style>
 </head>
 <body>
@@ -269,6 +273,12 @@ let PARTNERS=[], REQS=[], TAB='q';
 function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function initials(n){ return (n||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase()||'?'; }
 function fmtDate(d){ if(!d) return '—'; const x=new Date(d); return x.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+function m(n){ if(n==null||n===''||isNaN(n)) return '—'; return '$'+Math.round(+n).toLocaleString(); }
+function dealHtml(r){
+  var d=r&&r.details; if(!d||!d.deal) return '';
+  var mg=+d.margin||0;
+  return `<div class="dealsum"><span>Buy ${m(d.purchase_price)}</span><span>ARV ${m(d.arv)}</span><span>65% ${m(d.arv65)}</span><span>All-in ${m(d.all_in)}</span><span class="${mg>=0?'mg-pos':'mg-neg'}">Margin ${m(d.margin)}</span>${d.broker_points_pct?`<span>Pts ${d.broker_points_pct}%</span>`:''}</div>`;
+}
 function ago(d){
   if(!d) return '';
   const ms=Date.now()-new Date(d).getTime(), h=Math.floor(ms/3600000);
@@ -337,8 +347,8 @@ function renderQueue(){
       const note=(r.details&&r.details.note)||'';
       return `<tr>
         <td><div class="lead"><span class="a">${esc(r.client_name||'—')}</span><span class="b">${esc(r.client_phone||r.client_email||'')}</span></div></td>
-        <td><span class="kindpill k-${r.kind}">${kindLabel(r.kind)}</span></td>
-        <td class="hide-sm">${esc(r.property_label||'—')}</td>
+        <td><span class="kindpill k-${r.kind}">${r.details&&r.details.deal?'Deal':kindLabel(r.kind)}</span></td>
+        <td class="hide-sm">${esc(r.property_label||'—')}${dealHtml(r)}</td>
         <td>${esc(pName(r.partner_id))}</td>
         <td class="hide-sm"><div class="note">${esc(note)||'—'}</div></td>
         <td style="color:var(--muted);white-space:nowrap">${ago(r.created_at)}</td>
@@ -394,8 +404,8 @@ function renderAll_(){
   </tr></thead><tbody>${rows.map(r=>`
     <tr>
       <td><div class="lead"><span class="a">${esc(r.client_name||'—')}</span><span class="b">${esc(r.client_phone||r.client_email||'')}</span></div></td>
-      <td><span class="kindpill k-${r.kind}">${kindLabel(r.kind)}</span></td>
-      <td class="hide-sm">${esc(r.property_label||'—')}</td>
+      <td><span class="kindpill k-${r.kind}">${r.details&&r.details.deal?'Deal':kindLabel(r.kind)}</span></td>
+      <td class="hide-sm">${esc(r.property_label||'—')}${dealHtml(r)}</td>
       <td>${esc(pName(r.partner_id))}</td>
       <td style="color:var(--muted);white-space:nowrap">${fmtDate(r.created_at)}</td>
       <td><span class="status s-${r.status||'new'}">${esc(r.status||'new')}</span></td>
