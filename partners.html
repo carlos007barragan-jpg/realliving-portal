@@ -227,6 +227,10 @@ input,select,textarea{font-family:inherit}
 .sc-n{font-weight:700;font-size:14px;color:var(--ink)}
 .sc-u{font-size:12px;color:var(--muted)}
 .sc-ext{width:16px;height:16px;color:var(--muted);flex:0 0 auto}
+.cf-h{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 8px;padding-top:14px;border-top:1px solid var(--line)}
+.cin.locked{background:#EFF3FF;border-color:#DBE4FF}.cin.locked input{color:var(--brand);font-weight:800}
+.dta{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:vertical;outline:none;color:var(--ink);background:#fff}
+.co-row.pos b{color:#16A34A}.co-row.neg b{color:#DC2626}
 </style>
 </head>
 <body>
@@ -361,31 +365,40 @@ input,select,textarea{font-family:inherit}
       <div class="plist" id="plist"></div>
     </div>
 
-    <!-- ===== PAYMENT CALCULATOR ===== -->
+    <!-- ===== DEAL ANALYZER ===== -->
     <div id="viewCalc" style="display:none">
       <button class="backbtn" onclick="go('home')" data-t="backHome">← Portal home</button>
       <div class="calcwrap">
         <div class="calc-card">
-          <h2 class="calc-h" data-t="calcH">Owner-finance payment calculator</h2>
-          <p class="calc-sub" data-t="calcSub">Estimate a buyer's monthly payment. For illustration only.</p>
-          <div class="cf"><label data-t="cPrice">Home price</label><div class="cin"><span>$</span><input id="cPrice" type="number" inputmode="decimal" value="150000" oninput="calc()"></div></div>
+          <h2 class="calc-h" data-t="calcH">Analyze &amp; submit a deal</h2>
+          <p class="calc-sub" data-t="calcSub">Enter the basics — we'll review it for financing.</p>
+          <div class="cf"><label data-t="dAddr">Property address</label><div class="cin"><input id="dAddr" type="text" placeholder="123 Main St, Kansas City MO"></div></div>
           <div class="cf two">
-            <div><label data-t="cDown">Down payment</label><div class="cin"><span>$</span><input id="cDown" type="number" inputmode="decimal" value="15000" oninput="calc('down')"></div></div>
-            <div><label data-t="cDownPct">Down %</label><div class="cin"><input id="cDownPct" type="number" inputmode="decimal" value="10" oninput="calc('pct')"><span>%</span></div></div>
+            <div><label data-t="dPrice">Purchase price</label><div class="cin"><span>$</span><input id="dPrice" type="number" inputmode="decimal" oninput="dcalc()"></div></div>
+            <div><label data-t="dArv">Estimated ARV</label><div class="cin"><span>$</span><input id="dArv" type="number" inputmode="decimal" oninput="dcalc()"></div></div>
+          </div>
+          <div class="cf"><label data-t="dArv65">65% of ARV (lending basis)</label><div class="cin locked"><span>$</span><input id="dArv65" type="text" readonly value="—"></div></div>
+          <div class="cf-h" data-t="dCosts">Costs</div>
+          <div class="cf two">
+            <div><label data-t="dComm">Commissions</label><div class="cin"><span>$</span><input id="dComm" type="number" inputmode="decimal" value="0" oninput="dcalc()"></div></div>
+            <div><label data-t="dPts">Broker points</label><div class="cin"><input id="dPts" type="number" inputmode="decimal" step="0.1" value="0" oninput="dcalc()"><span>%</span></div></div>
           </div>
           <div class="cf two">
-            <div><label data-t="cRate">Interest rate</label><div class="cin"><input id="cRate" type="number" inputmode="decimal" step="0.1" value="9" oninput="calc()"><span>%</span></div></div>
-            <div><label data-t="cTerm">Term</label><div class="cin"><input id="cTerm" type="number" inputmode="numeric" value="30" oninput="calc()"><span data-t="yrs">yrs</span></div></div>
+            <div><label data-t="dFin">Financing fees</label><div class="cin"><span>$</span><input id="dFin" type="number" inputmode="decimal" value="0" oninput="dcalc()"></div></div>
+            <div><label data-t="dTitle">Title fees</label><div class="cin"><span>$</span><input id="dTitle" type="number" inputmode="decimal" value="0" oninput="dcalc()"></div></div>
           </div>
-          <div class="cf"><label data-t="cTax">Taxes + insurance</label><div class="cin"><span>$</span><input id="cTI" type="number" inputmode="decimal" value="0" oninput="calc()"></div></div>
+          <div class="cf"><label data-t="dNote">Notes <small style="color:var(--muted-2);font-weight:400">(optional)</small></label><textarea id="dNote" rows="2" class="dta"></textarea></div>
         </div>
         <div class="calc-out">
-          <div class="co-main"><div class="co-k" data-t="coMonthly">Estimated monthly payment</div><div class="co-v" id="coMonthly">—</div></div>
-          <div class="co-row"><span data-t="coPI">Principal & interest</span><b id="coPI">—</b></div>
-          <div class="co-row"><span data-t="coTI">Taxes & insurance</span><b id="coTI">—</b></div>
-          <div class="co-row"><span data-t="coFin">Amount financed</span><b id="coFin">—</b></div>
-          <div class="co-row"><span data-t="coInt">Total interest paid</span><b id="coInt">—</b></div>
-          <p class="co-note" data-t="coNote">Estimate only — not a commitment to lend or specific terms.</p>
+          <div class="co-main"><div class="co-k" data-t="dArv65">65% of ARV</div><div class="co-v" id="oArv65">—</div></div>
+          <div class="co-row"><span data-t="dPrice">Purchase price</span><b id="oPrice">—</b></div>
+          <div class="co-row"><span data-t="dTotCost">Total costs</span><b id="oCosts">—</b></div>
+          <div class="co-row"><span data-t="dAllin">All-in (price + costs)</span><b id="oAllin">—</b></div>
+          <div class="co-row" id="oMarginRow"><span data-t="dMargin">Margin vs 65% ARV</span><b id="oMargin">—</b></div>
+          <button class="lbtn brand" id="dSubmit" onclick="submitDeal()" data-t="dSubmit" style="width:100%;margin-top:14px">Submit deal for financing</button>
+          <div class="lok" id="dOk" style="margin-top:10px"></div>
+          <div class="lerr" id="dErr" style="margin-top:10px"></div>
+          <p class="co-note" data-t="dNoteFoot">Estimate only. Submitting sends this deal to our team to review for financing.</p>
         </div>
       </div>
     </div>
@@ -461,12 +474,17 @@ const T={
   copy:{en:'Copy',es:'Copiar'},
   tabInv:{en:'Browse Inventory',es:'Ver Inventario'},tabRefs:{en:'My Referrals',es:'Mis Referidos'},
   tInvD:{en:'See every available owner-finance home.',es:'Mira cada casa disponible con financiamiento del dueño.'},
-  tCalc:{en:'Payment Calculator',es:'Calculadora de pagos'},tCalcD:{en:'Show buyers their monthly payment on any home.',es:'Muestra a los compradores su pago mensual en cualquier casa.'},
+  tCalc:{en:'Deal Analyzer',es:'Analizador de tratos'},tCalcD:{en:'Analyze a deal and submit it to us for financing.',es:'Analiza un trato y envíanoslo para financiamiento.'},
+  dAddr:{en:'Property address',es:'Dirección de la propiedad'},dPrice:{en:'Purchase price',es:'Precio de compra'},dArv:{en:'Estimated ARV',es:'ARV estimado'},
+  dArv65:{en:'65% of ARV (lending basis)',es:'65% del ARV (base de préstamo)'},dCosts:{en:'Costs',es:'Costos'},
+  dComm:{en:'Commissions',es:'Comisiones'},dPts:{en:'Broker points',es:'Puntos de broker'},dFin:{en:'Financing fees',es:'Cargos de financiamiento'},dTitle:{en:'Title fees',es:'Cargos de título'},
+  dNote:{en:'Notes',es:'Notas'},dTotCost:{en:'Total costs',es:'Costos totales'},dAllin:{en:'All-in (price + costs)',es:'Total (precio + costos)'},dMargin:{en:'Margin vs 65% ARV',es:'Margen vs 65% ARV'},
+  dSubmit:{en:'Submit deal for financing',es:'Enviar trato para financiamiento'},dNoteFoot:{en:'Estimate only. Submitting sends this deal to our team to review for financing.',es:'Solo estimación. Al enviar, este trato llega a nuestro equipo para revisión de financiamiento.'},
   tRefsD:{en:"Track the status of every buyer you've referred.",es:'Sigue el estado de cada comprador que refieres.'},
   tSites:{en:'Our Websites',es:'Nuestros sitios'},tSitesD:{en:'Send buyers to our public sites.',es:'Envía compradores a nuestros sitios públicos.'},
   backHome:{en:'← Portal home',es:'← Inicio del portal'},
-  calcH:{en:'Owner-finance payment calculator',es:'Calculadora de financiamiento del dueño'},
-  calcSub:{en:"Estimate a buyer's monthly payment. For illustration only.",es:'Estima el pago mensual del comprador. Solo ilustrativo.'},
+  calcH:{en:'Analyze & submit a deal',es:'Analiza y envía un trato'},
+  calcSub:{en:"Enter the basics — we'll review it for financing.",es:'Ingresa lo básico: lo revisaremos para financiamiento.'},
   cPrice:{en:'Home price',es:'Precio de la casa'},cDown:{en:'Down payment',es:'Enganche'},cDownPct:{en:'Down %',es:'Enganche %'},
   cRate:{en:'Interest rate',es:'Tasa de interés'},cTerm:{en:'Term',es:'Plazo'},yrs:{en:'yrs',es:'años'},
   cTax:{en:'Taxes + insurance',es:'Impuestos + seguro'},
@@ -589,7 +607,7 @@ async function enter(session){
   document.getElementById('refCode').textContent=(PARTNER&&PARTNER.referral_code)||'—';
   await Promise.all([loadListings(), loadMyReqs()]);
   renderAll();
-  try{ calc(); }catch(e){}
+  try{ dcalc(); }catch(e){}
   go('home');
 }
 async function ensurePartner(){
@@ -686,19 +704,40 @@ function go(v){
   window.scrollTo(0,0);
 }
 function money2(n){ if(n==null||isNaN(n)) return '—'; return '$'+Math.round(n).toLocaleString(); }
-function calc(src){
-  var pE=document.getElementById('cPrice'); if(!pE) return;
-  var price=+pE.value||0, down=+document.getElementById('cDown').value||0, pct=+document.getElementById('cDownPct').value||0;
-  if(src==='down'){ pct=price?down/price*100:0; document.getElementById('cDownPct').value=Math.round(pct*10)/10; }
-  else { down=Math.round(price*pct/100); document.getElementById('cDown').value=down; }
-  var fin=Math.max(price-down,0);
-  var r=(+document.getElementById('cRate').value||0)/100/12, n=(+document.getElementById('cTerm').value||0)*12, ti=+document.getElementById('cTI').value||0;
-  var pi=(r>0&&n>0)?fin*r/(1-Math.pow(1+r,-n)):(n>0?fin/n:0);
-  document.getElementById('coMonthly').textContent=money2(pi+ti);
-  document.getElementById('coPI').textContent=money2(pi);
-  document.getElementById('coTI').textContent=money2(ti);
-  document.getElementById('coFin').textContent=money2(fin);
-  var it=pi*n-fin; document.getElementById('coInt').textContent=money2(it>0?it:0);
+function dcalc(){
+  var pE=document.getElementById('dPrice'); if(!pE) return;
+  var pr=+pE.value||0, arv=+document.getElementById('dArv').value||0, arv65=arv*0.65;
+  document.getElementById('dArv65').value=arv?money2(arv65):'—';
+  var comm=+document.getElementById('dComm').value||0, pts=+document.getElementById('dPts').value||0;
+  var ptsAmt=pr*pts/100, fin=+document.getElementById('dFin').value||0, title=+document.getElementById('dTitle').value||0;
+  var costs=comm+ptsAmt+fin+title, allin=pr+costs, margin=arv65-allin;
+  document.getElementById('oArv65').textContent=arv?money2(arv65):'—';
+  document.getElementById('oPrice').textContent=money2(pr);
+  document.getElementById('oCosts').textContent=money2(costs);
+  document.getElementById('oAllin').textContent=money2(allin);
+  var mEl=document.getElementById('oMargin'), row=document.getElementById('oMarginRow');
+  mEl.textContent=arv?money2(margin):'—';
+  row.classList.toggle('pos',!!arv&&margin>=0); row.classList.toggle('neg',!!arv&&margin<0);
+}
+async function submitDeal(){
+  var err=document.getElementById('dErr'), ok=document.getElementById('dOk');
+  err.classList.remove('show'); ok.classList.remove('show');
+  var addr=document.getElementById('dAddr').value.trim();
+  var pr=+document.getElementById('dPrice').value||0, arv=+document.getElementById('dArv').value||0;
+  if(!addr||!pr){ err.textContent=LANG==='es'?'Ingresa la dirección y el precio de compra.':'Enter the property address and purchase price.'; err.classList.add('show'); return; }
+  var comm=+document.getElementById('dComm').value||0, pts=+document.getElementById('dPts').value||0, fin=+document.getElementById('dFin').value||0, title=+document.getElementById('dTitle').value||0;
+  var ptsAmt=pr*pts/100, arv65=arv*0.65, costs=comm+ptsAmt+fin+title, allin=pr+costs, margin=arv65-allin;
+  var btn=document.getElementById('dSubmit'), ot=btn.textContent; btn.disabled=true; btn.textContent='…';
+  var rec={ partner_id:PARTNER.id, kind:'funding', property_id:null, property_label:addr,
+    client_name:PARTNER.name||'', client_email:PARTNER.email||'', client_phone:PARTNER.phone||'',
+    details:{ deal:true, purchase_price:pr, arv:arv, arv65:Math.round(arv65), commissions:comm, broker_points_pct:pts, broker_points_amt:Math.round(ptsAmt), financing_fees:fin, title_fees:title, total_costs:Math.round(costs), all_in:Math.round(allin), margin:Math.round(margin), note:document.getElementById('dNote').value.trim() },
+    status:'new' };
+  var {error}=await sb.from('partner_requests').insert(rec);
+  btn.disabled=false; btn.textContent=ot;
+  if(error){ err.textContent=error.message; err.classList.add('show'); return; }
+  ok.textContent=LANG==='es'?'¡Enviado! Nuestro equipo revisará el trato para financiamiento.':'Sent! Our team will review this deal for financing.'; ok.classList.add('show');
+  document.getElementById('dAddr').value=''; document.getElementById('dNote').value='';
+  await loadMyReqs(); renderAll();
 }
 
 /* ---------- request modal ---------- */
