@@ -132,6 +132,8 @@ tbody tr:hover{background:#FAFBFF}
 .dealsum span{font-size:11px;font-weight:600;color:var(--ink-2);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap}
 .dealsum span.mg-pos{color:#16A34A;border-color:#BBF7D0;background:#F0FDF4}
 .dealsum span.mg-neg{color:#DC2626;border-color:#FECACA;background:#FEF2F2}
+.act button.del{color:#B91C1C;border:1px solid #FECACA;background:#fff}
+.act button.del:hover{background:#FEF2F2;border-color:#FCA5A5}
 </style>
 </head>
 <body>
@@ -338,7 +340,7 @@ function renderQueue(){
       <td class="hide-sm">${esc(p.company||'—')}</td>
       <td class="hide-sm">${esc(p.phone||'—')}</td>
       <td style="color:var(--muted);white-space:nowrap">${ago(p.created_at)}</td>
-      <td><div class="act"><button class="ok" onclick="approve('${p.id}')">Approve</button><button class="no" onclick="setPartner('${p.id}','denied')">Deny</button></div></td>
+      <td><div class="act"><button class="ok" onclick="approve('${p.id}')">Approve</button><button class="no" onclick="setPartner('${p.id}','denied')">Deny</button><button class="del" onclick="deletePartner('${p.id}')">Delete</button></div></td>
     </tr>`).join('')}</tbody></table></div>`;
   }
   if(rows.length){
@@ -386,7 +388,8 @@ function renderPartners(){
       <td><div class="act">${
         p.status==='pending' ? `<button class="ok" onclick="approve('${p.id}')">Approve</button><button class="no" onclick="setPartner('${p.id}','denied')">Deny</button>`
         : p.status==='active' ? `<button class="no" onclick="setPartner('${p.id}','suspended')">Suspend</button>`
-        : `<button class="ok" onclick="approve('${p.id}')">Approve</button>`}</div></td>
+        : `<button class="ok" onclick="approve('${p.id}')">Approve</button>`
+      }<button class="del" onclick="deletePartner('${p.id}')">Delete</button></div></td>
     </tr>`;}).join('')}</tbody></table>`;
 }
 
@@ -447,6 +450,18 @@ async function setPartner(id,status){
   toast(status==='active'?'Approved — portal access granted':status==='denied'?'Application denied':status==='suspended'?'Partner suspended':'Partner reactivated');
 }
 function approve(id){ setPartner(id,'active'); }
+async function deletePartner(id){
+  var p=PARTNERS.find(x=>x.id===id);
+  var label=p?(p.name||p.email||'this sign-up'):'this sign-up';
+  if(!confirm('Delete '+label+'? This removes their affiliate account and any requests, and cannot be undone.')) return;
+  await sb.from('partner_requests').delete().eq('partner_id',id);
+  var {error}=await sb.from('partners').delete().eq('id',id);
+  if(error){ toast('Could not delete: '+error.message); return; }
+  PARTNERS=PARTNERS.filter(x=>x.id!==id);
+  REQS=REQS.filter(x=>x.partner_id!==id);
+  renderPartners(); renderQueue(); renderKpis(); renderBoard();
+  toast('Deleted');
+}
 
 function copyText(t,msg){
   const done=()=>toast(msg||'Copied');
