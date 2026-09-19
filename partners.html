@@ -231,6 +231,22 @@ input,select,textarea{font-family:inherit}
 .cin.locked{background:#EFF3FF;border-color:#DBE4FF}.cin.locked input{color:var(--brand);font-weight:800}
 .dta{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:vertical;outline:none;color:var(--ink);background:#fff}
 .co-row.pos b{color:#16A34A}.co-row.neg b{color:#DC2626}
+.pdbox{max-width:640px;width:100%;max-height:90vh;overflow-y:auto;position:relative;padding:0}
+.pd-main{height:300px;background:#E2E8F0;background-size:cover;background-position:center;background-repeat:no-repeat;display:grid;place-items:center;color:var(--muted)}
+.pd-main .ph{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px}.pd-main .ph svg{width:34px;height:34px}
+.pd-thumbs{display:flex;gap:7px;padding:10px 12px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line)}
+.pd-th{width:66px;height:50px;border-radius:7px;background:#E2E8F0;background-size:cover;background-position:center;flex:0 0 auto;cursor:pointer;border:2px solid transparent}
+.pd-th.on{border-color:var(--brand)}
+.pd-info{padding:18px 22px 22px}
+.pd-addr{font-size:19px;font-weight:800;color:var(--ink);margin-bottom:4px}
+.pd-meta{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0;color:var(--muted);font-size:13px;font-weight:600}
+.pd-meta span{display:inline-flex;align-items:center;gap:5px}.pd-meta svg{width:15px;height:15px}
+.pd-terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0;padding:14px;background:var(--bg);border-radius:12px}
+.pd-t .k{font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:2px}.pd-t .v{font-size:16px;font-weight:800;color:var(--ink)}
+.pd-desc{font-size:13.5px;line-height:1.6;color:var(--muted);white-space:pre-wrap;margin:8px 0 16px}
+.pd-act{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pd-note{font-size:11.5px;color:var(--muted-2);margin-top:12px;line-height:1.45}
+.pcard{cursor:pointer}
 </style>
 </head>
 <body>
@@ -423,6 +439,27 @@ input,select,textarea{font-family:inherit}
   </div>
 </div>
 
+<div class="modal" id="propModal" onclick="if(event.target===this)closeDetail()">
+  <div class="mbox pdbox">
+    <button class="mclose" onclick="closeDetail()" style="position:absolute;top:12px;right:14px;z-index:3;background:rgba(255,255,255,.9);border-radius:8px;width:32px;height:32px">&times;</button>
+    <div class="pd-main" id="pdMain"></div>
+    <div class="pd-thumbs" id="pdThumbs"></div>
+    <div class="pd-info">
+      <div class="ofpill" style="position:static;display:inline-flex;margin-bottom:8px">Owner Financing</div>
+      <h2 class="pd-addr" id="pdAddr">—</h2>
+      <div class="parea" id="pdArea"></div>
+      <div class="pd-meta" id="pdMeta"></div>
+      <div class="pd-terms" id="pdTerms"></div>
+      <div class="pd-desc" id="pdDesc"></div>
+      <div class="pd-act">
+        <button class="show" id="pdShow">Request to show</button>
+        <button class="refer" id="pdRefer">Refer a buyer</button>
+      </div>
+      <p class="pd-note" data-t="pdReqNote">To show this home to a buyer, submit a request — our team coordinates access.</p>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><svg><use href="#i-check"/></svg><span id="toastMsg"></span></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -458,6 +495,9 @@ const T={
   stShow:{en:'Showings requested',es:'Visitas solicitadas'},yourCode:{en:'Your referral code',es:'Tu código de referido'},
   copy:{en:'Copy',es:'Copiar'},
   tabInv:{en:'Browse Inventory',es:'Ver Inventario'},tabRefs:{en:'My Referrals',es:'Mis Referidos'},
+  listPrice:{en:'List price',es:'Precio de lista'},intRate:{en:'Interest rate',es:'Tasa de interés'},moLbl:{en:'Monthly',es:'Mensual'},
+  reqShow:{en:'Request to show',es:'Solicitar mostrar'},
+  pdReqNote:{en:'To show this home to a buyer, submit a request — our team coordinates access.',es:'Para mostrar esta casa a un comprador, envía una solicitud — nuestro equipo coordina el acceso.'},
   tInvD:{en:'See every available owner-finance home.',es:'Mira cada casa disponible con financiamiento del dueño.'},
   tCalc:{en:'Deal Analyzer',es:'Analizador de tratos'},tCalcD:{en:'Analyze a deal and submit it to us for financing.',es:'Analiza un trato y envíanoslo para financiamiento.'},
   dAddr:{en:'Property address',es:'Dirección de la propiedad'},dPrice:{en:'Purchase price',es:'Precio de compra'},dArv:{en:'Estimated ARV',es:'ARV estimado'},
@@ -635,7 +675,7 @@ function renderListings(){
     const photo=p.photo||(p.photos&&p.photos[0])||'';
     const ph = photo ? `style="background-image:url('${photo.replace(/'/g,"%27")}')"` : '';
     const phEmpty = photo ? '' : `<div class="ph"><svg><use href="#i-home"/></svg>${LANG==='es'?'Foto próximamente':'Photo coming soon'}</div>`;
-    return `<div class="pcard">
+    return `<div class="pcard" onclick='openDetail(${JSON.stringify(p.id)})'>
       <div class="pphoto" ${ph}>${phEmpty}<div class="ofpill">${LANG==='es'?'Financiamiento del dueño':'Owner Financing'}</div></div>
       <div class="pbody">
         <div>
@@ -652,8 +692,8 @@ function renderListings(){
           <div class="t"><div class="k">${LANG==='es'?'Mensual':'Monthly'}</div><div class="v">${money(p.monthly)}<small>${tr('moPay')}</small></div></div>
         </div>
         <div class="pact">
-          <button class="refer" onclick='openReq(${JSON.stringify(p.id)},"funding")'>${tr('refer')}</button>
-          <button class="show" onclick='openReq(${JSON.stringify(p.id)},"showing")'>${tr('showBtn')}</button>
+          <button class="refer" onclick='event.stopPropagation();openReq(${JSON.stringify(p.id)},"funding")'>${tr('refer')}</button>
+          <button class="show" onclick='event.stopPropagation();openReq(${JSON.stringify(p.id)},"showing")'>${tr('showBtn')}</button>
         </div>
       </div>
     </div>`;
@@ -732,6 +772,36 @@ function openReq(id,kind){
   document.getElementById('reqModal').classList.add('on');
 }
 function closeReq(){ document.getElementById('reqModal').classList.remove('on'); }
+function pdPhotos(p){ return (p.photos&&p.photos.length)?p.photos:(p.photo?[p.photo]:[]); }
+function pdSet(i){
+  var ph=pdPhotos(activeProp||{}), u=ph[i]; var main=document.getElementById('pdMain'); if(!u){return;}
+  main.style.backgroundImage="url('"+String(u).replace(/'/g,'%27')+"')"; main.innerHTML='';
+  var t=document.querySelectorAll('#pdThumbs .pd-th'); t.forEach(function(x){x.classList.remove('on')}); if(t[i]) t[i].classList.add('on');
+}
+function openDetail(id){
+  var p=LISTINGS.find(function(x){return x.id===id;}); if(!p) return; activeProp=p;
+  var ph=pdPhotos(p), main=document.getElementById('pdMain');
+  if(ph[0]){ main.style.backgroundImage="url('"+String(ph[0]).replace(/'/g,'%27')+"')"; main.innerHTML=''; }
+  else { main.style.backgroundImage=''; main.innerHTML='<div class="ph"><svg><use href="#i-home"/></svg>'+(LANG==='es'?'Foto próximamente':'Photo coming soon')+'</div>'; }
+  document.getElementById('pdThumbs').innerHTML=ph.map(function(u,i){return '<div class="pd-th'+(i===0?' on':'')+'" style="background-image:url(\''+String(u).replace(/'/g,'%27')+'\')" onclick="pdSet('+i+')"></div>';}).join('');
+  document.getElementById('pdAddr').textContent=p.address||p.title||'—';
+  document.getElementById('pdArea').innerHTML=p.area?('<svg><use href="#i-pin"/></svg>'+esc(p.area)):'';
+  document.getElementById('pdMeta').innerHTML='<span><svg><use href="#i-bed"/></svg>'+(p.beds!=null?p.beds:'—')+' '+(LANG==='es'?'rec':'bd')+'</span><span><svg><use href="#i-bath"/></svg>'+(p.baths!=null?p.baths:'—')+' '+(LANG==='es'?'baños':'ba')+'</span>'+(p.sqft?('<span><svg><use href="#i-ruler"/></svg>'+Number(p.sqft).toLocaleString()+' '+(LANG==='es'?'pies²':'sqft')+'</span>'):'');
+  var terms=[];
+  if(+p.list_price>0) terms.push([tr('listPrice'),money(p.list_price)]);
+  if(+p.rate>0) terms.push([tr('intRate'),(+p.rate)+'%']);
+  if(+p.down_payment>0) terms.push([tr('down'),money(p.down_payment)]);
+  if(+p.monthly>0) terms.push([tr('moLbl'),money(p.monthly)+' '+tr('moPay')]);
+  document.getElementById('pdTerms').innerHTML=terms.map(function(t){return '<div class="pd-t"><div class="k">'+t[0]+'</div><div class="v">'+t[1]+'</div></div>';}).join('');
+  var desc=(LANG==='es'&&p.description_es)?p.description_es:(p.description||'');
+  document.getElementById('pdDesc').textContent=desc;
+  var b1=document.getElementById('pdShow'), b2=document.getElementById('pdRefer');
+  b1.textContent=tr('reqShow'); b2.textContent=tr('refer');
+  b1.onclick=function(){ closeDetail(); openReq(id,'showing'); };
+  b2.onclick=function(){ closeDetail(); openReq(id,'funding'); };
+  document.getElementById('propModal').classList.add('on');
+}
+function closeDetail(){ document.getElementById('propModal').classList.remove('on'); }
 function syncReqTitle(){
   const map={funding:{en:'Refer a buyer',es:'Referir comprador'},showing:{en:'Request a showing',es:'Solicitar visita'},info:{en:'Request info',es:'Solicitar info'}};
   document.getElementById('rmTitle').textContent=(map[activeKind]||map.funding)[LANG]||(map[activeKind]||map.funding).en;
