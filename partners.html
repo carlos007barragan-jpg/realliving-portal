@@ -247,6 +247,16 @@ input,select,textarea{font-family:inherit}
 .pd-act{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .pd-note{font-size:11.5px;color:var(--muted-2);margin-top:12px;line-height:1.45}
 .pcard{cursor:pointer}
+.autotag{font-size:9px;font-weight:800;color:var(--brand);background:#EFF3FF;padding:1px 5px;border-radius:5px;margin-left:5px;letter-spacing:.03em}
+.ct-h{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px}
+.fbreak{margin-bottom:4px}
+.fsec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:12px 0 6px;padding-top:10px;border-top:1px solid var(--line)}
+.fbreak .fsec:first-child{border-top:none;padding-top:0;margin-top:2px}
+.fr{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--muted);gap:10px}
+.fr .fl{padding-right:6px}.fr .fv{font-weight:700;color:var(--ink);white-space:nowrap}
+.fr.ftot{border-top:1px solid var(--line);margin-top:6px;padding-top:8px}.fr.ftot .fl{color:var(--ink);font-weight:700}.fr.ftot .fv{font-size:15px}
+.ctc-box{margin-top:14px;padding:14px;background:var(--bg);border-radius:12px}.ctc-box .co-row{border:none}
+.co-row.ctc{border-top:1px solid var(--line);margin-top:6px;padding-top:10px;font-size:15px;color:var(--ink)}.co-row.ctc b{font-size:18px;color:var(--brand)}
 </style>
 </head>
 <body>
@@ -386,16 +396,28 @@ input,select,textarea{font-family:inherit}
       <button class="backbtn" onclick="go('home')" data-t="backHome">← Portal home</button>
       <div class="calcwrap">
         <div class="calc-card">
-          <h2 class="calc-h" data-t="calcH">Analyze &amp; submit a deal</h2>
-          <p class="calc-sub" data-t="calcSub">Enter the address, purchase price, and your ARV.</p>
+          <h2 class="calc-h" data-t="calcH">Deal breakdown</h2>
+          <p class="calc-sub" data-t="calcSub">Enter the deal — adjust points if needed.</p>
           <div class="cf"><label data-t="dAddr">Property address</label><div class="cin"><input id="dAddr" type="text" placeholder="123 Main St, Kansas City MO"></div></div>
-          <div class="cf"><label data-t="dPrice">Purchase price</label><div class="cin"><span>$</span><input id="dPrice" type="number" inputmode="decimal" oninput="dcalc()"></div></div>
-          <div class="cf"><label data-t="dArv">Estimated ARV</label><div class="cin"><span>$</span><input id="dArv" type="number" inputmode="decimal" oninput="dcalc()"></div></div>
+          <div class="cf two">
+            <div><label data-t="dPrice">Purchase price</label><div class="cin"><span>$</span><input id="dPrice" type="number" inputmode="decimal" oninput="dcalc()"></div></div>
+            <div><label data-t="dArv">Estimated ARV</label><div class="cin"><span>$</span><input id="dArv" type="number" inputmode="decimal" oninput="dcalc()"></div></div>
+          </div>
+          <div class="cf two">
+            <div><label data-t="dPts">Broker fee (points)</label><div class="cin"><input id="dPts" type="number" inputmode="decimal" step="0.5" min="0" value="0" oninput="dcalc()"><span>pts</span></div></div>
+            <div><label data-t="dLoanLbl">Loan (65% ARV)</label><div class="cin locked"><span>$</span><input id="dLoan" type="text" readonly value="—"></div></div>
+          </div>
+          <div class="cf"><label data-t="dRhLbl">Rehab holdback</label><div class="cin locked"><span>$</span><input id="dRh" type="text" readonly value="—"></div></div>
         </div>
         <div class="calc-out">
-          <div class="co-main"><div class="co-k" data-t="dFinLbl">Available financing (65% of ARV)</div><div class="co-v" id="oFin">—</div></div>
-          <div class="co-row"><span data-t="dPrice">Purchase price</span><b id="oPrice">—</b></div>
-          <div class="co-row rehab" id="oRehabRow"><span data-t="dRehab">For rehab</span><b id="oRehab">—</b></div>
+          <div class="ct-h" data-t="dBreakH">Full cost breakdown &amp; cash to close</div>
+          <div class="fbreak" id="dBreak"></div>
+          <div class="ctc-box">
+            <div class="co-row"><span data-t="dCashDown">Cash down</span><b>$5,000</b></div>
+            <div class="co-row"><span data-t="dGap">Purchase gap (out of pocket)</span><b id="oGap">—</b></div>
+            <div class="co-row"><span data-t="dCashFees">Admin + title + broker fee</span><b id="oCashFees">—</b></div>
+            <div class="co-row ctc"><span data-t="dCtc">Total cash to close</span><b id="oCtc">—</b></div>
+          </div>
           <button class="lbtn brand" id="dSubmit" onclick="submitDeal()" data-t="dSubmit" style="width:100%;margin-top:14px">Submit deal for financing</button>
           <div class="lok" id="dOk" style="margin-top:10px"></div>
           <div class="lerr" id="dErr" style="margin-top:10px"></div>
@@ -502,15 +524,19 @@ const T={
   tCalc:{en:'Deal Analyzer',es:'Analizador de tratos'},tCalcD:{en:'Analyze a deal and submit it to us for financing.',es:'Analiza un trato y envíanoslo para financiamiento.'},
   dAddr:{en:'Property address',es:'Dirección de la propiedad'},dPrice:{en:'Purchase price',es:'Precio de compra'},dArv:{en:'Estimated ARV',es:'ARV estimado'},
   dArv65:{en:'65% of ARV (lending basis)',es:'65% del ARV (base de préstamo)'},dCosts:{en:'Costs',es:'Costos'},
-  dComm:{en:'Commissions',es:'Comisiones'},dPts:{en:'Broker points',es:'Puntos de broker'},dFin:{en:'Financing fees',es:'Cargos de financiamiento'},dTitle:{en:'Title fees',es:'Cargos de título'},
+  dComm:{en:'Commissions',es:'Comisiones'},dPts:{en:'Broker fee (points)',es:'Comisión de broker (puntos)'},dFin:{en:'Financing fees',es:'Cargos de financiamiento'},dTitle:{en:'Title fees',es:'Cargos de título'},
   dNote:{en:'Notes',es:'Notas'},dTotCost:{en:'Total costs',es:'Costos totales'},dAllin:{en:'All-in (price + costs)',es:'Total (precio + costos)'},dMargin:{en:'Margin vs 65% ARV',es:'Margen vs 65% ARV'},
   dSubmit:{en:'Submit deal for financing',es:'Enviar trato para financiamiento'},dNoteFoot:{en:'Estimate only. Submitting sends this deal to our team to review for financing.',es:'Solo estimación. Al enviar, este trato llega a nuestro equipo para revisión de financiamiento.'},
   dFinLbl:{en:'Available financing (65% of ARV)',es:'Financiamiento disponible (65% del ARV)'},dRehab:{en:'For rehab',es:'Para remodelación'},
+  dLoanLbl:{en:'Loan (65% ARV)',es:'Préstamo (65% ARV)'},dRhLbl:{en:'Rehab holdback',es:'Reserva de remodelación'},
+  dBreakH:{en:'Full cost breakdown & cash to close',es:'Desglose completo y efectivo para cerrar'},
+  dCashDown:{en:'Cash down',es:'Enganche'},dGap:{en:'Purchase gap (out of pocket)',es:'Diferencia de compra (de tu bolsillo)'},
+  dCashFees:{en:'Admin + title + broker fee',es:'Admin + título + comisión broker'},dCtc:{en:'Total cash to close',es:'Efectivo total para cerrar'},
   tRefsD:{en:"Track the status of every buyer you've referred.",es:'Sigue el estado de cada comprador que refieres.'},
   tSites:{en:'Our Websites',es:'Nuestros sitios'},tSitesD:{en:'Send buyers to our public sites.',es:'Envía compradores a nuestros sitios públicos.'},
   backHome:{en:'← Portal home',es:'← Inicio del portal'},
-  calcH:{en:'Analyze & submit a deal',es:'Analiza y envía un trato'},
-  calcSub:{en:"Enter the address, purchase price, and your ARV.",es:'Ingresa la dirección, el precio de compra y tu ARV.'},
+  calcH:{en:'Deal breakdown',es:'Desglose del trato'},
+  calcSub:{en:"Enter the deal — adjust points if needed.",es:'Ingresa el trato — ajusta los puntos si es necesario.'},
   cPrice:{en:'Home price',es:'Precio de la casa'},cDown:{en:'Down payment',es:'Enganche'},cDownPct:{en:'Down %',es:'Enganche %'},
   cRate:{en:'Interest rate',es:'Tasa de interés'},cTerm:{en:'Term',es:'Plazo'},yrs:{en:'yrs',es:'años'},
   cTax:{en:'Taxes + insurance',es:'Impuestos + seguro'},
@@ -730,33 +756,55 @@ function go(v){
   window.scrollTo(0,0);
 }
 function money2(n){ if(n==null||isNaN(n)) return '—'; return '$'+Math.round(n).toLocaleString(); }
+var DA={LTV:65,INT:18,ADMINC:750,ADMINP:750,TITLE:4050,INS:150,TAX:150,COMM:6,CASHDOWN:5000,HOLD:6};
 function dcalc(){
   var pE=document.getElementById('dPrice'); if(!pE) return;
-  var pr=+pE.value||0, arv=+document.getElementById('dArv').value||0;
-  var fin=arv*0.65, rehab=fin-pr;
-  document.getElementById('oFin').textContent=arv?money2(fin):'—';
-  document.getElementById('oPrice').textContent=money2(pr);
-  var row=document.getElementById('oRehabRow');
-  document.getElementById('oRehab').textContent=arv?money2(rehab):'—';
-  row.classList.toggle('pos',!!arv&&rehab>=0); row.classList.toggle('neg',!!arv&&rehab<0);
+  var pr=+pE.value||0, arv=+document.getElementById('dArv').value||0, pts=+document.getElementById('dPts').value||0;
+  var loan=arv*DA.LTV/100, bF=loan*pts/100, rh=Math.max(loan-pr,0), gap=Math.max(pr-loan,0);
+  var mi=loan*DA.INT/100/12, totInt=mi*DA.HOLD, comm=arv*DA.COMM/100;
+  var allIn=totInt+DA.TAX*DA.HOLD+DA.INS*DA.HOLD+DA.ADMINC+DA.ADMINP+DA.TITLE+bF+comm;
+  var ctc=DA.CASHDOWN+gap+DA.ADMINC+DA.TITLE+bF, es=LANG==='es';
+  document.getElementById('dLoan').value=arv?money2(loan):'—';
+  document.getElementById('dRh').value=arv?money2(rh):'—';
+  function R(l,v,c){ return '<div class="fr'+(c?' '+c:'')+'"><span class="fl">'+l+'</span><span class="fv">'+v+'</span></div>'; }
+  var h='';
+  h+='<div class="fsec">'+(es?'Financiamiento':'Financing')+'</div>';
+  h+=R(es?'Préstamo (65% del ARV)':'Loan amount (65% of ARV)', arv?money2(loan):'—');
+  h+=R(es?'Reserva de remodelación':'Rehab holdback', arv?money2(rh):'—');
+  h+='<div class="fsec">'+(es?'Costos':'Costs')+'</div>';
+  h+=R(es?'Título / cierre':'Title / closing', '−'+money2(DA.TITLE));
+  h+=R((es?'Comisión de broker (':'Broker fee (')+pts+(es?' puntos)':' points)'), bF>0?'−'+money2(bF):'$0');
+  h+=R(es?'Cargo admin. al cierre':'Admin fee at closing', '−'+money2(DA.ADMINC));
+  h+=R(es?'Cargo admin. al pago':'Admin fee at payoff', '−'+money2(DA.ADMINP));
+  h+=R((es?'Interés mensual (':'Monthly interest (')+DA.INT+'%)', money2(mi)+'/mo');
+  h+=R(es?'Impuestos mensuales':'Monthly taxes', money2(DA.TAX)+'/mo');
+  h+=R(es?'Seguro mensual':'Monthly insurance', money2(DA.INS)+'/mo');
+  h+=R((es?'Comisión (':'Commission (')+DA.COMM+(es?'% del ARV)':'% of ARV)'), '−'+money2(comm));
+  h+=R(es?'Costo total (6 meses)':'Total all-in (6-mo hold)', arv?money2(allIn):'—', 'ftot');
+  document.getElementById('dBreak').innerHTML=h;
+  document.getElementById('oGap').textContent=money2(gap);
+  document.getElementById('oCashFees').textContent=money2(DA.ADMINC+DA.TITLE+bF);
+  document.getElementById('oCtc').textContent=arv?money2(ctc):'—';
 }
 async function submitDeal(){
   var err=document.getElementById('dErr'), ok=document.getElementById('dOk');
   err.classList.remove('show'); ok.classList.remove('show');
   var addr=document.getElementById('dAddr').value.trim();
-  var pr=+document.getElementById('dPrice').value||0, arv=+document.getElementById('dArv').value||0;
+  var pr=+document.getElementById('dPrice').value||0, arv=+document.getElementById('dArv').value||0, pts=+document.getElementById('dPts').value||0;
   if(!addr||!pr||!arv){ err.textContent=LANG==='es'?'Ingresa la dirección, el precio de compra y el ARV.':'Enter the address, purchase price, and ARV.'; err.classList.add('show'); return; }
-  var fin=arv*0.65, rehab=fin-pr;
+  var loan=arv*DA.LTV/100, bF=loan*pts/100, rh=Math.max(loan-pr,0), gap=Math.max(pr-loan,0);
+  var allIn=loan*DA.INT/100/12*DA.HOLD+DA.TAX*DA.HOLD+DA.INS*DA.HOLD+DA.ADMINC+DA.ADMINP+DA.TITLE+bF+arv*DA.COMM/100;
+  var ctc=DA.CASHDOWN+gap+DA.ADMINC+DA.TITLE+bF;
   var btn=document.getElementById('dSubmit'), ot=btn.textContent; btn.disabled=true; btn.textContent='…';
   var rec={ partner_id:PARTNER.id, kind:'funding', property_id:null, property_label:addr,
     client_name:PARTNER.name||'', client_email:PARTNER.email||'', client_phone:PARTNER.phone||'',
-    details:{ deal:true, purchase_price:pr, arv:arv, arv65:Math.round(fin), financing_available:Math.round(fin), rehab_budget:Math.round(rehab) },
+    details:{ deal:true, purchase_price:pr, arv:arv, arv65:Math.round(loan), financing_available:Math.round(loan), rehab_budget:Math.round(rh), points:pts, broker_fee:Math.round(bF), cash_to_close:Math.round(ctc), all_in:Math.round(allIn) },
     status:'new' };
   var {error}=await sb.from('partner_requests').insert(rec);
   btn.disabled=false; btn.textContent=ot;
   if(error){ err.textContent=error.message; err.classList.add('show'); return; }
   ok.textContent=LANG==='es'?'¡Enviado! Nuestro equipo revisará el trato para financiamiento.':'Sent! Our team will review this deal for financing.'; ok.classList.add('show');
-  document.getElementById('dAddr').value=''; document.getElementById('dPrice').value=''; document.getElementById('dArv').value=''; dcalc();
+  document.getElementById('dAddr').value=''; document.getElementById('dPrice').value=''; document.getElementById('dArv').value=''; document.getElementById('dPts').value='0'; dcalc();
   await loadMyReqs(); renderAll();
 }
 
