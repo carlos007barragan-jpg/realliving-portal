@@ -429,6 +429,10 @@ document.getElementById('signupBtn').onclick=async()=>{
   const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{name,company,phone},emailRedirectTo:location.origin+location.pathname}});
   btn.disabled=false; btn.textContent=tr('createAccount');
   if(error){ err.textContent=error.message; err.classList.add('show'); return; }
+  if(data.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
+    err.textContent=LANG==='es'?'Ya existe una cuenta con este correo. Inicia sesión abajo.':'An account with this email already exists — please sign in below.';
+    err.classList.add('show'); showLoginView('login'); return;
+  }
   if(data.session){ return; } // auto-confirmed -> onAuthStateChange handles it
   ok.textContent=LANG==='es'?'¡Casi listo! Revisa tu correo para confirmar tu cuenta.':'Almost there! Check your email to confirm your account.'; ok.classList.add('show');
 };
