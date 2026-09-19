@@ -279,7 +279,7 @@ function m(n){ if(n==null||n===''||isNaN(n)) return '—'; return '$'+Math.round
 function dealHtml(r){
   var d=r&&r.details; if(!d||!d.deal) return '';
   var mg=+d.margin||0;
-  return `<div class="dealsum"><span>Buy ${m(d.purchase_price)}</span><span>ARV ${m(d.arv)}</span><span>65% ${m(d.arv65)}</span><span>All-in ${m(d.all_in)}</span><span class="${mg>=0?'mg-pos':'mg-neg'}">Margin ${m(d.margin)}</span>${d.broker_points_pct?`<span>Pts ${d.broker_points_pct}%</span>`:''}</div>`;
+  var rb=+d.rehab_budget; return `<div class="dealsum"><span>Buy ${m(d.purchase_price)}</span><span>ARV ${m(d.arv)}</span><span>Finance ${m(d.arv65||d.financing_available)}</span><span class="${(!isNaN(rb)&&rb>=0)?'mg-pos':'mg-neg'}">Rehab ${m(d.rehab_budget)}</span></div>`;
 }
 function ago(d){
   if(!d) return '';
