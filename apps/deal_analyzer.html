@@ -483,6 +483,8 @@ function syncScopeLive(idx){
     const r=scope[idx];
     const ltEl=e('lt-'+idx);
     if(ltEl&&r){const lt=(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0);ltEl.textContent='$'+Math.round(lt).toLocaleString();}
+    const ltbEl=e('ltb-'+idx);
+    if(ltbEl&&r){const ltb=(parseFloat(r.qty)||0)*bankCostOf(r);ltbEl.textContent='bank $'+Math.round(ltb).toLocaleString();}
   }
   const sowTot=scopeTotal();
   const rh=Math.max(0,currentDeal.arv*(currentDeal.ltv/100)-currentDeal.purchase);
@@ -491,6 +493,9 @@ function syncScopeLive(idx){
   const totEl=e('sow-total');if(totEl)totEl.textContent=fmt(sowTot);
   const bt=bankTotal();const be=e('sow-bank');if(be)be.textContent=fmt(bt);
   const ue=e('sow-unreal');if(ue)ue.textContent=fmt(bt-sowTot);
+  const fr=e('sow-foot-real');if(fr)fr.textContent=fmt(sowTot);
+  const fb=e('sow-foot-bank');if(fb)fb.textContent=fmt(bt);
+  const fd=e('sow-foot-diff');if(fd)fd.textContent=fmt(bt-sowTot);
   const hbEl=e('sow-hb');if(hbEl)hbEl.textContent=fmt(rh);
   const badge=e('sow-badge');
   if(badge){
@@ -947,12 +952,16 @@ function renderScopeSection(wrap){
     // Bank cost — what you submit to the bank for the holdback (defaults to real cost)
     const bTd=document.createElement('td');const bInp=document.createElement('input');bInp.type='text';bInp.inputMode='decimal';bInp.value=(row.costBank===0||row.costBank==null||row.costBank==='')?'':row.costBank;bInp.placeholder=(row.cost?String(row.cost):'0');bInp.style.textAlign='right';bInp.oninput=ev=>{const raw=ev.target.value.replace(/[^0-9.]/g,'');scope[idx].costBank=raw===''?'':(parseFloat(raw)||0);syncScopeLive(idx);};bTd.appendChild(bInp);tr.appendChild(bTd);
     // Line total
-    const ltTd=document.createElement('td');const lt=(parseFloat(row.qty)||0)*(parseFloat(row.cost)||0);ltTd.innerHTML='<div id="lt-'+idx+'" style="background:var(--gl);border-radius:4px;padding:4px 7px;font-size:.77rem;font-weight:500;text-align:right;color:var(--gd)">$'+Math.round(lt).toLocaleString()+'</div>';tr.appendChild(ltTd);
+    const ltTd=document.createElement('td');const lt=(parseFloat(row.qty)||0)*(parseFloat(row.cost)||0);const ltb=(parseFloat(row.qty)||0)*bankCostOf(row);ltTd.innerHTML='<div id="lt-'+idx+'" style="background:var(--gl);border-radius:4px;padding:3px 7px;font-size:.75rem;font-weight:500;text-align:right;color:var(--gd)">$'+Math.round(lt).toLocaleString()+'</div><div id="ltb-'+idx+'" style="text-align:right;font-size:.62rem;color:var(--blue);margin-top:2px">bank $'+Math.round(ltb).toLocaleString()+'</div>';tr.appendChild(ltTd);
     // Delete
     const delTd=document.createElement('td');const delBtn=document.createElement('button');delBtn.textContent='×';delBtn.style.cssText='background:var(--redl);color:var(--red);border:none;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:.9rem;font-family:\'DM Sans\',sans-serif';delBtn.onclick=()=>{scope.splice(idx,1);syncScope();};delTd.appendChild(delBtn);tr.appendChild(delTd);
     tbody.appendChild(tr);
   });
-  tbl.appendChild(tbody);card.appendChild(tbl);
+  tbl.appendChild(tbody);
+  const tfoot=document.createElement('tfoot');
+  tfoot.innerHTML=`<tr style="border-top:2px solid var(--bd)"><td></td><td></td><td style="text-align:right;font-size:.7rem;color:var(--gray);font-weight:600;padding-top:7px">TOTALS &rarr;</td><td></td><td></td><td id="sow-foot-real" style="text-align:right;font-weight:700;color:var(--gold);padding-top:7px">${fmt(scopeTotal())}</td><td id="sow-foot-bank" style="text-align:right;font-weight:700;color:var(--blue);padding-top:7px">${fmt(bankTotal())}</td><td id="sow-foot-diff" title="Bank minus Real = unrealized profit" style="text-align:right;font-weight:700;color:var(--green);padding-top:7px">${fmt(bankTotal()-scopeTotal())}</td><td></td></tr>`;
+  tbl.appendChild(tfoot);
+  card.appendChild(tbl);
   if(scope.length===0){
     const empty=document.createElement('div');empty.style.cssText='text-align:center;padding:18px 12px;color:var(--gray);font-size:.8rem;background:var(--lg);border-radius:8px;margin-bottom:8px';
     empty.innerHTML='No line items yet. Add materials and labor below to build this deal\'s rehab budget.';
