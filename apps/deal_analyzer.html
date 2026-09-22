@@ -470,6 +470,8 @@ function calcDeal(d,h){
 
 // ── SCOPE TOTAL ────────────────────────────────────────────────────
 function scopeTotal(){return scope.reduce((s,r)=>s+(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0),0);}
+function bankCostOf(r){return (r.costBank===''||r.costBank==null)?(parseFloat(r.cost)||0):(parseFloat(r.costBank)||0);}
+function bankTotal(){return scope.reduce((s,r)=>s+(parseFloat(r.qty)||0)*bankCostOf(r),0);}
 function laborTotal(){return scope.reduce((s,r)=>s+(r.type==='labor'?(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0):0),0);}
 function materialTotal(){return scope.reduce((s,r)=>s+(r.type!=='labor'?(parseFloat(r.qty)||0)*(parseFloat(r.cost)||0):0),0);}
 function syncScope(){currentDeal.rehabAct=Math.round(scopeTotal());renderEditor();}
@@ -487,6 +489,8 @@ function syncScopeLive(idx){
   const over=sowTot-rh;
   // Scope total + holdback badge
   const totEl=e('sow-total');if(totEl)totEl.textContent=fmt(sowTot);
+  const bt=bankTotal();const be=e('sow-bank');if(be)be.textContent=fmt(bt);
+  const ue=e('sow-unreal');if(ue)ue.textContent=fmt(bt-sowTot);
   const hbEl=e('sow-hb');if(hbEl)hbEl.textContent=fmt(rh);
   const badge=e('sow-badge');
   if(badge){
@@ -916,11 +920,11 @@ function renderScopeSection(wrap){
   const over=sowTot-rh;
   const card=document.createElement('div');card.className='card';
   const hdr=document.createElement('div');hdr.style.cssText='display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px';
-  hdr.innerHTML=`<div><div class="ct" style="margin-bottom:2px;border:none;padding:0">Scope of Work — Rehab Budget Builder</div><div style="font-size:.72rem;color:var(--gray)">Line item totals auto-populate the rehab budget. Holdback: <span id="sow-hb">${fmt(rh)}</span></div></div><div style="text-align:right"><div style="font-size:.62rem;color:var(--gray)">Scope total</div><div id="sow-total" style="font-size:1.4rem;font-weight:500;color:var(--gold)">${fmt(sowTot)}</div><div id="sow-badge" style="font-size:.7rem;padding:2px 8px;border-radius:4px;display:inline-block;margin-top:2px;background:${over>0?'var(--redl)':'var(--greenl)'};color:${over>0?'var(--red)':'var(--green)'}">${over>0?fmt(over)+' over holdback':'Within holdback'}</div></div>`;
+  hdr.innerHTML=`<div><div class="ct" style="margin-bottom:2px;border:none;padding:0">Scope of Work — Bank vs. Real</div><div style="font-size:.72rem;color:var(--gray);max-width:360px;line-height:1.5">Bank $ is what you submit for the holdback; Real $ is your true cost. The gap is unrealized profit. Holdback: <span id="sow-hb">${fmt(rh)}</span></div></div><div style="display:flex;gap:16px;text-align:right"><div><div style="font-size:.56rem;color:var(--gray);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Bank scope</div><div id="sow-bank" style="font-size:1.2rem;font-weight:600;color:var(--blue)">${fmt(bankTotal())}</div></div><div><div style="font-size:.56rem;color:var(--gray);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Real cost</div><div id="sow-total" style="font-size:1.2rem;font-weight:600;color:var(--gold)">${fmt(sowTot)}</div></div><div><div style="font-size:.56rem;color:var(--gray);text-transform:uppercase;letter-spacing:.05em;font-weight:600">Unrealized profit</div><div id="sow-unreal" style="font-size:1.2rem;font-weight:700;color:var(--green)">${fmt(bankTotal()-sowTot)}</div></div></div>`;
   card.appendChild(hdr);
   // Table
   const tbl=document.createElement('table');tbl.className='sow-tbl';tbl.style.cssText='margin-bottom:8px';
-  tbl.innerHTML='<thead><tr><th style="width:120px">Category</th><th style="width:88px">Type</th><th>Description</th><th style="width:50px">Qty</th><th style="width:50px">Unit</th><th style="width:80px">Cost</th><th style="width:78px">Line total</th><th style="width:28px"></th></tr></thead>';
+  tbl.innerHTML='<thead><tr><th style="width:104px">Category</th><th style="width:74px">Type</th><th>Description</th><th style="width:42px">Qty</th><th style="width:42px">Unit</th><th style="width:72px">Real $</th><th style="width:72px">Bank $</th><th style="width:74px">Line total</th><th style="width:24px"></th></tr></thead>';
   const tbody=document.createElement('tbody');
   scope.forEach((row,idx)=>{
     const tr=document.createElement('tr');
@@ -940,6 +944,8 @@ function renderScopeSection(wrap){
     const uTd=document.createElement('td');const uSel=document.createElement('select');['LS','SF','LF','EA','HR'].forEach(u=>{const o=document.createElement('option');o.value=u;o.textContent=u;if(u===row.unit)o.selected=true;uSel.appendChild(o);});uSel.onchange=ev=>scope[idx].unit=ev.target.value;uTd.appendChild(uSel);tr.appendChild(uTd);
     // Cost
     const cTd=document.createElement('td');const cInp=document.createElement('input');cInp.type='text';cInp.inputMode='decimal';cInp.value=(row.cost===0||row.cost==null||row.cost==='')?'':row.cost;cInp.placeholder='0';cInp.style.textAlign='right';cInp.oninput=ev=>{const raw=ev.target.value.replace(/[^0-9.]/g,'');scope[idx].cost=raw===''?0:parseFloat(raw)||0;syncScopeLive(idx);};cTd.appendChild(cInp);tr.appendChild(cTd);
+    // Bank cost — what you submit to the bank for the holdback (defaults to real cost)
+    const bTd=document.createElement('td');const bInp=document.createElement('input');bInp.type='text';bInp.inputMode='decimal';bInp.value=(row.costBank===0||row.costBank==null||row.costBank==='')?'':row.costBank;bInp.placeholder=(row.cost?String(row.cost):'0');bInp.style.textAlign='right';bInp.oninput=ev=>{const raw=ev.target.value.replace(/[^0-9.]/g,'');scope[idx].costBank=raw===''?'':(parseFloat(raw)||0);syncScopeLive(idx);};bTd.appendChild(bInp);tr.appendChild(bTd);
     // Line total
     const ltTd=document.createElement('td');const lt=(parseFloat(row.qty)||0)*(parseFloat(row.cost)||0);ltTd.innerHTML='<div id="lt-'+idx+'" style="background:var(--gl);border-radius:4px;padding:4px 7px;font-size:.77rem;font-weight:500;text-align:right;color:var(--gd)">$'+Math.round(lt).toLocaleString()+'</div>';tr.appendChild(ltTd);
     // Delete
@@ -1023,10 +1029,10 @@ function buildClientSheet(d){
   }).join('');
   // Scope section
   if(d.scope&&d.scope.length>0){
-    const stot=d.scope.reduce((s,r)=>s+(r.qty||0)*(r.cost||0),0);
+    const stot=d.scope.reduce((s,r)=>s+(r.qty||0)*bankCostOf(r),0);
     e('ts-sow-sec').style.display='block';
     const sb=e('ts-sow-body');sb.innerHTML='';
-    const cats={};d.scope.forEach(r=>{const t=(r.qty||0)*(r.cost||0);if(t>0)cats[r.cat]=(cats[r.cat]||0)+t;});
+    const cats={};d.scope.forEach(r=>{const t=(r.qty||0)*bankCostOf(r);if(t>0)cats[r.cat]=(cats[r.cat]||0)+t;});
     Object.keys(cats).sort((a,b)=>cats[b]-cats[a]).forEach(k=>{
       const r=document.createElement('div');r.className='tr';r.innerHTML=`<span class="tl">${k}</span><span class="tv">$${Math.round(cats[k]).toLocaleString()} <span style="font-size:.65rem;color:var(--gray)">(${Math.round(cats[k]/stot*100)}%)</span></span>`;sb.appendChild(r);
     });
