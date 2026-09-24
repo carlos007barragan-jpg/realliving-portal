@@ -395,6 +395,25 @@ tr:hover .rowacts{display:inline-flex}
 .ctchip.on{background:var(--gold2);border-color:var(--gold2);color:#1b1b1b;font-weight:600}
 select.tfilter{padding:7px 9px}
 </style>
+<style>
+.dialer{position:fixed;right:20px;bottom:20px;z-index:400;width:296px;background:#14172A;color:#F1E6C8;border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.42);padding:16px 18px;font-size:14px}
+.dialer .dl-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.dialer .dl-name{font-weight:600;font-size:16px;color:#fff}
+.dialer .dl-num{font-size:12.5px;color:#9AA3B2;margin-top:1px}
+.dialer .dl-status{font-size:11.5px;color:#D8B65A;font-weight:700;text-align:right;white-space:nowrap}
+.dialer .dl-timer{font-size:23px;font-variant-numeric:tabular-nums;text-align:center;margin:8px 0 4px;letter-spacing:1px;color:#fff}
+.dialer .dl-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0}
+.dialer .dl-keys button{background:#232741;border:none;color:#fff;border-radius:9px;padding:11px 0;font-size:16px;cursor:pointer}
+.dialer .dl-keys button:hover{background:#2F3556}
+.dialer .dl-actions{display:flex;gap:7px;margin-top:10px}
+.dialer .dl-actions button{flex:1;border:none;border-radius:10px;padding:10px 4px;font-size:12.5px;font-weight:600;cursor:pointer;background:#232741;color:#fff}
+.dialer .dl-actions button.on{background:#B08A36}
+.dialer .dl-actions button.danger{background:#C0392B}
+.dialer .dl-inc{display:flex;gap:8px;margin-top:12px}
+.dialer .dl-inc button{flex:1;border:none;border-radius:11px;padding:13px 0;font-weight:700;font-size:14px;cursor:pointer}
+.dialer .dl-inc .ans{background:#2E9E5B;color:#fff}
+.dialer .dl-inc .dec{background:#C0392B;color:#fff}
+</style>
 </head>
 <body>
 
@@ -443,6 +462,7 @@ select.tfilter{padding:7px 9px}
 <div id="tip"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2.11.1/dist/twilio.min.js"></script>
 <script>
 /* ================= BACKEND CONFIG =================
    Paste your Supabase project's URL and anon key below
@@ -869,7 +889,7 @@ function attentionItems(){
     const c=t.clientId?C(t.clientId):null;
     items.push({sev:'rd',aid:t.agentId,t:'Missed call — '+(c?esc(c.name):esc(t.from||'unknown number')),
       s:'Rang '+fdate(t.ts)+' · no answer, no callback yet',
-      act:c?'Call back':'View log',fn:c?"mCall('"+t.clientId+"')":"go('comms')"});
+      act:c?'Call back':'View log',fn:c?"browserCall('"+t.clientId+"')":"go('comms')"});
   });
   return items.sort((a,b)=>w[a.sev]-w[b.sev]);
 }
@@ -1181,7 +1201,7 @@ function enter(){
   document.getElementById('app').classList.add('on');
   renderWho();
   page='dash';pipeSel=myPipes()[0]||null;
-  renderNav();go('dash');startRingWatch();
+  renderNav();go('dash');startRingWatch();initVoice();
 }
 function go(k,arg){
   document.body.classList.remove('side-open');
@@ -2115,7 +2135,7 @@ function vClients(){
       const lastTxt=last?(days===0?'Today':days===1?'Yesterday':days+' days ago'):'never';
       return '<tr class="rowlink" onclick="go(\'client\',\''+c.id+'\')">'+
       '<td><div style="display:flex;align-items:center;gap:11px"><span class="avx">'+esc(c.name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase())+'</span>'+
-      '<span class="rowacts"><button class="btn ghost small" title="Call" onclick="event.stopPropagation();mCall(\''+c.id+'\')">📞</button><button class="btn ghost small" title="Text" onclick="event.stopPropagation();mSendText(\''+c.id+'\')">💬</button></span>'+
+      '<span class="rowacts"><button class="btn ghost small" title="Call" onclick="event.stopPropagation();browserCall(\''+c.id+'\')">📞</button><button class="btn ghost small" title="Text" onclick="event.stopPropagation();mSendText(\''+c.id+'\')">💬</button></span>'+
       '<span>'+esc(c.name)+'<small style="display:block;color:var(--mut);font-size:11.5px">'+esc(c.email||'')+'</small></span></div></td>'+
       '<td class="mut">'+esc(c.phone)+'</td><td class="mut">'+esc(c.source)+'</td><td>'+(ctypeBadges(c)||'<span class="mut">&mdash;</span>')+'</td>'+
       '<td style="font-size:12.5px;color:'+(isDormant(c)?'var(--mut)':((days===null||days>=30)?'var(--red)':'var(--mut)'))+'">'+(isDormant(c)?'dormant':lastTxt)+'</td>'+
@@ -2170,7 +2190,7 @@ function vClient(id){
   h+='<div class="prof-head"><div class="avatar">'+esc(initials)+'</div><div style="flex:1;min-width:220px"><h1>'+esc(c.name)+'</h1>'+
      '<div class="meta" style="margin-top:5px">'+ctypeBadges(c)+(c.pastClient?'<span class="tag gr">Past client — has bought from us</span> ':'')+(c.auditNeeded?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">Needs audit — imported deal parked here</span> ':(isDormant(c)?'<span class="tag" style="border-color:var(--amber);color:var(--amber)">Dormant — not being worked</span> ':''))+(c.archived?'<span class="tag" style="border-color:var(--mut);color:var(--mut)">Archived in previous CRM</span> ':'')+'<span class="tag">'+esc(c.source)+'</span> '+bizs.map(b=>'<span class="tag" style="background:'+BIZCOLOR[b]+'18;border-color:'+BIZCOLOR[b]+'55;color:'+BIZCOLOR[b]+'">'+BIZ[b]+'</span>').join(' ')+
      (open.length?' <span class="tag gr">'+open.length+' active deal'+(open.length===1?'':'s')+'</span>':'')+'</div></div>'+
-     '<button class="btn ghost small" onclick="mCall(\''+c.id+'\')">Call</button>'+
+     '<button class="btn ghost small" onclick="browserCall(\''+c.id+'\')">Call</button>'+
      '<button class="btn ghost small" onclick="mSendText(\''+c.id+'\')">Text</button>'+
      (c.email?'<button class="btn ghost small" onclick="mSendEmail(\''+c.id+'\')">Email</button>':'')+
      '<button class="btn ghost small" onclick="mAddAppt(\''+c.id+'\')">+ Appointment</button>'+
@@ -2849,7 +2869,7 @@ function vSession(){
   modal('<h2>Call session — '+(csI+1)+' of '+csQ.length+'</h2>'+
   '<div class="card" style="padding:14px 16px;margin-bottom:12px"><b style="font-family:var(--disp);font-size:19px">'+esc(c.name)+'</b>'+
   '<div class="mut" style="font-size:13px;margin-top:4px">'+esc(c.phone)+' · '+esc(c.source)+(ds.length?' · '+PIPES[ds[0].pipe].name+' — '+PIPES[ds[0].pipe].stages[ds[0].stage]:' · no active deal')+'</div></div>'+
-  '<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn small" onclick="closeAll();mCall(\''+c.id+'\')">Call via Twilio</button>'+
+  '<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn small" onclick="closeAll();browserCall(\''+c.id+'\')">Call in CRM</button>'+
   '<a class="btn ghost small" style="text-decoration:none" href="tel:'+esc(c.phone.replace(/[^\d+]/g,''))+'">Dial on this device</a></div>'+
   '<label>Note</label><input id="cs-note" placeholder="What happened?">'+
   '<label>Outcome</label><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">'+
@@ -4276,6 +4296,91 @@ function mTranscript(tid){
   (t.rec?'<div style="margin-bottom:10px"><a class="btn ghost small" style="text-decoration:none" href="'+esc(t.rec)+'" target="_blank">▶ Play recording</a></div>':'')+
   '<div class="mut" style="font-size:12.5px;white-space:pre-wrap;max-height:340px;overflow:auto;line-height:1.7">'+esc(t.tx)+'</div>');
 }
+/* ================= BROWSER SOFTPHONE (Twilio Voice SDK) ================= */
+let voiceDevice=null,voiceReady=false,voiceCall=null,voiceIncoming=null,voiceIncCid=null,_vt=null,_vsecs=0,_vmuted=false;
+async function voiceToken(){
+  const {data:{session}}=await sb.auth.getSession(); if(!session)throw new Error('Not signed in');
+  const r=await fetch(SUPABASE_URL+'/functions/v1/voice',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'token'})});
+  const o=await r.json(); if(!r.ok||!o.token)throw new Error(o.error||'Could not start the phone'); return o.token;
+}
+async function initVoice(){
+  if(!CLOUD||!sb||!SEAT_ID||voiceDevice||typeof Twilio==='undefined'||!Twilio.Device)return;
+  try{
+    const token=await voiceToken();
+    voiceDevice=new Twilio.Device(token,{codecPreferences:['opus','pcmu'],logLevel:'error'});
+    voiceDevice.on('registered',()=>{voiceReady=true;});
+    voiceDevice.on('unregistered',()=>{voiceReady=false;});
+    voiceDevice.on('error',e=>{console.warn('[voice]',e&&e.message);});
+    voiceDevice.on('tokenWillExpire',async()=>{try{voiceDevice.updateToken(await voiceToken());}catch(_){}});
+    voiceDevice.on('incoming',call=>{voiceIncoming=call;showIncoming(call);call.on('cancel',()=>{voiceIncoming=null;hideDialer();});call.on('disconnect',endCall);call.on('reject',()=>{voiceIncoming=null;hideDialer();});});
+    await voiceDevice.register();
+  }catch(e){console.warn('[voice init]',e&&e.message);}
+}
+async function ensureVoice(){ if(!voiceDevice)await initVoice(); return !!voiceDevice; }
+function ensureDialer(){
+  if(document.getElementById('dialerWidget'))return;
+  const keys=['1','2','3','4','5','6','7','8','9','*','0','#'].map(k=>'<button onclick="voiceDigit(\''+k+'\')">'+k+'</button>').join('');
+  const d=document.createElement('div');d.id='dialerWidget';d.className='dialer';d.style.display='none';
+  d.innerHTML='<div class="dl-head"><div><div class="dl-name" id="dlName">\u2014</div><div class="dl-num" id="dlNum"></div></div><div class="dl-status" id="dlStatus"></div></div>'+
+    '<div class="dl-timer" id="dlTimer" style="display:none">00:00</div>'+
+    '<div class="dl-keys" id="dlKeys" style="display:none">'+keys+'</div>'+
+    '<div class="dl-actions" id="dlActions"><button id="dlKeypadBtn" onclick="toggleKeys()">\u2328 Keypad</button><button id="dlMuteBtn" onclick="voiceMute()">Mute</button><button class="danger" onclick="voiceHangup()">Hang up</button></div>'+
+    '<div class="dl-inc" id="dlInc" style="display:none"><button class="ans" onclick="voiceAnswer()">Answer</button><button class="dec" onclick="voiceDecline()">Decline</button></div>';
+  document.body.appendChild(d);
+}
+function showDialer(){ensureDialer();document.getElementById('dialerWidget').style.display='block';}
+function hideDialer(){const d=document.getElementById('dialerWidget');if(d)d.style.display='none';stopTimer();}
+function dlSet(name,num,status){ensureDialer();document.getElementById('dlName').textContent=name||'\u2014';document.getElementById('dlNum').textContent=num||'';document.getElementById('dlStatus').textContent=status||'';}
+function setStatus(x){const el=document.getElementById('dlStatus');if(el)el.textContent=x;}
+function startTimer(){stopTimer();_vsecs=0;const t=document.getElementById('dlTimer');if(!t)return;t.style.display='block';t.textContent='00:00';_vt=setInterval(()=>{_vsecs++;const m=String(Math.floor(_vsecs/60)).padStart(2,'0'),s=String(_vsecs%60).padStart(2,'0');t.textContent=m+':'+s;},1000);}
+function stopTimer(){if(_vt){clearInterval(_vt);_vt=null;}}
+function toggleKeys(){const k=document.getElementById('dlKeys');if(k)k.style.display=(k.style.display==='none'?'grid':'none');}
+function _dialMode(){document.getElementById('dlInc').style.display='none';document.getElementById('dlActions').style.display='flex';document.getElementById('dlKeys').style.display='none';}
+async function browserCall(cid){
+  const c=(typeof C==='function')?C(cid):null; if(!c){toast&&toast('Contact not found');return;}
+  if(!c.phone){toast&&toast('No phone number on file');return;}
+  if(!CLOUD||!sb||!SEAT_ID){ if(typeof mLogTouch==='function')mLogTouch(cid,'call'); return; }
+  showDialer();ensureDialer();_dialMode();dlSet(c.name,c.phone,'Connecting\u2026');
+  try{
+    const ok=await ensureVoice();
+    if(!ok||!voiceDevice){setStatus('Phone not ready');toast&&toast('Calling not ready \u2014 reload the CRM');return;}
+    voiceCall=await voiceDevice.connect({params:{To:String(c.phone).replace(/[^\d+]/g,''),clientId:cid}});
+    wireCall(voiceCall);
+  }catch(e){setStatus('Failed');toast&&toast(String(e.message||e));}
+}
+function wireCall(call){
+  if(!call)return;
+  call.on('ringing',()=>setStatus('Ringing\u2026'));
+  call.on('accept',()=>{setStatus('On call');startTimer();});
+  call.on('disconnect',endCall);
+  call.on('cancel',endCall);
+  call.on('error',()=>setStatus('Error'));
+}
+function voiceMute(){if(!voiceCall)return;_vmuted=!_vmuted;try{voiceCall.mute(_vmuted);}catch(_){}const b=document.getElementById('dlMuteBtn');if(b){b.textContent=_vmuted?'Unmute':'Mute';b.classList.toggle('on',_vmuted);}}
+function voiceHangup(){try{if(voiceCall)voiceCall.disconnect();}catch(_){}endCall();}
+function voiceDigit(d){try{if(voiceCall)voiceCall.sendDigits(String(d));}catch(_){}}
+function endCall(){stopTimer();setStatus('Call ended');_vmuted=false;const b=document.getElementById('dlMuteBtn');if(b){b.textContent='Mute';b.classList.remove('on');}voiceCall=null;setTimeout(hideDialer,1200);}
+function showIncoming(call){
+  ensureDialer();showDialer();
+  const from=(call&&call.parameters&&call.parameters.From)||'';
+  const d10=String(from).replace(/\D/g,'').slice(-10);
+  const c=((S&&S.clients)||[]).find(x=>String(x.phone||'').replace(/\D/g,'').slice(-10)===d10);
+  voiceIncCid=c?c.id:null;
+  dlSet(c?c.name:'Incoming call',c?c.phone:(from||'Unknown'),'Incoming\u2026');
+  document.getElementById('dlActions').style.display='none';
+  document.getElementById('dlKeys').style.display='none';
+  document.getElementById('dlInc').style.display='flex';
+}
+function voiceAnswer(){
+  if(!voiceIncoming)return;
+  try{voiceIncoming.accept();}catch(_){}
+  voiceCall=voiceIncoming;voiceIncoming=null;
+  document.getElementById('dlInc').style.display='none';
+  document.getElementById('dlActions').style.display='flex';
+  setStatus('On call');startTimer();wireCall(voiceCall);
+  if(voiceIncCid&&typeof go==='function')go('client',voiceIncCid);
+}
+function voiceDecline(){try{if(voiceIncoming)voiceIncoming.reject();}catch(_){}voiceIncoming=null;hideDialer();}
 /* ---------- incoming call ringing (CRM-first answer) ---------- */
 let _ringTimer=null,_ringIgnored={},_ringShown=null;
 function startRingWatch(){
@@ -4291,6 +4396,7 @@ async function checkRings(){
   }catch(e){}
 }
 function renderRing(r){
+  if(typeof voiceReady!=='undefined'&&voiceReady){const _b=document.getElementById('ringbar');if(_b)_b.remove();return;}
   let bar=document.getElementById('ringbar');
   if(!r){if(bar)bar.remove();_ringShown=null;return}
   if(_ringShown===r.sid)return;
