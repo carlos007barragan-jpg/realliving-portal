@@ -2248,7 +2248,7 @@ function vClient(id){
       let extra='';
       if(tch&&tch.rec)extra+=' <a href="'+esc(tch.rec)+'" target="_blank" style="color:var(--gold2)">▶ recording</a>';
       if(tch&&tch.dur)extra+=' <span class="mut">'+Math.round(tch.dur/60)+' min</span>';
-      if(tch&&tch.tx)extra+=' <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();mTranscript(\''+tch.id+'\')">transcript</span>';
+      if(tch&&(tch.tx||tch.txEn))extra+=' <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();mTranscript(\''+tch.id+'\')">transcript</span>';
       const editable=(k==='note')&&canNote&&(a.by===me.id||me.role==='owner'||me.role==='manager');
       if(k==='note'&&editingNote===a.id){
         return '<li><span class="tico"><svg viewBox="0 0 24 24"><path d="'+TICO[k]+'"/></svg></span><div style="flex:1;min-width:0"><textarea id="note-edit" rows="3" style="width:100%;resize:vertical;min-height:66px;line-height:1.6">'+esc(a.text)+'</textarea><div style="display:flex;gap:8px;margin-top:6px"><button class="btn small" onclick="saveNoteEdit(\''+a.id+'\',\''+c.id+'\')">Save</button><button class="btn ghost small" onclick="cancelNoteEdit(\''+c.id+'\')">Cancel</button></div></div></li>';
@@ -4289,12 +4289,15 @@ async function sendThreadText(cid){
 }
 /* ---------- transcript viewer ---------- */
 function mTranscript(tid){
-  const t=S.touches.find(x=>x.id===tid);if(!t||!t.tx)return;
+  const t=S.touches.find(x=>x.id===tid);if(!t||(!t.tx&&!t.txEn&&!t.rec))return;
   const c=t.clientId?C(t.clientId):null;
-  modal('<h2>Call transcript'+(c?' — '+esc(c.name):'')+'</h2>'+
+  const isForeign=t.txLang&&t.txLang!=='english'&&t.txLang!=='en';
+  const langCap=t.txLang?(t.txLang.charAt(0).toUpperCase()+t.txLang.slice(1)):'';
+  modal('<h2>Call'+(c?' — '+esc(c.name):'')+'</h2>'+
   (t.ai?'<div class="card" style="padding:12px 16px;margin-bottom:12px;border-color:var(--line2)"><div class="eyebrow" style="margin-bottom:4px">AI notes</div><div style="font-size:13.5px;line-height:1.6">'+esc(t.ai)+'</div></div>':'')+
-  (t.rec?'<div style="margin-bottom:10px"><a class="btn ghost small" style="text-decoration:none" href="'+esc(t.rec)+'" target="_blank">▶ Play recording</a></div>':'')+
-  '<div class="mut" style="font-size:12.5px;white-space:pre-wrap;max-height:340px;overflow:auto;line-height:1.7">'+esc(t.tx)+'</div>');
+  (t.rec?'<div style="margin-bottom:14px"><audio controls preload="none" style="width:100%;height:40px" src="'+esc(t.rec)+'"></audio></div>':'')+
+  (t.txEn?'<div class="eyebrow" style="margin-bottom:4px">English translation</div><div class="mut" style="font-size:13px;white-space:pre-wrap;max-height:220px;overflow:auto;line-height:1.7;margin-bottom:14px">'+esc(t.txEn)+'</div>':'')+
+  (t.tx?'<div class="eyebrow" style="margin-bottom:4px">Transcript'+(isForeign?' <span class="mut" style="text-transform:none;letter-spacing:0">('+esc(langCap)+')</span>':'')+'</div><div class="mut" style="font-size:12.5px;white-space:pre-wrap;max-height:300px;overflow:auto;line-height:1.7">'+esc(t.tx)+'</div>':(t.rec&&!t.txEn?'<div class="mut" style="font-size:12.5px">Transcript appears here about a minute after the call ends.</div>':'')));
 }
 /* ================= BROWSER SOFTPHONE (Twilio Voice SDK) ================= */
 let voiceDevice=null,voiceReady=false,voiceCall=null,voiceIncoming=null,voiceIncCid=null,_vt=null,_vsecs=0,_vmuted=false;
