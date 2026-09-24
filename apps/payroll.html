@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Payroll — Real Living Business Suite</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--bg:#F8FAFC;--card:#FFF;--ink:#0F172A;--muted:#64748B;--line:#E2E8F0;--brand:#3B5BFF;--radius:16px;
+    --green:#059669;--greenl:#ECFDF5;--red:#DC2626;--redl:#FEF2F2;--amber:#D97706;--amberl:#FFFBEB;
+    --blue:#2563EB;--bluel:#EFF6FF;--purple:#7C3AED;--purplel:#F5F3FF;--rose:#E11D48;--rosel:#FFF1F3;
+    --teal:#0D9488;--teall:#F0FDFA;--slate:#475569;--slatel:#F1F5F9;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);
+    padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0);-webkit-font-smoothing:antialiased}
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:12px}
+  .brand-tile{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#065F46 0%,#059669 100%);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1rem;flex-shrink:0}
+  .topbar h1{font-size:1.02rem;font-weight:700;letter-spacing:-.01em}
+  .topbar .sub{font-size:.72rem;color:var(--muted);font-weight:500}
+  .tb-spacer{flex:1}
+  .btn{border:none;border-radius:10px;padding:9px 15px;font-size:.85rem;font-weight:600;cursor:pointer;
+    font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap}
+  .btn-brand{background:var(--brand);color:#fff}.btn-brand:hover{filter:brightness(1.07)}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}.btn-ghost:hover{background:var(--bg);color:var(--ink)}
+  .btn-white{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn-white:hover{background:var(--bg)}
+  .btn-sm{padding:6px 11px;font-size:.78rem}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:13px;margin-bottom:18px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .kpi .lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .kpi .val{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-top:5px}
+  .kpi .val.g{color:var(--green)}
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:18px}
+  .chip{border:1px solid var(--line);background:var(--card);border-radius:11px;padding:9px 13px;cursor:pointer;
+    display:flex;flex-direction:column;gap:1px;min-width:118px;transition:.15s}
+  .chip:hover{border-color:var(--brand);transform:translateY(-1px)}
+  .chip.on{border-color:var(--brand);box-shadow:0 0 0 2px rgba(59,91,255,.15)}
+  .chip .ct{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .chip .cv{font-size:1.05rem;font-weight:700;color:var(--ink)}
+  .chip .cn{font-size:.63rem;color:var(--muted)}
+  .toolbar{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-bottom:14px}
+  input,select{font-family:inherit;font-size:.86rem;color:var(--ink);background:#fff;border:1px solid var(--line);
+    border-radius:10px;padding:9px 12px;outline:none}
+  input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(59,91,255,.12)}
+  .search{flex:1;min-width:180px}
+  .card-tbl{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  thead th{text-align:left;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;
+    font-weight:700;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--bg)}
+  thead th.r,tbody td.r{text-align:right}
+  tbody td{padding:13px 16px;border-bottom:1px solid var(--line);font-size:.87rem;vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--bg)}
+  .payee{font-weight:600}
+  .amt{font-weight:700;font-variant-numeric:tabular-nums}
+  .badge{display:inline-block;font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:capitalize}
+  .b-labor{background:var(--bluel);color:var(--blue)}
+  .b-salesperson{background:var(--purplel);color:var(--purple)}
+  .b-referral{background:var(--rosel);color:var(--rose)}
+  .b-wholesaler{background:var(--amberl);color:var(--amber)}
+  .b-client{background:var(--teall);color:var(--teal)}
+  .b-other{background:var(--slatel);color:var(--slate)}
+  .rowact{display:flex;gap:6px;justify-content:flex-end}
+  .iact{width:28px;height:28px;border-radius:7px;border:1px solid var(--line);background:#fff;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;font-size:.85rem;color:var(--muted)}
+  .iact:hover{border-color:var(--brand);color:var(--brand)}
+  .iact.del:hover{border-color:var(--red);color:var(--red)}
+  .foot{padding:13px 16px;background:var(--bg);border-top:2px solid var(--line);display:flex;justify-content:space-between;
+    align-items:center;font-weight:700;font-size:.9rem}
+  .empty{text-align:center;padding:48px 20px;color:var(--muted)}
+  .empty .big{font-size:2.4rem;margin-bottom:8px}
+  /* modal */
+  .ov{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);display:none;align-items:center;
+    justify-content:center;z-index:60;padding:18px}
+  .ov.show{display:flex}
+  .modal{background:#fff;border-radius:20px;width:100%;max-width:480px;max-height:92vh;overflow:auto;padding:24px;position:relative;
+    box-shadow:0 24px 60px rgba(0,0,0,.25)}
+  .modal h3{font-size:1.15rem;font-weight:800;letter-spacing:-.01em;margin-bottom:3px}
+  .modal .msub{font-size:.8rem;color:var(--muted);margin-bottom:16px}
+  .mx{position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);
+    background:#fff;cursor:pointer;font-size:1rem;color:var(--muted)}
+  .fg{margin-bottom:13px}
+  .fg label{display:block;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+  .fg input,.fg select,.fg textarea{width:100%}
+  .fg textarea{font-family:inherit;font-size:.86rem;border:1px solid var(--line);border-radius:10px;padding:9px 12px;resize:vertical;min-height:60px}
+  .frow{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .center{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:12px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 20px;
+    border-radius:12px;font-size:.85rem;font-weight:600;z-index:90;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1}
+  @media(max-width:640px){.hide-sm{display:none}.wrap{padding:16px 13px 50px}.kpi .val{font-size:1.4rem}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand-tile">$</div>
+  <div><h1>Payroll</h1><div class="sub">Real Living — payments ledger</div></div>
+  <div class="tb-spacer"></div>
+  <button class="btn btn-ghost btn-sm" onclick="(window.top||window).location.href='../index.html'">← Suite</button>
+</div>
+
+<div id="checking" class="center"><div style="font-size:.9rem;color:var(--muted)">Checking your access…</div></div>
+
+<div id="denied" class="center" style="display:none">
+  <div style="font-size:2.4rem">🔒</div>
+  <div style="font-size:1.05rem;font-weight:700">Payroll is restricted to ownership</div>
+  <div style="font-size:.85rem;color:var(--muted);max-width:340px">This ledger holds company pay data. If you should have access, ask Carlos or Laylani.</div>
+  <button class="btn btn-white" onclick="(window.top||window).location.href='../index.html'">← Back to Suite</button>
+</div>
+
+<div id="app" class="wrap" style="display:none">
+  <div class="kpis" id="kpis"></div>
+  <div class="chips" id="chips"></div>
+  <div class="toolbar">
+    <input class="search" id="q" placeholder="Search payee or note…" oninput="render()">
+    <select id="range" onchange="render()">
+      <option value="all">All time</option>
+      <option value="tm">This month</option>
+      <option value="lm">Last month</option>
+      <option value="ty">This year</option>
+      <option value="ly">Last year</option>
+    </select>
+    <button class="btn btn-white btn-sm" onclick="exportCSV()">⬇ CSV</button>
+    <button class="btn btn-brand" onclick="openAdd()">+ Add Payment</button>
+  </div>
+  <div class="card-tbl">
+    <table>
+      <thead><tr>
+        <th style="width:104px">Date</th><th>Payee</th><th style="width:118px">Category</th>
+        <th class="hide-sm" style="width:130px">Business</th><th class="hide-sm" style="width:110px">Method</th>
+        <th class="r" style="width:110px">Amount</th><th class="r" style="width:78px"></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="foot"><span id="footCount">0 payments</span><span id="footTotal">$0</span></div>
+  </div>
+</div>
+
+<!-- Add / Edit modal -->
+<div class="ov" id="payModal">
+  <div class="modal">
+    <button class="mx" onclick="closeM()">✕</button>
+    <h3 id="mTitle">Add Payment</h3>
+    <div class="msub">Log a payment made by the organization.</div>
+    <div class="fg"><label>Payee — who was paid</label><input id="fPayee" placeholder="e.g. Jose Martinez / ABC Roofing"></div>
+    <div class="frow">
+      <div class="fg"><label>Amount</label><input id="fAmount" inputmode="decimal" placeholder="0.00"></div>
+      <div class="fg"><label>Date paid</label><input id="fDate" type="date"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Category</label><select id="fCat">
+        <option value="labor">Labor</option><option value="salesperson">Salesperson</option>
+        <option value="referral">Referral</option><option value="wholesaler">Wholesaler</option>
+        <option value="client">Client</option><option value="other">Other</option>
+      </select></div>
+      <div class="fg"><label>Business</label><select id="fBiz">
+        <option value="">— none —</option><option>Real Living</option><option>ASAP Lending</option>
+        <option>Real Living H2M</option><option>Owner Finance KC</option><option>We Buy Homes KC</option>
+        <option>BARR Construction</option><option>DreamStays KC</option><option>General / Corporate</option>
+      </select></div>
+    </div>
+    <div class="fg"><label>Method</label><select id="fMethod">
+      <option value="">— unspecified —</option><option>Cash</option><option>Check</option><option>Zelle</option>
+      <option>Bank transfer</option><option>Card</option><option>Payroll / Direct deposit</option><option>Other</option>
+    </select></div>
+    <div class="fg"><label>Note (optional)</label><textarea id="fNote" placeholder="What was this for? Property, invoice #, deal…"></textarea></div>
+    <button class="btn btn-brand" style="width:100%;justify-content:center;margin-top:4px" onclick="savePay()">Save Payment</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL='https://zfflgvjnkcjnbwydurlp.supabase.co';
+const SB_KEY='sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf';
+const COLL='payroll';
+const CATS=[['labor','Labor'],['salesperson','Salesperson'],['referral','Referral'],['wholesaler','Wholesaler'],['client','Client'],['other','Other']];
+let _db=null, ME=null, PAY=[], editId=null, catFilter='';
+
+function client(){
+  if(_db)return _db;
+  try{
+    const embedded=(function(){try{return window.self!==window.top}catch(e){return true}})();
+    _db=window.supabase.createClient(SB_URL,SB_KEY,{auth:{storageKey:'sb-zfflgvjnkcjnbwydurlp-auth-token',persistSession:true,autoRefreshToken:!embedded,detectSessionInUrl:false}});
+  }catch(e){_db=null;}
+  return _db;
+}
+const e=id=>document.getElementById(id);
+const fmt=n=>'$'+Math.round(Number(n)||0).toLocaleString();
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=e('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function catLabel(c){const f=CATS.find(x=>x[0]===c);return f?f[1]:'Other';}
+
+// ── date range ──
+function inRange(dstr,range){
+  if(range==='all'||!dstr)return true;
+  const d=new Date(dstr+'T00:00:00'); if(isNaN(d))return true;
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  if(range==='tm')return d.getFullYear()===y&&d.getMonth()===m;
+  if(range==='lm'){const lm=new Date(y,m-1,1);return d.getFullYear()===lm.getFullYear()&&d.getMonth()===lm.getMonth();}
+  if(range==='ty')return d.getFullYear()===y;
+  if(range==='ly')return d.getFullYear()===y-1;
+  return true;
+}
+
+// ── data ──
+async function pull(){
+  const sb=client(); if(!sb)return;
+  try{
+    const {data:{session}}=await sb.auth.getSession(); if(!session)return;
+    const {data}=await sb.from('records').select('id,data').eq('collection',COLL).eq('deleted',false);
+    PAY=(data||[]).map(r=>r.data).filter(Boolean);
+  }catch(e){console.warn('[payroll pull]',e&&e.message);}
+}
+async function push(rec){
+  const sb=client(); if(!sb)return false;
+  try{
+    const {error}=await sb.from('records').upsert({collection:COLL,id:rec.id,data:rec,updated_at:new Date().toISOString(),deleted:false},{onConflict:'collection,id'});
+    return !error;
+  }catch(e){return false;}
+}
+async function softDelete(id){
+  const sb=client(); if(!sb)return false;
+  try{const {error}=await sb.from('records').update({deleted:true,updated_at:new Date().toISOString()}).eq('collection',COLL).eq('id',id);return !error;}catch(e){return false;}
+}
+
+// ── filtered set ──
+function filtered(){
+  const q=(e('q').value||'').trim().toLowerCase(), range=e('range').value;
+  return PAY.filter(p=>inRange(p.date,range))
+    .filter(p=>!catFilter||p.category===catFilter)
+    .filter(p=>!q||(p.payee||'').toLowerCase().includes(q)||(p.note||'').toLowerCase().includes(q)||(p.business||'').toLowerCase().includes(q))
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+}
+// range-only set (for KPIs + chips, ignoring category/search)
+function rangeSet(){const range=e('range').value;return PAY.filter(p=>inRange(p.date,range));}
+
+// ── render ──
+function render(){
+  const rs=rangeSet();
+  const total=rs.reduce((s,p)=>s+(Number(p.amount)||0),0);
+  const now=new Date();
+  const tmTotal=PAY.filter(p=>inRange(p.date,'tm')).reduce((s,p)=>s+(Number(p.amount)||0),0);
+  // KPIs
+  e('kpis').innerHTML=
+    `<div class="kpi"><div class="lbl">Total paid (${rangeLabel()})</div><div class="val g">${fmt(total)}</div></div>`+
+    `<div class="kpi"><div class="lbl">Payments (${rangeLabel()})</div><div class="val">${rs.length}</div></div>`+
+    `<div class="kpi"><div class="lbl">This month</div><div class="val">${fmt(tmTotal)}</div></div>`;
+  // chips (per category over range)
+  const byCat={};rs.forEach(p=>{byCat[p.category]=(byCat[p.category]||0)+(Number(p.amount)||0);});
+  const cntCat={};rs.forEach(p=>{cntCat[p.category]=(cntCat[p.category]||0)+1;});
+  e('chips').innerHTML=`<div class="chip ${catFilter===''?'on':''}" onclick="setCat('')"><div class="ct" style="color:var(--muted)">All</div><div class="cv">${fmt(total)}</div><div class="cn">${rs.length} payment${rs.length!==1?'s':''}</div></div>`+
+    CATS.map(([c,l])=>`<div class="chip ${catFilter===c?'on':''}" onclick="setCat('${c}')"><div class="ct"><span class="badge b-${c}">${l}</span></div><div class="cv">${fmt(byCat[c]||0)}</div><div class="cn">${cntCat[c]||0} payment${(cntCat[c]||0)!==1?'s':''}</div></div>`).join('');
+  // rows
+  const list=filtered();
+  const ft=list.reduce((s,p)=>s+(Number(p.amount)||0),0);
+  if(list.length===0){
+    e('rows').innerHTML=`<tr><td colspan="7"><div class="empty"><div class="big">💸</div><div style="font-weight:600;color:var(--ink)">No payments here yet</div><div style="font-size:.83rem;margin-top:3px">Add your first payment, or widen the filters.</div></div></td></tr>`;
+  }else{
+    e('rows').innerHTML=list.map(p=>{
+      const d=p.date?new Date(p.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+      return `<tr>
+        <td style="color:var(--muted);white-space:nowrap">${d}</td>
+        <td><div class="payee">${esc(p.payee||'—')}</div>${p.note?`<div style="font-size:.73rem;color:var(--muted);margin-top:1px">${esc(p.note)}</div>`:''}</td>
+        <td><span class="badge b-${p.category||'other'}">${catLabel(p.category)}</span></td>
+        <td class="hide-sm" style="color:var(--muted)">${esc(p.business||'—')}</td>
+        <td class="hide-sm" style="color:var(--muted)">${esc(p.method||'—')}</td>
+        <td class="r amt">${fmt(p.amount)}</td>
+        <td class="r"><div class="rowact"><button class="iact" title="Edit" onclick="openEdit('${p.id}')">✎</button><button class="iact del" title="Delete" onclick="removePay('${p.id}')">🗑</button></div></td>
+      </tr>`;
+    }).join('');
+  }
+  e('footCount').textContent=list.length+' payment'+(list.length!==1?'s':'');
+  e('footTotal').textContent=fmt(ft);
+}
+function rangeLabel(){return {all:'all time',tm:'this month',lm:'last month',ty:'this year',ly:'last year'}[e('range').value]||'';}
+function setCat(c){catFilter=c;render();}
+
+// ── modal ──
+function openAdd(){editId=null;e('mTitle').textContent='Add Payment';e('fPayee').value='';e('fAmount').value='';
+  e('fDate').value=new Date().toISOString().slice(0,10);e('fCat').value='labor';e('fBiz').value='';e('fMethod').value='';e('fNote').value='';
+  e('payModal').classList.add('show');setTimeout(()=>e('fPayee').focus(),50);}
+function openEdit(id){const p=PAY.find(x=>x.id===id);if(!p)return;editId=id;e('mTitle').textContent='Edit Payment';
+  e('fPayee').value=p.payee||'';e('fAmount').value=p.amount||'';e('fDate').value=p.date||'';e('fCat').value=p.category||'other';
+  e('fBiz').value=p.business||'';e('fMethod').value=p.method||'';e('fNote').value=p.note||'';e('payModal').classList.add('show');}
+function closeM(){e('payModal').classList.remove('show');}
+async function savePay(){
+  const payee=e('fPayee').value.trim();
+  const amount=parseFloat((e('fAmount').value||'').replace(/[^0-9.]/g,''))||0;
+  if(!payee){toast('Enter who was paid');return;}
+  if(!amount){toast('Enter an amount');return;}
+  const rec=editId?{...PAY.find(x=>x.id===editId)}:{id:'pay_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),createdAt:new Date().toISOString(),createdBy:ME&&ME.name};
+  rec.payee=payee;rec.amount=amount;rec.date=e('fDate').value||new Date().toISOString().slice(0,10);
+  rec.category=e('fCat').value;rec.business=e('fBiz').value;rec.method=e('fMethod').value;rec.note=e('fNote').value.trim();
+  rec.updatedAt=new Date().toISOString();
+  const ok=await push(rec);
+  if(!ok){toast('Could not save — check connection');return;}
+  const i=PAY.findIndex(x=>x.id===rec.id);if(i>=0)PAY[i]=rec;else PAY.unshift(rec);
+  closeM();render();toast(editId?'Payment updated':'Payment saved');
+}
+async function removePay(id){
+  const p=PAY.find(x=>x.id===id);if(!p)return;
+  if(!confirm('Delete this payment to '+(p.payee||'')+' for '+fmt(p.amount)+'?'))return;
+  const ok=await softDelete(id);if(!ok){toast('Could not delete');return;}
+  PAY=PAY.filter(x=>x.id!==id);render();toast('Deleted');
+}
+
+// ── CSV ──
+function exportCSV(){
+  const list=filtered();
+  const head=['Date','Payee','Category','Business','Method','Amount','Note'];
+  const rows=list.map(p=>[p.date||'',p.payee||'',catLabel(p.category),p.business||'',p.method||'',(Number(p.amount)||0),(p.note||'').replace(/\n/g,' ')]);
+  const csv=[head].concat(rows).map(r=>r.map(c=>{const s=String(c);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='payroll_'+e('range').value+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();a.remove();toast('CSV downloaded');
+}
+
+// ── boot / SSO ──
+(async()=>{
+  const sb=client();
+  if(!sb){e('checking').innerHTML='<div style="color:var(--red)">Could not start — refresh.</div>';return;}
+  let session=null;
+  try{session=(await sb.auth.getSession()).data.session;}catch(x){}
+  if(!session){e('checking').innerHTML='<div style="text-align:center"><div style="font-weight:700;margin-bottom:8px">Please sign in</div><button class="btn btn-brand" onclick="(window.top||window).location.href=\'../index.html\'">Go to Business Suite</button></div>';return;}
+  let prof=null;try{prof=(await sb.from('profiles').select('*').eq('id',session.user.id).single()).data;}catch(x){}
+  const isOwner=prof&&prof.role==='owner';
+  ME={uid:session.user.id,name:(prof&&prof.full_name)||session.user.email,role:prof&&prof.role};
+  if(!isOwner){e('checking').style.display='none';e('denied').style.display='flex';return;}
+  await pull();
+  e('checking').style.display='none';e('app').style.display='block';render();
+})();
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeM();});
+</script>
+</body>
+</html>
