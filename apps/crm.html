@@ -2241,21 +2241,20 @@ function vClient(id){
   h+='<div><div class="card">'+
     '<div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:19px">Activity</h2></div>'+
     (canNote?'<div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-start"><textarea id="note-in" rows="3" style="flex:1;resize:vertical;min-height:66px;line-height:1.6" placeholder="Add a note — calls, texts and stage moves log here automatically…"></textarea><button class="btn small" onclick="addNote(\''+c.id+'\')">Add</button></div>':'')+
-    '<div class="ttabs">'+ttab('all','All')+ttab('sms','Conversation')+ttab('note','Notes')+ttab('touch','Calls & texts')+ttab('deal','Deal moves')+'</div>'+
-    (profTab==='sms'?smsThread(c):
-    '<ul class="tl">'+(shown.length?shown.map(a=>{const k=kindOf(a.text);
+    '<ul class="tl">'+(tl.length?tl.map(a=>{const k=kindOf(a.text);
       const tch=a.id&&a.id.charAt(0)==='a'?S.touches.find(t=>t.id===a.id.slice(1)):null;
-      let extra='';
-      if(tch&&tch.rec)extra+=' <a href="'+esc(tch.rec)+'" target="_blank" style="color:var(--gold2)">▶ recording</a>';
+      let extra=''; let media='';
       if(tch&&tch.dur)extra+=' <span class="mut">'+Math.round(tch.dur/60)+' min</span>';
-      if(tch&&(tch.tx||tch.txEn))extra+=' <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();mTranscript(\''+tch.id+'\')">transcript</span>';
+      if(tch&&tch.rec)media+='<div style="margin-top:8px"><audio controls preload="none" style="width:100%;max-width:460px;height:38px" src="'+esc(tch.rec)+'"></audio></div>';
+      if(tch&&tch.ai)media+='<div style="margin-top:8px;padding:9px 12px;background:var(--panel2);border-radius:10px;font-size:12.5px;line-height:1.55"><b style="font-size:10.5px;letter-spacing:.04em;color:var(--gold2)">AI CALL NOTES</b><br>'+esc(tch.ai)+'</div>';
+      if(tch&&(tch.tx||tch.txEn)){const isES=tch.txLang&&tch.txLang!=='english'&&tch.txLang!=='en';media+='<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--gold2);font-size:12px">Transcript'+(isES?' + English translation':'')+'</summary>';if(tch.txEn)media+='<div style="margin-top:6px"><b style="font-size:10.5px;color:var(--mut)">ENGLISH</b><div style="white-space:pre-wrap;font-size:12.5px;line-height:1.6">'+esc(tch.txEn)+'</div></div>';if(tch.tx)media+='<div style="margin-top:6px"><b style="font-size:10.5px;color:var(--mut)">'+(isES?esc((tch.txLang||'').charAt(0).toUpperCase()+(tch.txLang||'').slice(1)):'TRANSCRIPT')+'</b><div class="mut" style="white-space:pre-wrap;font-size:12px;line-height:1.6">'+esc(tch.tx)+'</div></div>';media+='</details>';}
       const editable=(k==='note')&&canNote&&(a.by===me.id||me.role==='owner'||me.role==='manager');
       if(k==='note'&&editingNote===a.id){
         return '<li><span class="tico"><svg viewBox="0 0 24 24"><path d="'+TICO[k]+'"/></svg></span><div style="flex:1;min-width:0"><textarea id="note-edit" rows="3" style="width:100%;resize:vertical;min-height:66px;line-height:1.6">'+esc(a.text)+'</textarea><div style="display:flex;gap:8px;margin-top:6px"><button class="btn small" onclick="saveNoteEdit(\''+a.id+'\',\''+c.id+'\')">Save</button><button class="btn ghost small" onclick="cancelNoteEdit(\''+c.id+'\')">Cancel</button></div></div></li>';
       }
       const noteBody=(k==='note')?'<span style="white-space:pre-wrap">'+esc(a.text)+'</span>':esc(a.text);
       const editLink=editable?' <span class="mut" style="cursor:pointer;text-decoration:underline" onclick="editNote(\''+a.id+'\',\''+c.id+'\')">edit</span>':'';
-      return '<li><span class="tico"><svg viewBox="0 0 24 24"><path d="'+TICO[k]+'"/></svg></span>'+noteBody+extra+'<small>'+esc(U(a.by).name)+' · '+fdate(a.ts)+(a.edited?' · edited':'')+editLink+'</small></li>'}).join(''):'<div class="empty">Nothing logged in this CRM yet — start with a call or a note.</div>')+'</ul>')+'</div>';
+      return '<li><span class="tico"><svg viewBox="0 0 24 24"><path d="'+TICO[k]+'"/></svg></span>'+noteBody+extra+'<small>'+esc(U(a.by).name)+' · '+fdate(a.ts)+(a.edited?' · edited':'')+editLink+'</small>'+media+'</li>'}).join(''):'<div class="empty">Nothing logged in this CRM yet — start with a call or a note.</div>')+'</ul>'+'</div>';
   /* ---- what this client has actually bought from us ---- */
   if(won.length||lost.length){
     h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:17px">Closed files</h2><span class="cnt">'+won.length+' sold'+(lost.length?' · '+lost.length+' closed out':'')+'</span></div>'+
