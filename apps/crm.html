@@ -3466,13 +3466,16 @@ function projStats(pid){
   return {p,ds,ps,rev,acq,paid,labor,cost,profit:rev-cost};
 }
 function vFinProjects(){
-  const rows=(S.properties||[]).map(p=>projStats(p.id)).filter(s=>finBiz==='ALL'||s.ps.length||s.ds.length||true);
-  let h='<div class="mut" style="font-size:12.5px;margin:-4px 0 12px">Each property is a project. Revenue is from its closed deals; cost is acquisition plus every payment tagged to it. Click a project for the per-person labor breakdown.</div>';
-  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Project</th><th style="text-align:right">Acquisition</th><th style="text-align:right">Labor + vendor</th><th style="text-align:right">Total cost</th><th style="text-align:right">Revenue</th><th style="text-align:right">Profit</th></tr>'+
-    rows.map(s=>'<tr class="rowlink" onclick="finProj=\''+s.p.id+'\';finTab=\'projects\';go(\'finance\')"><td>'+esc(s.p.address)+'</td>'+
-      '<td class="money" style="text-align:right">'+money0(s.acq)+'</td>'+
+  /* only properties with actual money moving — payments logged or revenue booked.
+     146 inventory rows with all zeros is noise; a project is something you're spending on. */
+  const rows=(S.properties||[]).map(p=>projStats(p.id)).filter(s=>s.ps.length||s.rev>0).sort((a,b)=>b.paid-a.paid);
+  let h='<div class="mut" style="font-size:12.5px;margin:-4px 0 12px">Each property is a project. <b>Cost to run</b> is every payment tagged to it (labor + vendor + materials). Revenue is the deal fees booked on it so far — record the resale as a dispo deal for full flip profit. Click a project for the per-person breakdown.</div>';
+  if(!rows.length)return h+'<div class="card"><div class="empty">No project spending yet. Record a payment and tag it to a property.</div></div>';
+  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Project</th><th style="text-align:right">Labor</th><th style="text-align:right">Cost to run</th><th style="text-align:right">Acquisition</th><th style="text-align:right">Revenue</th><th style="text-align:right">Net</th></tr>'+
+    rows.map(s=>'<tr class="rowlink" onclick="finProj=\''+s.p.id+'\';finTab=\'projects\';go(\'finance\')"><td>'+esc(s.p.address.split(',')[0])+'</td>'+
+      '<td class="money" style="text-align:right">'+money0(s.labor)+'</td>'+
       '<td class="money" style="text-align:right">'+money0(s.paid)+'</td>'+
-      '<td class="money" style="text-align:right">'+money0(s.cost)+'</td>'+
+      '<td class="money" style="text-align:right">'+(s.acq?money0(s.acq):'—')+'</td>'+
       '<td class="money" style="text-align:right">'+money0(s.rev)+'</td>'+
       '<td class="money" style="text-align:right;color:'+(s.profit>=0?'var(--green)':'var(--red)')+'">'+money0(s.profit)+'</td></tr>').join('')+
     '</table></div>';
@@ -3484,10 +3487,10 @@ function vFinProject(pid){
   h+='<div class="sect-head" style="margin-top:6px"><h2>'+esc(s.p.address)+'</h2><span class="cnt">cost to run this project</span>'+
      '<span class="spacer"></span><button class="btn small" onclick="mAddPayment(null,\''+pid+'\')">+ Record payment</button></div>';
   h+='<div class="grid cards4">'+
-    '<div class="card"><div class="eyebrow">Revenue</div><div class="big">'+money0(s.rev)+'</div><div class="sub">closed deals on this property</div></div>'+
-    '<div class="card"><div class="eyebrow">Total cost</div><div class="big">'+money0(s.cost)+'</div><div class="sub">acq '+money0(s.acq)+' + paid '+money0(s.paid)+'</div></div>'+
+    '<div class="card"><div class="eyebrow">Cost to run</div><div class="big">'+money0(s.paid)+'</div><div class="sub">labor + vendor + materials</div></div>'+
     '<div class="card"><div class="eyebrow">Labor</div><div class="big">'+money0(s.labor)+'</div><div class="sub">paid to crew</div></div>'+
-    '<div class="card"><div class="eyebrow">Profit</div><div class="big" style="color:'+(s.profit>=0?'var(--green)':'var(--red)')+'">'+money0(s.profit)+'</div><div class="sub">revenue minus total cost</div></div></div>';
+    '<div class="card"><div class="eyebrow">Revenue booked</div><div class="big">'+money0(s.rev)+'</div><div class="sub">deal fees on this property</div></div>'+
+    '<div class="card"><div class="eyebrow">Net</div><div class="big" style="color:'+(s.profit>=0?'var(--green)':'var(--red)')+'">'+money0(s.profit)+'</div><div class="sub">'+(s.acq?'incl. acquisition '+money0(s.acq):'revenue minus cost to run')+'</div></div></div>';
   /* labor paid per individual */
   const byPerson={};s.ps.forEach(x=>{const k=x.payeeName||'—';if(!byPerson[k])byPerson[k]={amt:0,days:0,cat:x.category};byPerson[k].amt+=x.amount||0;byPerson[k].days+=(x.category==='labor'?(x.days||0):0);});
   const personRows=Object.keys(byPerson).sort((a,b)=>byPerson[b].amt-byPerson[a].amt);
