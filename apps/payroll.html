@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Payroll — Real Living Business Suite</title><!-- v2 -->
+<title>Payroll — Real Living Business Suite</title><!-- v3 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{--bg:#F8FAFC;--card:#FFF;--ink:#0F172A;--muted:#64748B;--line:#E2E8F0;--brand:#3B5BFF;--radius:16px;
@@ -150,7 +150,6 @@
       <button class="tab on" id="tab-overview" onclick="setTab('overview')">Overview</button>
       <button class="tab" id="tab-payments" onclick="setTab('payments')">Payments</button>
       <button class="tab" id="tab-projects" onclick="setTab('projects')">Projects</button>
-      <button class="tab" id="tab-income" onclick="setTab('income')">Money In</button>
     </div>
     <select id="range" onchange="render()">
       <option value="ty">This year</option>
@@ -215,23 +214,10 @@ const SB_KEY='sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf';
 const COLL='payroll';
 const CATS=[['labor','Labor'],['vendor','Vendor / Materials'],['salesperson','Salesperson'],['referral','Referral'],['wholesaler','Wholesaler'],['client','Client'],['other','Other']];
 const CAT_COLOR={labor:'#2563EB',vendor:'#0891B2',salesperson:'#7C3AED',referral:'#E11D48',wholesaler:'#D97706',client:'#0D9488',other:'#475569'};
-/* CRM pipelines -> business code + stage names, so we can read revenue out of the CRM */
-const PIPES={
-  asap:{biz:'ASAP',stages:['New Lead','Application','Underwriting','Term Sheet','Approved','Funded']},
-  h2m_acq:{biz:'H2M',stages:['Off-Market Lead','Under Contract','Due Diligence','Closed / Acquired']},
-  h2m_dispo:{biz:'H2M',stages:['In Inventory','Marketed','Buyer Identified','Under Contract','Closed']},
-  h2m_ws:{biz:'H2M',stages:['New Lead','Under Contract','Marketed to Buyers','Buyer Found','Assigned / Closed']},
-  h2m_of:{biz:'H2M',stages:['New Lead','Buyer Pre-Qualified','Property Matched','Terms Agreed','Under Contract','Closed / Servicing']},
-  rl_buy:{biz:'RL',stages:['Lead','Consult','Pre-Approved','Showing','Under Contract','Closed']},
-  rl_list:{biz:'RL',stages:['Lead','Listing Appt','Listed','Under Contract','Closed']},
-  tc:{biz:'TC',stages:['File Opened','Contract Executed','Contingencies','Clear to Close','Closed','Fee Collected']}
-};
-const BIZNAME={ASAP:'ASAP Lending',H2M:'Real Living H2M',RL:'Real Living',TC:'Real Living'};
+/* businesses money can be paid out of (also the Business picker in the modal) */
 const BIZLIST=['Real Living','ASAP Lending','Real Living H2M','Owner Finance KC','We Buy Homes KC','BARR Construction','DreamStays KC','General / Corporate'];
-const INCOME_LABELS={of:'Owner finance',retail:'Retail sales',ws:'Wholesale',lend:'Lending (ASAP)',tc:'Transaction coord.',comm:'RL commissions',other:'Other'};
-const INCOME_COLOR={of:'#059669',retail:'#2563EB',ws:'#E11D48',lend:'#D97706',tc:'#0D9488',comm:'#7C3AED',other:'#475569'};
 
-let _db=null, ME=null, PAY=[], DEALS=[], PROPS=[], CLIENTS=[], tab='overview', projSel=null, catFilter='', editId=null, _q='';
+let _db=null, ME=null, PAY=[], PROPS=[], tab='overview', projSel=null, catFilter='', editId=null, _q='';
 
 function client(){
   if(_db)return _db;
@@ -247,24 +233,9 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 function toast(m){const t=e('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function catLabel(c){const f=CATS.find(x=>x[0]===c);return f?f[1]:'Other';}
 
-/* ---- CRM helpers ---- */
+/* ---- helpers ---- */
 function propById(id){return PROPS.find(p=>p.id===id);}
-function clientById(id){return CLIENTS.find(c=>c.id===id);}
 function propShort(p){return p?((p.address||'').split(',')[0]||'—'):'—';}
-function dealBiz(d){const p=PIPES[d.pipe];return p?p.biz:null;}
-function isWonD(d){const p=PIPES[d.pipe];if(!p)return false;if(d.lost||d.outcome==='lost'||d.outcome==='archived')return false;return d.stage>=p.stages.length-1;}
-function closedD(d){return d.closedAt||d.closeDate||'';}
-function stageName(d){const p=PIPES[d.pipe];return p&&p.stages[d.stage]||'—';}
-function incomeType(d){
-  const t=(d.type||'').toLowerCase(),p=d.pipe;
-  if(p==='h2m_of'||/owner finance|contract for deed|lease option/.test(t))return 'of';
-  if(p==='h2m_ws'||/assignment|double close/.test(t))return 'ws';
-  if(p==='asap')return 'lend';
-  if(p==='tc')return 'tc';
-  if(p==='h2m_dispo'||/retail|cash sale/.test(t))return 'retail';
-  if(p==='rl_buy'||p==='rl_list')return 'comm';
-  return 'other';
-}
 function fdshort(iso){if(!iso)return '—';const d=new Date(iso);if(isNaN(d))return '—';return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
 
 /* ---- date range ---- */
@@ -286,7 +257,7 @@ async function pull(){
   const sb=client(); if(!sb)return;
   try{
     const {data:{session}}=await sb.auth.getSession(); if(!session)return;
-    const cols=['payroll','deals','properties','clients'];
+    const cols=['payroll','properties'];
     let rows=[]; const PAGE=1000; let from=0;
     for(;;){
       const {data,error}=await sb.from('records').select('collection,id,data').in('collection',cols).eq('deleted',false)
@@ -296,9 +267,9 @@ async function pull(){
       if(!data||data.length<PAGE)break;
       from+=PAGE;
     }
-    const by={payroll:[],deals:[],properties:[],clients:[]};
+    const by={payroll:[],properties:[]};
     rows.forEach(r=>{if(by[r.collection])by[r.collection].push(r.data);});
-    PAY=by.payroll.filter(Boolean);DEALS=by.deals.filter(Boolean);PROPS=by.properties.filter(Boolean);CLIENTS=by.clients.filter(Boolean);
+    PAY=by.payroll.filter(Boolean);PROPS=by.properties.filter(Boolean);
   }catch(e){console.warn('[payroll pull]',e&&e.message);}
 }
 async function push(rec){
@@ -311,13 +282,11 @@ async function softDelete(id){
 }
 
 /* ---- computed sets ---- */
-function wonInRange(){const r=curRange();return DEALS.filter(d=>isWonD(d)&&d.pipe!=='h2m_acq'&&inRange(closedD(d),r));}
 function payInRange(){const r=curRange();return PAY.filter(p=>inRange(p.date,r));}
-function revenueOf(ds){return ds.reduce((a,d)=>a+(Number(d.revenue)||0),0);}
 function expenseOf(ps){return ps.reduce((a,p)=>a+(Number(p.amount)||0),0);}
 
 /* ---- tabs ---- */
-function setTab(t){tab=t;projSel=null;['overview','payments','projects','income'].forEach(x=>{const b=e('tab-'+x);if(b)b.classList.toggle('on',x===t);});render();}
+function setTab(t){tab=t;projSel=null;['overview','payments','projects'].forEach(x=>{const b=e('tab-'+x);if(b)b.classList.toggle('on',x===t);});render();}
 function setCat(c){catFilter=c;render();}
 function openProject(id){projSel=id;window.scrollTo(0,0);render();}
 function render(){
@@ -325,48 +294,33 @@ function render(){
   if(tab==='overview')v.innerHTML=vOverview();
   else if(tab==='payments')v.innerHTML=vPayments();
   else if(tab==='projects')v.innerHTML=projSel?vProject(projSel):vProjects();
-  else if(tab==='income')v.innerHTML=vIncome();
 }
 
 /* ---- shared bits ---- */
 function brk(label,val,tot,color){const pct=tot>0?Math.round(val/tot*100):0;return `<div class="brk"><span class="brk-l"><span class="brk-dot" style="background:${color}"></span>${esc(label)}</span><div class="brk-t"><div class="brk-f" style="width:${pct}%;background:${color}"></div></div><span class="brk-v">${fmt(val)}</span><span class="brk-p">${pct}%</span></div>`;}
-function section(title,cnt,pill,body){return `<div class="sec-h"><h2>${esc(title)}</h2><span class="cnt">${esc(cnt)}</span><span class="spacer"></span><span class="pill">${pill}</span></div>${body}`;}
-function emptyCard(t){return `<div class="card-tbl"><div class="empty">${esc(t)}</div></div>`;}
-function table(headers,rows){
-  return `<div class="card-tbl"><table><thead><tr>`+headers.map((hh,i)=>`<th${i===headers.length-1?' class="r"':''}>${esc(hh)}</th>`).join('')+`</tr></thead><tbody>`+
-   rows.map(r=>`<tr>`+r.map((c,i)=>typeof c==='object'?`<td class="r amt">${c.amt}</td>`:`<td${i===0?' class="payee"':''}>${c}</td>`).join('')+`</tr>`).join('')+`</tbody></table></div>`;
-}
 
-/* ---- Overview (bird's-eye) ---- */
+/* ---- Overview — money paid out only ---- */
 function vOverview(){
-  const ds=wonInRange(), ps=payInRange();
-  const rev=revenueOf(ds), exp=expenseOf(ps), net=rev-exp;
-  const ofActive=DEALS.filter(d=>!d.lost&&d.outcome!=='lost'&&d.outcome!=='archived'&&incomeType(d)==='of'&&(Number(d.budget)||0)>0);
-  const offin=ofActive.reduce((a,d)=>a+(Number(d.budget)||0),0);
+  const ps=payInRange();
+  const exp=expenseOf(ps);
+  const tmTotal=expenseOf(PAY.filter(p=>inRange(p.date,'tm')));
+  const tagged=ps.filter(p=>p.projectId).reduce((a,p)=>a+(Number(p.amount)||0),0);
   let h=`<div class="kpis">
-    <div class="kpi"><div class="lbl">Money in (${rangeLabel()})</div><div class="val g">${fmt(rev)}</div></div>
-    <div class="kpi"><div class="lbl">Money out (${rangeLabel()})</div><div class="val neg">${fmt(exp)}</div></div>
-    <div class="kpi"><div class="lbl">Net</div><div class="val ${net>=0?'pos':'neg'}">${fmt(net)}</div></div>
-    <div class="kpi"><div class="lbl">Owner-finance notes</div><div class="val">${fmt(offin)}</div><div class="muted" style="margin-top:3px">financed · ${ofActive.length} active</div></div>
+    <div class="kpi"><div class="lbl">Paid out (${rangeLabel()})</div><div class="val neg">${fmt(exp)}</div></div>
+    <div class="kpi"><div class="lbl">Payments</div><div class="val">${ps.length}</div></div>
+    <div class="kpi"><div class="lbl">This month</div><div class="val">${fmt(tmTotal)}</div></div>
+    <div class="kpi"><div class="lbl">On projects</div><div class="val">${fmt(tagged)}</div><div class="muted" style="margin-top:3px">tagged to a property</div></div>
   </div>`;
-  const max=Math.max(rev,exp,1);
-  h+=`<div class="card-tbl" style="padding:16px 18px"><div class="finbars">
-    <div class="finbar"><span class="fbl">Money in</span><div class="fbt"><div class="fbf in" style="width:${rev/max*100}%"></div></div><span class="fbv">${fmt(rev)}</span></div>
-    <div class="finbar"><span class="fbl">Money out</span><div class="fbt"><div class="fbf out" style="width:${exp/max*100}%"></div></div><span class="fbv">${fmt(exp)}</span></div>
-  </div></div>`;
-  const biz={};
-  ds.forEach(d=>{const nm=BIZNAME[dealBiz(d)]||'Real Living';biz[nm]=biz[nm]||{rev:0,exp:0};biz[nm].rev+=Number(d.revenue)||0;});
-  ps.forEach(p=>{const nm=p.business||'General / Corporate';biz[nm]=biz[nm]||{rev:0,exp:0};biz[nm].exp+=Number(p.amount)||0;});
-  const order=BIZLIST.filter(b=>biz[b]).concat(Object.keys(biz).filter(b=>BIZLIST.indexOf(b)<0));
-  h+=`<div class="sec-h"><h2>By business</h2><span class="cnt">money in vs out</span></div><div class="card-tbl"><table><thead><tr><th>Business</th><th class="r">Money in</th><th class="r">Money out</th><th class="r">Net</th></tr></thead><tbody>`+
-    (order.length?order.map(b=>{const r=biz[b];const nt=r.rev-r.exp;return `<tr><td class="payee">${esc(b)}</td><td class="r amt">${fmt(r.rev)}</td><td class="r amt">${fmt(r.exp)}</td><td class="r amt ${nt>=0?'pos':'neg'}">${fmt(nt)}</td></tr>`;}).join(''):`<tr><td colspan="4"><div class="empty">Nothing in this range yet.</div></td></tr>`)+
-    `</tbody></table></div>`;
-  const inc={};ds.forEach(d=>{const k=incomeType(d);inc[k]=(inc[k]||0)+(Number(d.revenue)||0);});
+  if(!ps.length){h+=`<div class="card-tbl"><div class="empty"><div class="big">💸</div><div style="font-weight:600;color:var(--ink)">Nothing paid out in this range yet</div><div style="font-size:.83rem;margin-top:3px">Record a payment with “+ Record payment”.</div></div></div>`;return h;}
+  const biz={};ps.forEach(p=>{const nm=p.business||'General / Corporate';biz[nm]=(biz[nm]||0)+(Number(p.amount)||0);});
+  const order=BIZLIST.filter(b=>biz[b]!=null).concat(Object.keys(biz).filter(b=>BIZLIST.indexOf(b)<0));
+  if(order.length){
+    h+=`<div class="sec-h"><h2>Paid out — by business</h2></div><div class="card-tbl"><table><thead><tr><th>Business</th><th class="r">Paid out</th></tr></thead><tbody>`+
+      order.map(b=>`<tr><td class="payee">${esc(b)}</td><td class="r amt">${fmt(biz[b])}</td></tr>`).join('')+`</tbody></table></div>`;
+  }
   const cat={};ps.forEach(p=>{cat[p.category]=(cat[p.category]||0)+(Number(p.amount)||0);});
-  const incRows=Object.keys(inc).sort((a,b)=>inc[b]-inc[a]).map(k=>brk(INCOME_LABELS[k]||k,inc[k],rev,INCOME_COLOR[k]||'#888')).join('')||`<div class="empty" style="padding:22px">No money in for this range.</div>`;
-  const catRows=CATS.map(c=>c[0]).filter(k=>cat[k]).sort((a,b)=>cat[b]-cat[a]).map(k=>brk(catLabel(k),cat[k],exp,CAT_COLOR[k])).join('')||`<div class="empty" style="padding:22px">No money out for this range.</div>`;
-  h+=`<div class="sec-h"><h2>Money in — by source</h2></div><div class="card-tbl">${incRows}</div>`;
-  h+=`<div class="sec-h"><h2>Money out — by category</h2></div><div class="card-tbl">${catRows}</div>`;
+  const catRows=CATS.map(c=>c[0]).filter(k=>cat[k]).sort((a,b)=>cat[b]-cat[a]).map(k=>brk(catLabel(k),cat[k],exp,CAT_COLOR[k])).join('');
+  if(catRows)h+=`<div class="sec-h"><h2>Paid out — by category</h2></div><div class="card-tbl">${catRows}</div>`;
   return h;
 }
 
@@ -412,23 +366,20 @@ function vPayments(){
   return h;
 }
 
-/* ---- Projects ---- */
+/* ---- Projects — what we paid to run each one ---- */
 function projStats(pid){
   const p=propById(pid);
-  const ds=DEALS.filter(d=>isWonD(d)&&d.propertyId===pid);
   const ps=PAY.filter(x=>x.projectId===pid);
-  const rev=ds.reduce((a,d)=>a+(Number(d.revenue)||0),0);
-  const acq=(p&&Number(p.acqPrice))||0;
   const paid=ps.reduce((a,x)=>a+(Number(x.amount)||0),0);
   const labor=ps.filter(x=>x.category==='labor').reduce((a,x)=>a+(Number(x.amount)||0),0);
-  return {p,ds,ps,rev,acq,paid,labor,profit:rev-acq-paid};
+  return {p,ps,paid,labor};
 }
 function vProjects(){
-  const rows=PROPS.map(p=>projStats(p.id)).filter(s=>s.ps.length||s.rev>0).sort((a,b)=>b.paid-a.paid);
-  let h=`<div class="muted" style="margin-bottom:12px">Each property is a project. <b>Cost to run</b> is every payment you tagged to it (labor + vendor + materials). Money in is the deal fees booked on it so far. Tap a project to see who you paid.</div>`;
+  const rows=PROPS.map(p=>projStats(p.id)).filter(s=>s.ps.length).sort((a,b)=>b.paid-a.paid);
+  let h=`<div class="muted" style="margin-bottom:12px">Each property is a project. <b>Cost to run</b> is every payment you tagged to it (labor + vendor + materials). Tap a project to see who you paid.</div>`;
   if(!rows.length)return h+`<div class="card-tbl"><div class="empty"><div class="big">🏗️</div><div style="font-weight:600;color:var(--ink)">No project spending yet</div><div style="font-size:.83rem;margin-top:3px">Record a labor or vendor payment and tag it to a property.</div></div></div>`;
-  h+=`<div class="card-tbl"><table><thead><tr><th>Project</th><th class="r">Labor</th><th class="r">Cost to run</th><th class="r hide-sm">Acquisition</th><th class="r">Money in</th><th class="r">Net</th></tr></thead><tbody>`+
-    rows.map(s=>`<tr class="rowlink" onclick="openProject('${s.p.id}')"><td class="payee">${esc(propShort(s.p))}</td><td class="r amt">${fmt(s.labor)}</td><td class="r amt">${fmt(s.paid)}</td><td class="r amt hide-sm">${s.acq?fmt(s.acq):'—'}</td><td class="r amt">${fmt(s.rev)}</td><td class="r amt ${s.profit>=0?'pos':'neg'}">${fmt(s.profit)}</td></tr>`).join('')+
+  h+=`<div class="card-tbl"><table><thead><tr><th>Project</th><th class="r">Labor</th><th class="r">Cost to run</th><th class="r hide-sm">Payments</th></tr></thead><tbody>`+
+    rows.map(s=>`<tr class="rowlink" onclick="openProject('${s.p.id}')"><td class="payee">${esc(propShort(s.p))}</td><td class="r amt">${fmt(s.labor)}</td><td class="r amt">${fmt(s.paid)}</td><td class="r hide-sm">${s.ps.length}</td></tr>`).join('')+
     `</tbody></table></div>`;
   return h;
 }
@@ -439,8 +390,7 @@ function vProject(pid){
   h+=`<div class="kpis">
     <div class="kpi"><div class="lbl">Cost to run</div><div class="val">${fmt(s.paid)}</div><div class="muted" style="margin-top:3px">labor + vendor + materials</div></div>
     <div class="kpi"><div class="lbl">Labor</div><div class="val">${fmt(s.labor)}</div><div class="muted" style="margin-top:3px">paid to crew</div></div>
-    <div class="kpi"><div class="lbl">Money in</div><div class="val g">${fmt(s.rev)}</div><div class="muted" style="margin-top:3px">deal fees booked</div></div>
-    <div class="kpi"><div class="lbl">Net</div><div class="val ${s.profit>=0?'pos':'neg'}">${fmt(s.profit)}</div><div class="muted" style="margin-top:3px">${s.acq?'incl. acquisition '+fmt(s.acq):'money in minus cost to run'}</div></div>
+    <div class="kpi"><div class="lbl">Payments</div><div class="val">${s.ps.length}</div></div>
   </div>`;
   const byP={};s.ps.forEach(x=>{const k=x.payee||'—';byP[k]=byP[k]||{amt:0,days:0,cat:x.category};byP[k].amt+=Number(x.amount)||0;byP[k].days+=(x.category==='labor'?(Number(x.days)||0):0);});
   const names=Object.keys(byP).sort((a,b)=>byP[b].amt-byP[a].amt);
@@ -449,26 +399,6 @@ function vProject(pid){
   const list=s.ps.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   h+=`<div class="sec-h"><h2>All payments</h2></div>`;
   h+=`<div class="card-tbl"><table><thead><tr><th>Date</th><th>Payee</th><th>Category</th><th class="hide-sm">Pay period</th><th class="hide-sm r">Rate × days</th><th class="r">Amount</th><th class="r"></th></tr></thead><tbody>`+(list.length?list.map(p=>{const d=fdshort(p.date);const per=(p.periodStart&&p.periodEnd)?fdshort(p.periodStart)+'–'+fdshort(p.periodEnd):'—';const rd=(p.category==='labor'&&p.dayRate)?fmt(p.dayRate)+' × '+p.days:'—';return `<tr><td style="color:var(--muted)">${d}</td><td class="payee">${esc(p.payee||'—')}</td><td><span class="badge b-${p.category}">${catLabel(p.category)}</span></td><td class="hide-sm" style="color:var(--muted)">${per}</td><td class="hide-sm r" style="color:var(--muted)">${rd}</td><td class="r amt">${fmt(p.amount)}</td><td class="r"><button class="iact" onclick="openEdit('${p.id}')">✎</button></td></tr>`;}).join(''):`<tr><td colspan="7"><div class="empty">None yet.</div></td></tr>`)+`</tbody></table></div>`;
-  return h;
-}
-
-/* ---- Money In ---- */
-function vIncome(){
-  const ds=wonInRange();
-  const groups={of:[],retail:[],ws:[],lend:[],tc:[],comm:[],other:[]};
-  ds.forEach(d=>{(groups[incomeType(d)]||groups.other).push(d);});
-  const ofActive=DEALS.filter(d=>!d.lost&&d.outcome!=='lost'&&d.outcome!=='archived'&&incomeType(d)==='of'&&(Number(d.budget)||0)>0);
-  let h=`<div class="muted" style="margin-bottom:12px">Where the money comes in, pulled from the CRM. Owner-finance shows each note’s financed balance; everything else is realized at close. <b>Monthly note collection isn’t tracked yet</b> — that’s the next piece we can add.</div>`;
-  h+=section('Owner-finance clients','active notes',fmt(ofActive.reduce((a,d)=>a+(Number(d.budget)||0),0))+' financed',
-     ofActive.length?table(['Client','Property','Stage','Financed'],ofActive.map(d=>{const c=clientById(d.clientId);const pr=d.propertyId?propById(d.propertyId):null;return [esc(c?c.name:'—'),esc(pr?propShort(pr):(d.propInterest||'—')),esc(stageName(d)),{amt:fmt(d.budget)}];})):emptyCard('No active owner-finance notes.'));
-  const retail=groups.retail;
-  h+=section('Retail clients','closed sales · '+rangeLabel(),fmt(revenueOf(retail)),
-     retail.length?table(['Client','Property','Closed','Received'],retail.map(d=>{const c=clientById(d.clientId);const pr=d.propertyId?propById(d.propertyId):null;return [esc(c?c.name:'—'),esc(pr?propShort(pr):(d.propInterest||'—')),fdshort(closedD(d)),{amt:fmt(d.revenue)}];})):emptyCard('No retail closings in range.'));
-  const ws=groups.ws;
-  h+=section('Wholesale','assignment fees · '+rangeLabel(),fmt(revenueOf(ws)),
-     ws.length?table(['Deal','Closed','Fee'],ws.map(d=>[esc(d.propInterest||'—'),fdshort(closedD(d)),{amt:fmt(d.revenue)}])):emptyCard('No wholesale fees in range.'));
-  const other=[['lend',groups.lend],['tc',groups.tc],['comm',groups.comm]].filter(x=>x[1].length);
-  if(other.length){h+=`<div class="sec-h"><h2>Other money in</h2><span class="cnt">lending, coordination, RL commissions</span></div><div class="card-tbl">`+other.map(x=>brk(INCOME_LABELS[x[0]],revenueOf(x[1]),revenueOf(ds),INCOME_COLOR[x[0]])).join('')+`</div>`;}
   return h;
 }
 
