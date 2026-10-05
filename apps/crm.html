@@ -1213,6 +1213,7 @@ function enter(){
   renderNav();go('dash');startRingWatch();initVoice();
 }
 function go(k,arg){
+  const _same=(k===page&&arg===pageArg);const _keepSc=_same?((document.getElementById('main')||{}).scrollTop||0):0;
   document.body.classList.remove('side-open');
   try{viewBanner()}catch(e){}
   page=k;pageArg=arg;if(k==='biz')bizSel=arg;
@@ -1235,7 +1236,7 @@ function go(k,arg){
   if(k==='followups')M.innerHTML=vFollowups();
   if(k==='settings')M.innerHTML=vSettings();
   if(k==='devview')M.innerHTML=vDevView();
-  M.scrollTop=0;document.getElementById('main').scrollTop=0;
+  M.scrollTop=_keepSc;document.getElementById('main').scrollTop=_keepSc;
 }
 /* ================= DASHBOARD ================= */
 function revByBiz(){
