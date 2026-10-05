@@ -57,6 +57,7 @@
   .amt{font-weight:700;font-variant-numeric:tabular-nums}
   .badge{display:inline-block;font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:capitalize}
   .b-labor{background:var(--bluel);color:var(--blue)}
+  .b-vendor{background:#ECFEFF;color:#0891B2}
   .b-salesperson{background:var(--purplel);color:var(--purple)}
   .b-referral{background:var(--rosel);color:var(--rose)}
   .b-wholesaler{background:var(--amberl);color:var(--amber)}
@@ -90,7 +91,40 @@
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 20px;
     border-radius:12px;font-size:.85rem;font-weight:600;z-index:90;opacity:0;transition:.25s;pointer-events:none}
   .toast.show{opacity:1}
-  @media(max-width:640px){.hide-sm{display:none}.wrap{padding:16px 13px 50px}.kpi .val{font-size:1.4rem}}
+  /* tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .tab{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:22px;padding:8px 16px;font-size:.84rem;font-weight:600;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--brand)}
+  .tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  /* section */
+  .sec-h{display:flex;align-items:center;gap:10px;margin:22px 0 12px}
+  .sec-h h2{font-size:1.05rem;font-weight:800;letter-spacing:-.01em}
+  .sec-h .cnt{font-size:.72rem;color:var(--muted);font-weight:600}
+  .sec-h .spacer{flex:1}
+  .sec-h .pill{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:5px 13px;font-size:.78rem;font-weight:700}
+  .muted{color:var(--muted);font-size:.8rem;line-height:1.5}
+  /* bird's-eye bars */
+  .finbars{display:flex;flex-direction:column;gap:13px;padding:6px 2px}
+  .finbar{display:flex;align-items:center;gap:13px}
+  .finbar .fbl{width:84px;font-size:.82rem;color:var(--muted);font-weight:600}
+  .finbar .fbt{flex:1;height:22px;background:var(--bg);border-radius:6px;overflow:hidden}
+  .finbar .fbf{height:100%;border-radius:6px}
+  .finbar .fbf.in{background:var(--green)}
+  .finbar .fbf.out{background:var(--red)}
+  .finbar .fbv{width:110px;text-align:right;font-size:.95rem;font-weight:800;font-variant-numeric:tabular-nums}
+  .brk{display:flex;align-items:center;gap:11px;padding:9px 16px;border-bottom:1px solid var(--line)}
+  .brk:last-child{border-bottom:none}
+  .brk-l{width:150px;font-size:.84rem;flex:none;display:flex;align-items:center;gap:8px}
+  .brk-dot{width:9px;height:9px;border-radius:3px;flex:none}
+  .brk-t{flex:1;height:11px;background:var(--bg);border-radius:6px;overflow:hidden}
+  .brk-f{height:100%;border-radius:6px}
+  .brk-v{width:94px;text-align:right;font-size:.86rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .brk-p{width:40px;text-align:right;font-size:.72rem;color:var(--muted)}
+  .val.pos{color:var(--green)}.val.neg{color:var(--red)}
+  td.pos{color:var(--green)}td.neg{color:var(--red)}
+  .rowlink{cursor:pointer}.rowlink:hover{background:var(--bg)}
+  .backlink{background:none;border:0;color:var(--brand);font-size:.84rem;cursor:pointer;padding:4px 0;font-weight:600}
+  @media(max-width:640px){.hide-sm{display:none}.wrap{padding:16px 13px 50px}.kpi .val{font-size:1.4rem}.brk-l{width:110px}}
 </style>
 </head>
 <body>
@@ -111,49 +145,36 @@
 </div>
 
 <div id="app" class="wrap" style="display:none">
-  <div class="kpis" id="kpis"></div>
-  <div class="chips" id="chips"></div>
-  <div class="toolbar">
-    <input class="search" id="q" placeholder="Search payee or note…" oninput="render()">
+  <div class="toolbar" style="margin-bottom:14px">
+    <div class="tabs" style="margin:0;flex:1">
+      <button class="tab on" id="tab-overview" onclick="setTab('overview')">Overview</button>
+      <button class="tab" id="tab-payments" onclick="setTab('payments')">Payments</button>
+      <button class="tab" id="tab-projects" onclick="setTab('projects')">Projects</button>
+      <button class="tab" id="tab-income" onclick="setTab('income')">Money In</button>
+    </div>
     <select id="range" onchange="render()">
-      <option value="all">All time</option>
+      <option value="ty">This year</option>
       <option value="tm">This month</option>
       <option value="lm">Last month</option>
-      <option value="ty">This year</option>
       <option value="ly">Last year</option>
+      <option value="all">All time</option>
     </select>
-    <button class="btn btn-white btn-sm" onclick="exportCSV()">⬇ CSV</button>
-    <button class="btn btn-brand" onclick="openAdd()">+ Add Payment</button>
+    <button class="btn btn-brand" onclick="openAdd()">+ Record payment</button>
   </div>
-  <div class="card-tbl">
-    <table>
-      <thead><tr>
-        <th style="width:104px">Date</th><th>Payee</th><th style="width:118px">Category</th>
-        <th class="hide-sm" style="width:130px">Business</th><th class="hide-sm" style="width:110px">Method</th>
-        <th class="r" style="width:110px">Amount</th><th class="r" style="width:78px"></th>
-      </tr></thead>
-      <tbody id="rows"></tbody>
-    </table>
-    <div class="foot"><span id="footCount">0 payments</span><span id="footTotal">$0</span></div>
-  </div>
+  <div id="view"></div>
 </div>
 
 <!-- Add / Edit modal -->
 <div class="ov" id="payModal">
   <div class="modal">
     <button class="mx" onclick="closeM()">✕</button>
-    <h3 id="mTitle">Add Payment</h3>
-    <div class="msub">Log a payment made by the organization.</div>
-    <div class="fg"><label>Payee — who was paid</label><input id="fPayee" placeholder="e.g. Jose Martinez / ABC Roofing"></div>
+    <h3 id="mTitle">Record payment</h3>
+    <div class="msub">Log money the business paid out.</div>
     <div class="frow">
-      <div class="fg"><label>Amount</label><input id="fAmount" inputmode="decimal" placeholder="0.00"></div>
-      <div class="fg"><label>Date paid</label><input id="fDate" type="date"></div>
-    </div>
-    <div class="frow">
-      <div class="fg"><label>Category</label><select id="fCat">
-        <option value="labor">Labor</option><option value="salesperson">Salesperson</option>
+      <div class="fg"><label>Category — what you're paying for</label><select id="fCat" onchange="catToggle()">
+        <option value="labor">Labor (crew on a project)</option><option value="vendor">Vendor / Materials</option><option value="salesperson">Salesperson (commission)</option>
         <option value="referral">Referral</option><option value="wholesaler">Wholesaler</option>
-        <option value="client">Client</option><option value="other">Other</option>
+        <option value="client">Client payout</option><option value="other">Other</option>
       </select></div>
       <div class="fg"><label>Business</label><select id="fBiz">
         <option value="">— none —</option><option>Real Living</option><option>ASAP Lending</option>
@@ -161,12 +182,28 @@
         <option>BARR Construction</option><option>DreamStays KC</option><option>General / Corporate</option>
       </select></div>
     </div>
+    <div class="fg"><label>Payee — who was paid</label><input id="fPayee" placeholder="e.g. Jose Martinez / ABC Roofing"></div>
+    <div class="fg" id="fgProj"><label>Project (property) — what you're paying for</label><select id="fProj"><option value="">General / not tied to a project</option></select></div>
+    <div id="laborBox" style="display:none">
+      <div class="frow">
+        <div class="fg"><label>Day-rate</label><input id="fRate" inputmode="decimal" placeholder="0.00" oninput="calcAmt()"></div>
+        <div class="fg"><label>Days worked (0.5 = half)</label><input id="fDays" inputmode="decimal" placeholder="0" oninput="calcAmt()"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Pay period start</label><input id="fPS" type="date"></div>
+        <div class="fg"><label>Pay period end</label><input id="fPE" type="date"></div>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label>Amount</label><input id="fAmount" inputmode="decimal" placeholder="0.00"></div>
+      <div class="fg"><label>Date paid</label><input id="fDate" type="date"></div>
+    </div>
     <div class="fg"><label>Method</label><select id="fMethod">
       <option value="">— unspecified —</option><option>Cash</option><option>Check</option><option>Zelle</option>
       <option>Bank transfer</option><option>Card</option><option>Payroll / Direct deposit</option><option>Other</option>
     </select></div>
-    <div class="fg"><label>Note (optional)</label><textarea id="fNote" placeholder="What was this for? Property, invoice #, deal…"></textarea></div>
-    <button class="btn btn-brand" style="width:100%;justify-content:center;margin-top:4px" onclick="savePay()">Save Payment</button>
+    <div class="fg"><label>Note (optional)</label><textarea id="fNote" placeholder="What was this for? Invoice #, scope, deal…"></textarea></div>
+    <button class="btn btn-brand" style="width:100%;justify-content:center;margin-top:4px" onclick="savePay()">Save payment</button>
   </div>
 </div>
 
@@ -176,8 +213,25 @@
 const SB_URL='https://zfflgvjnkcjnbwydurlp.supabase.co';
 const SB_KEY='sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf';
 const COLL='payroll';
-const CATS=[['labor','Labor'],['salesperson','Salesperson'],['referral','Referral'],['wholesaler','Wholesaler'],['client','Client'],['other','Other']];
-let _db=null, ME=null, PAY=[], editId=null, catFilter='';
+const CATS=[['labor','Labor'],['vendor','Vendor / Materials'],['salesperson','Salesperson'],['referral','Referral'],['wholesaler','Wholesaler'],['client','Client'],['other','Other']];
+const CAT_COLOR={labor:'#2563EB',vendor:'#0891B2',salesperson:'#7C3AED',referral:'#E11D48',wholesaler:'#D97706',client:'#0D9488',other:'#475569'};
+/* CRM pipelines -> business code + stage names, so we can read revenue out of the CRM */
+const PIPES={
+  asap:{biz:'ASAP',stages:['New Lead','Application','Underwriting','Term Sheet','Approved','Funded']},
+  h2m_acq:{biz:'H2M',stages:['Off-Market Lead','Under Contract','Due Diligence','Closed / Acquired']},
+  h2m_dispo:{biz:'H2M',stages:['In Inventory','Marketed','Buyer Identified','Under Contract','Closed']},
+  h2m_ws:{biz:'H2M',stages:['New Lead','Under Contract','Marketed to Buyers','Buyer Found','Assigned / Closed']},
+  h2m_of:{biz:'H2M',stages:['New Lead','Buyer Pre-Qualified','Property Matched','Terms Agreed','Under Contract','Closed / Servicing']},
+  rl_buy:{biz:'RL',stages:['Lead','Consult','Pre-Approved','Showing','Under Contract','Closed']},
+  rl_list:{biz:'RL',stages:['Lead','Listing Appt','Listed','Under Contract','Closed']},
+  tc:{biz:'TC',stages:['File Opened','Contract Executed','Contingencies','Clear to Close','Closed','Fee Collected']}
+};
+const BIZNAME={ASAP:'ASAP Lending',H2M:'Real Living H2M',RL:'Real Living',TC:'Real Living'};
+const BIZLIST=['Real Living','ASAP Lending','Real Living H2M','Owner Finance KC','We Buy Homes KC','BARR Construction','DreamStays KC','General / Corporate'];
+const INCOME_LABELS={of:'Owner finance',retail:'Retail sales',ws:'Wholesale',lend:'Lending (ASAP)',tc:'Transaction coord.',comm:'RL commissions',other:'Other'};
+const INCOME_COLOR={of:'#059669',retail:'#2563EB',ws:'#E11D48',lend:'#D97706',tc:'#0D9488',comm:'#7C3AED',other:'#475569'};
+
+let _db=null, ME=null, PAY=[], DEALS=[], PROPS=[], CLIENTS=[], tab='overview', projSel=null, catFilter='', editId=null, _q='';
 
 function client(){
   if(_db)return _db;
@@ -193,10 +247,30 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 function toast(m){const t=e('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function catLabel(c){const f=CATS.find(x=>x[0]===c);return f?f[1]:'Other';}
 
-// ── date range ──
+/* ---- CRM helpers ---- */
+function propById(id){return PROPS.find(p=>p.id===id);}
+function clientById(id){return CLIENTS.find(c=>c.id===id);}
+function propShort(p){return p?((p.address||'').split(',')[0]||'—'):'—';}
+function dealBiz(d){const p=PIPES[d.pipe];return p?p.biz:null;}
+function isWonD(d){const p=PIPES[d.pipe];if(!p)return false;if(d.lost||d.outcome==='lost'||d.outcome==='archived')return false;return d.stage>=p.stages.length-1;}
+function closedD(d){return d.closedAt||d.closeDate||'';}
+function stageName(d){const p=PIPES[d.pipe];return p&&p.stages[d.stage]||'—';}
+function incomeType(d){
+  const t=(d.type||'').toLowerCase(),p=d.pipe;
+  if(p==='h2m_of'||/owner finance|contract for deed|lease option/.test(t))return 'of';
+  if(p==='h2m_ws'||/assignment|double close/.test(t))return 'ws';
+  if(p==='asap')return 'lend';
+  if(p==='tc')return 'tc';
+  if(p==='h2m_dispo'||/retail|cash sale/.test(t))return 'retail';
+  if(p==='rl_buy'||p==='rl_list')return 'comm';
+  return 'other';
+}
+function fdshort(iso){if(!iso)return '—';const d=new Date(iso);if(isNaN(d))return '—';return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+
+/* ---- date range ---- */
 function inRange(dstr,range){
   if(range==='all'||!dstr)return true;
-  const d=new Date(dstr+'T00:00:00'); if(isNaN(d))return true;
+  const d=new Date(String(dstr).slice(0,10)+'T00:00:00'); if(isNaN(d))return true;
   const now=new Date(), y=now.getFullYear(), m=now.getMonth();
   if(range==='tm')return d.getFullYear()===y&&d.getMonth()===m;
   if(range==='lm'){const lm=new Date(y,m-1,1);return d.getFullYear()===lm.getFullYear()&&d.getMonth()===lm.getMonth();}
@@ -204,96 +278,240 @@ function inRange(dstr,range){
   if(range==='ly')return d.getFullYear()===y-1;
   return true;
 }
+function curRange(){return e('range')?e('range').value:'ty';}
+function rangeLabel(){return {all:'all time',tm:'this month',lm:'last month',ty:'this year',ly:'last year'}[curRange()]||'';}
 
-// ── data ──
+/* ---- data ---- */
 async function pull(){
   const sb=client(); if(!sb)return;
   try{
     const {data:{session}}=await sb.auth.getSession(); if(!session)return;
-    const {data}=await sb.from('records').select('id,data').eq('collection',COLL).eq('deleted',false);
-    PAY=(data||[]).map(r=>r.data).filter(Boolean);
+    const cols=['payroll','deals','properties','clients'];
+    let rows=[]; const PAGE=1000; let from=0;
+    for(;;){
+      const {data,error}=await sb.from('records').select('collection,id,data').in('collection',cols).eq('deleted',false)
+        .order('collection',{ascending:true}).order('id',{ascending:true}).range(from,from+PAGE-1);
+      if(error)throw error;
+      rows=rows.concat(data||[]);
+      if(!data||data.length<PAGE)break;
+      from+=PAGE;
+    }
+    const by={payroll:[],deals:[],properties:[],clients:[]};
+    rows.forEach(r=>{if(by[r.collection])by[r.collection].push(r.data);});
+    PAY=by.payroll.filter(Boolean);DEALS=by.deals.filter(Boolean);PROPS=by.properties.filter(Boolean);CLIENTS=by.clients.filter(Boolean);
   }catch(e){console.warn('[payroll pull]',e&&e.message);}
 }
 async function push(rec){
   const sb=client(); if(!sb)return false;
-  try{
-    const {error}=await sb.from('records').upsert({collection:COLL,id:rec.id,data:rec,updated_at:new Date().toISOString(),deleted:false},{onConflict:'collection,id'});
-    return !error;
-  }catch(e){return false;}
+  try{const {error}=await sb.from('records').upsert({collection:COLL,id:rec.id,data:rec,updated_at:new Date().toISOString(),deleted:false},{onConflict:'collection,id'});return !error;}catch(e){return false;}
 }
 async function softDelete(id){
   const sb=client(); if(!sb)return false;
   try{const {error}=await sb.from('records').update({deleted:true,updated_at:new Date().toISOString()}).eq('collection',COLL).eq('id',id);return !error;}catch(e){return false;}
 }
 
-// ── filtered set ──
-function filtered(){
-  const q=(e('q').value||'').trim().toLowerCase(), range=e('range').value;
-  return PAY.filter(p=>inRange(p.date,range))
-    .filter(p=>!catFilter||p.category===catFilter)
-    .filter(p=>!q||(p.payee||'').toLowerCase().includes(q)||(p.note||'').toLowerCase().includes(q)||(p.business||'').toLowerCase().includes(q))
+/* ---- computed sets ---- */
+function wonInRange(){const r=curRange();return DEALS.filter(d=>isWonD(d)&&d.pipe!=='h2m_acq'&&inRange(closedD(d),r));}
+function payInRange(){const r=curRange();return PAY.filter(p=>inRange(p.date,r));}
+function revenueOf(ds){return ds.reduce((a,d)=>a+(Number(d.revenue)||0),0);}
+function expenseOf(ps){return ps.reduce((a,p)=>a+(Number(p.amount)||0),0);}
+
+/* ---- tabs ---- */
+function setTab(t){tab=t;projSel=null;['overview','payments','projects','income'].forEach(x=>{const b=e('tab-'+x);if(b)b.classList.toggle('on',x===t);});render();}
+function setCat(c){catFilter=c;render();}
+function openProject(id){projSel=id;window.scrollTo(0,0);render();}
+function render(){
+  const v=e('view'); if(!v)return;
+  if(tab==='overview')v.innerHTML=vOverview();
+  else if(tab==='payments')v.innerHTML=vPayments();
+  else if(tab==='projects')v.innerHTML=projSel?vProject(projSel):vProjects();
+  else if(tab==='income')v.innerHTML=vIncome();
+}
+
+/* ---- shared bits ---- */
+function brk(label,val,tot,color){const pct=tot>0?Math.round(val/tot*100):0;return `<div class="brk"><span class="brk-l"><span class="brk-dot" style="background:${color}"></span>${esc(label)}</span><div class="brk-t"><div class="brk-f" style="width:${pct}%;background:${color}"></div></div><span class="brk-v">${fmt(val)}</span><span class="brk-p">${pct}%</span></div>`;}
+function section(title,cnt,pill,body){return `<div class="sec-h"><h2>${esc(title)}</h2><span class="cnt">${esc(cnt)}</span><span class="spacer"></span><span class="pill">${pill}</span></div>${body}`;}
+function emptyCard(t){return `<div class="card-tbl"><div class="empty">${esc(t)}</div></div>`;}
+function table(headers,rows){
+  return `<div class="card-tbl"><table><thead><tr>`+headers.map((hh,i)=>`<th${i===headers.length-1?' class="r"':''}>${esc(hh)}</th>`).join('')+`</tr></thead><tbody>`+
+   rows.map(r=>`<tr>`+r.map((c,i)=>typeof c==='object'?`<td class="r amt">${c.amt}</td>`:`<td${i===0?' class="payee"':''}>${c}</td>`).join('')+`</tr>`).join('')+`</tbody></table></div>`;
+}
+
+/* ---- Overview (bird's-eye) ---- */
+function vOverview(){
+  const ds=wonInRange(), ps=payInRange();
+  const rev=revenueOf(ds), exp=expenseOf(ps), net=rev-exp;
+  const ofActive=DEALS.filter(d=>!d.lost&&d.outcome!=='lost'&&d.outcome!=='archived'&&incomeType(d)==='of'&&(Number(d.budget)||0)>0);
+  const offin=ofActive.reduce((a,d)=>a+(Number(d.budget)||0),0);
+  let h=`<div class="kpis">
+    <div class="kpi"><div class="lbl">Money in (${rangeLabel()})</div><div class="val g">${fmt(rev)}</div></div>
+    <div class="kpi"><div class="lbl">Money out (${rangeLabel()})</div><div class="val neg">${fmt(exp)}</div></div>
+    <div class="kpi"><div class="lbl">Net</div><div class="val ${net>=0?'pos':'neg'}">${fmt(net)}</div></div>
+    <div class="kpi"><div class="lbl">Owner-finance notes</div><div class="val">${fmt(offin)}</div><div class="muted" style="margin-top:3px">financed · ${ofActive.length} active</div></div>
+  </div>`;
+  const max=Math.max(rev,exp,1);
+  h+=`<div class="card-tbl" style="padding:16px 18px"><div class="finbars">
+    <div class="finbar"><span class="fbl">Money in</span><div class="fbt"><div class="fbf in" style="width:${rev/max*100}%"></div></div><span class="fbv">${fmt(rev)}</span></div>
+    <div class="finbar"><span class="fbl">Money out</span><div class="fbt"><div class="fbf out" style="width:${exp/max*100}%"></div></div><span class="fbv">${fmt(exp)}</span></div>
+  </div></div>`;
+  const biz={};
+  ds.forEach(d=>{const nm=BIZNAME[dealBiz(d)]||'Real Living';biz[nm]=biz[nm]||{rev:0,exp:0};biz[nm].rev+=Number(d.revenue)||0;});
+  ps.forEach(p=>{const nm=p.business||'General / Corporate';biz[nm]=biz[nm]||{rev:0,exp:0};biz[nm].exp+=Number(p.amount)||0;});
+  const order=BIZLIST.filter(b=>biz[b]).concat(Object.keys(biz).filter(b=>BIZLIST.indexOf(b)<0));
+  h+=`<div class="sec-h"><h2>By business</h2><span class="cnt">money in vs out</span></div><div class="card-tbl"><table><thead><tr><th>Business</th><th class="r">Money in</th><th class="r">Money out</th><th class="r">Net</th></tr></thead><tbody>`+
+    (order.length?order.map(b=>{const r=biz[b];const nt=r.rev-r.exp;return `<tr><td class="payee">${esc(b)}</td><td class="r amt">${fmt(r.rev)}</td><td class="r amt">${fmt(r.exp)}</td><td class="r amt ${nt>=0?'pos':'neg'}">${fmt(nt)}</td></tr>`;}).join(''):`<tr><td colspan="4"><div class="empty">Nothing in this range yet.</div></td></tr>`)+
+    `</tbody></table></div>`;
+  const inc={};ds.forEach(d=>{const k=incomeType(d);inc[k]=(inc[k]||0)+(Number(d.revenue)||0);});
+  const cat={};ps.forEach(p=>{cat[p.category]=(cat[p.category]||0)+(Number(p.amount)||0);});
+  const incRows=Object.keys(inc).sort((a,b)=>inc[b]-inc[a]).map(k=>brk(INCOME_LABELS[k]||k,inc[k],rev,INCOME_COLOR[k]||'#888')).join('')||`<div class="empty" style="padding:22px">No money in for this range.</div>`;
+  const catRows=CATS.map(c=>c[0]).filter(k=>cat[k]).sort((a,b)=>cat[b]-cat[a]).map(k=>brk(catLabel(k),cat[k],exp,CAT_COLOR[k])).join('')||`<div class="empty" style="padding:22px">No money out for this range.</div>`;
+  h+=`<div class="sec-h"><h2>Money in — by source</h2></div><div class="card-tbl">${incRows}</div>`;
+  h+=`<div class="sec-h"><h2>Money out — by category</h2></div><div class="card-tbl">${catRows}</div>`;
+  return h;
+}
+
+/* ---- Payments ledger ---- */
+function filteredPay(rs){
+  const q=(_q||'').trim().toLowerCase();
+  return rs.filter(p=>!catFilter||p.category===catFilter)
+    .filter(p=>{if(!q)return true;const pr=p.projectId?propById(p.projectId):null;return (p.payee||'').toLowerCase().includes(q)||(p.note||'').toLowerCase().includes(q)||(p.business||'').toLowerCase().includes(q)||(pr?propShort(pr).toLowerCase().includes(q):false);})
     .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
 }
-// range-only set (for KPIs + chips, ignoring category/search)
-function rangeSet(){const range=e('range').value;return PAY.filter(p=>inRange(p.date,range));}
-
-// ── render ──
-function render(){
-  const rs=rangeSet();
-  const total=rs.reduce((s,p)=>s+(Number(p.amount)||0),0);
-  const now=new Date();
-  const tmTotal=PAY.filter(p=>inRange(p.date,'tm')).reduce((s,p)=>s+(Number(p.amount)||0),0);
-  // KPIs
-  e('kpis').innerHTML=
-    `<div class="kpi"><div class="lbl">Total paid (${rangeLabel()})</div><div class="val g">${fmt(total)}</div></div>`+
-    `<div class="kpi"><div class="lbl">Payments (${rangeLabel()})</div><div class="val">${rs.length}</div></div>`+
-    `<div class="kpi"><div class="lbl">This month</div><div class="val">${fmt(tmTotal)}</div></div>`;
-  // chips (per category over range)
-  const byCat={};rs.forEach(p=>{byCat[p.category]=(byCat[p.category]||0)+(Number(p.amount)||0);});
-  const cntCat={};rs.forEach(p=>{cntCat[p.category]=(cntCat[p.category]||0)+1;});
-  e('chips').innerHTML=`<div class="chip ${catFilter===''?'on':''}" onclick="setCat('')"><div class="ct" style="color:var(--muted)">All</div><div class="cv">${fmt(total)}</div><div class="cn">${rs.length} payment${rs.length!==1?'s':''}</div></div>`+
-    CATS.map(([c,l])=>`<div class="chip ${catFilter===c?'on':''}" onclick="setCat('${c}')"><div class="ct"><span class="badge b-${c}">${l}</span></div><div class="cv">${fmt(byCat[c]||0)}</div><div class="cn">${cntCat[c]||0} payment${(cntCat[c]||0)!==1?'s':''}</div></div>`).join('');
-  // rows
-  const list=filtered();
-  const ft=list.reduce((s,p)=>s+(Number(p.amount)||0),0);
-  if(list.length===0){
-    e('rows').innerHTML=`<tr><td colspan="7"><div class="empty"><div class="big">💸</div><div style="font-weight:600;color:var(--ink)">No payments here yet</div><div style="font-size:.83rem;margin-top:3px">Add your first payment, or widen the filters.</div></div></td></tr>`;
-  }else{
-    e('rows').innerHTML=list.map(p=>{
-      const d=p.date?new Date(p.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
-      return `<tr>
-        <td style="color:var(--muted);white-space:nowrap">${d}</td>
-        <td><div class="payee">${esc(p.payee||'—')}</div>${p.note?`<div style="font-size:.73rem;color:var(--muted);margin-top:1px">${esc(p.note)}</div>`:''}</td>
-        <td><span class="badge b-${p.category||'other'}">${catLabel(p.category)}</span></td>
-        <td class="hide-sm" style="color:var(--muted)">${esc(p.business||'—')}</td>
-        <td class="hide-sm" style="color:var(--muted)">${esc(p.method||'—')}</td>
-        <td class="r amt">${fmt(p.amount)}</td>
-        <td class="r"><div class="rowact"><button class="iact" title="Edit" onclick="openEdit('${p.id}')">✎</button><button class="iact del" title="Delete" onclick="removePay('${p.id}')">🗑</button></div></td>
-      </tr>`;
-    }).join('');
-  }
-  e('footCount').textContent=list.length+' payment'+(list.length!==1?'s':'');
-  e('footTotal').textContent=fmt(ft);
+function payRowsHtml(list){
+  if(!list.length)return `<tr><td colspan="7"><div class="empty"><div class="big">💸</div><div style="font-weight:600;color:var(--ink)">No payments here yet</div><div style="font-size:.83rem;margin-top:3px">Record one with “+ Record payment”.</div></div></td></tr>`;
+  return list.map(p=>{
+    const d=p.date?new Date(String(p.date).slice(0,10)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+    const pr=p.projectId?propById(p.projectId):null;
+    const rd=(p.category==='labor'&&p.dayRate)?fmt(p.dayRate)+' × '+p.days:'—';
+    return `<tr>
+      <td style="color:var(--muted);white-space:nowrap">${d}</td>
+      <td><div class="payee">${esc(p.payee||'—')}</div>${p.note?`<div style="font-size:.73rem;color:var(--muted);margin-top:1px">${esc(p.note)}</div>`:''}</td>
+      <td><span class="badge b-${p.category||'other'}">${catLabel(p.category)}</span></td>
+      <td class="hide-sm" style="color:var(--muted)">${pr?esc(propShort(pr)):(p.projectId?'—':'<span style="opacity:.5">General</span>')}</td>
+      <td class="hide-sm r" style="color:var(--muted)">${rd}</td>
+      <td class="r amt">${fmt(p.amount)}</td>
+      <td class="r"><div class="rowact"><button class="iact" title="Edit" onclick="openEdit('${p.id}')">✎</button><button class="iact del" title="Delete" onclick="removePay('${p.id}')">🗑</button></div></td>
+    </tr>`;
+  }).join('');
 }
-function rangeLabel(){return {all:'all time',tm:'this month',lm:'last month',ty:'this year',ly:'last year'}[e('range').value]||'';}
-function setCat(c){catFilter=c;render();}
+function renderPayRows(){
+  const list=filteredPay(payInRange());
+  const b=e('payRows'); if(b)b.innerHTML=payRowsHtml(list);
+  const fc=e('payFootC'); if(fc)fc.textContent=list.length+' payment'+(list.length!==1?'s':'');
+  const ft=e('payFootT'); if(ft)ft.textContent=fmt(expenseOf(list));
+}
+function vPayments(){
+  const rs=payInRange();
+  const total=expenseOf(rs);
+  const byCat={},cntCat={};rs.forEach(p=>{byCat[p.category]=(byCat[p.category]||0)+(Number(p.amount)||0);cntCat[p.category]=(cntCat[p.category]||0)+1;});
+  let h=`<div class="chips"><div class="chip ${catFilter===''?'on':''}" onclick="setCat('')"><div class="ct" style="color:var(--muted)">All</div><div class="cv">${fmt(total)}</div><div class="cn">${rs.length} payment${rs.length!==1?'s':''}</div></div>`+
+    CATS.map(([c,l])=>`<div class="chip ${catFilter===c?'on':''}" onclick="setCat('${c}')"><div class="ct"><span class="badge b-${c}">${l}</span></div><div class="cv">${fmt(byCat[c]||0)}</div><div class="cn">${cntCat[c]||0} payment${(cntCat[c]||0)!==1?'s':''}</div></div>`).join('')+`</div>`;
+  h+=`<div class="toolbar"><input class="search" id="q" placeholder="Search payee, note, project…" value="${esc(_q)}" oninput="_q=this.value;renderPayRows()"><button class="btn btn-white btn-sm" onclick="exportCSV()">⬇ CSV</button></div>`;
+  const list=filteredPay(rs);
+  h+=`<div class="card-tbl"><table><thead><tr><th style="width:100px">Date</th><th>Payee</th><th style="width:112px">Category</th><th class="hide-sm">Project</th><th class="hide-sm r" style="width:118px">Rate × days</th><th class="r" style="width:104px">Amount</th><th class="r" style="width:70px"></th></tr></thead><tbody id="payRows">${payRowsHtml(list)}</tbody></table><div class="foot"><span id="payFootC">${list.length} payment${list.length!==1?'s':''}</span><span id="payFootT">${fmt(expenseOf(list))}</span></div></div>`;
+  return h;
+}
 
-// ── modal ──
-function openAdd(){editId=null;e('mTitle').textContent='Add Payment';e('fPayee').value='';e('fAmount').value='';
-  e('fDate').value=new Date().toISOString().slice(0,10);e('fCat').value='labor';e('fBiz').value='';e('fMethod').value='';e('fNote').value='';
-  e('payModal').classList.add('show');setTimeout(()=>e('fPayee').focus(),50);}
-function openEdit(id){const p=PAY.find(x=>x.id===id);if(!p)return;editId=id;e('mTitle').textContent='Edit Payment';
-  e('fPayee').value=p.payee||'';e('fAmount').value=p.amount||'';e('fDate').value=p.date||'';e('fCat').value=p.category||'other';
-  e('fBiz').value=p.business||'';e('fMethod').value=p.method||'';e('fNote').value=p.note||'';e('payModal').classList.add('show');}
+/* ---- Projects ---- */
+function projStats(pid){
+  const p=propById(pid);
+  const ds=DEALS.filter(d=>isWonD(d)&&d.propertyId===pid);
+  const ps=PAY.filter(x=>x.projectId===pid);
+  const rev=ds.reduce((a,d)=>a+(Number(d.revenue)||0),0);
+  const acq=(p&&Number(p.acqPrice))||0;
+  const paid=ps.reduce((a,x)=>a+(Number(x.amount)||0),0);
+  const labor=ps.filter(x=>x.category==='labor').reduce((a,x)=>a+(Number(x.amount)||0),0);
+  return {p,ds,ps,rev,acq,paid,labor,profit:rev-acq-paid};
+}
+function vProjects(){
+  const rows=PROPS.map(p=>projStats(p.id)).filter(s=>s.ps.length||s.rev>0).sort((a,b)=>b.paid-a.paid);
+  let h=`<div class="muted" style="margin-bottom:12px">Each property is a project. <b>Cost to run</b> is every payment you tagged to it (labor + vendor + materials). Money in is the deal fees booked on it so far. Tap a project to see who you paid.</div>`;
+  if(!rows.length)return h+`<div class="card-tbl"><div class="empty"><div class="big">🏗️</div><div style="font-weight:600;color:var(--ink)">No project spending yet</div><div style="font-size:.83rem;margin-top:3px">Record a labor or vendor payment and tag it to a property.</div></div></div>`;
+  h+=`<div class="card-tbl"><table><thead><tr><th>Project</th><th class="r">Labor</th><th class="r">Cost to run</th><th class="r hide-sm">Acquisition</th><th class="r">Money in</th><th class="r">Net</th></tr></thead><tbody>`+
+    rows.map(s=>`<tr class="rowlink" onclick="openProject('${s.p.id}')"><td class="payee">${esc(propShort(s.p))}</td><td class="r amt">${fmt(s.labor)}</td><td class="r amt">${fmt(s.paid)}</td><td class="r amt hide-sm">${s.acq?fmt(s.acq):'—'}</td><td class="r amt">${fmt(s.rev)}</td><td class="r amt ${s.profit>=0?'pos':'neg'}">${fmt(s.profit)}</td></tr>`).join('')+
+    `</tbody></table></div>`;
+  return h;
+}
+function vProject(pid){
+  const s=projStats(pid); if(!s.p)return `<button class="backlink" onclick="projSel=null;render()">← All projects</button><div class="empty">Project not found.</div>`;
+  let h=`<button class="backlink" onclick="projSel=null;render()">← All projects</button>`;
+  h+=`<div class="sec-h"><h2>${esc(propShort(s.p))}</h2><span class="cnt">what it cost to run</span><span class="spacer"></span><button class="btn btn-brand btn-sm" onclick="openAddForProject('${pid}')">+ Record payment</button></div>`;
+  h+=`<div class="kpis">
+    <div class="kpi"><div class="lbl">Cost to run</div><div class="val">${fmt(s.paid)}</div><div class="muted" style="margin-top:3px">labor + vendor + materials</div></div>
+    <div class="kpi"><div class="lbl">Labor</div><div class="val">${fmt(s.labor)}</div><div class="muted" style="margin-top:3px">paid to crew</div></div>
+    <div class="kpi"><div class="lbl">Money in</div><div class="val g">${fmt(s.rev)}</div><div class="muted" style="margin-top:3px">deal fees booked</div></div>
+    <div class="kpi"><div class="lbl">Net</div><div class="val ${s.profit>=0?'pos':'neg'}">${fmt(s.profit)}</div><div class="muted" style="margin-top:3px">${s.acq?'incl. acquisition '+fmt(s.acq):'money in minus cost to run'}</div></div>
+  </div>`;
+  const byP={};s.ps.forEach(x=>{const k=x.payee||'—';byP[k]=byP[k]||{amt:0,days:0,cat:x.category};byP[k].amt+=Number(x.amount)||0;byP[k].days+=(x.category==='labor'?(Number(x.days)||0):0);});
+  const names=Object.keys(byP).sort((a,b)=>byP[b].amt-byP[a].amt);
+  h+=`<div class="sec-h"><h2>Paid by person</h2><span class="cnt">who you paid on this project</span></div>`;
+  h+= names.length?`<div class="card-tbl"><table><thead><tr><th>Person / vendor</th><th>Type</th><th class="r">Days</th><th class="r">Paid</th></tr></thead><tbody>`+names.map(k=>{const r=byP[k];return `<tr><td class="payee">${esc(k)}</td><td><span class="badge b-${r.cat}">${catLabel(r.cat)}</span></td><td class="r">${r.days||'—'}</td><td class="r amt">${fmt(r.amt)}</td></tr>`;}).join('')+`</tbody></table></div>`:`<div class="card-tbl"><div class="empty">No payments on this project yet.</div></div>`;
+  const list=s.ps.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  h+=`<div class="sec-h"><h2>All payments</h2></div>`;
+  h+=`<div class="card-tbl"><table><thead><tr><th>Date</th><th>Payee</th><th>Category</th><th class="hide-sm">Pay period</th><th class="hide-sm r">Rate × days</th><th class="r">Amount</th><th class="r"></th></tr></thead><tbody>`+(list.length?list.map(p=>{const d=fdshort(p.date);const per=(p.periodStart&&p.periodEnd)?fdshort(p.periodStart)+'–'+fdshort(p.periodEnd):'—';const rd=(p.category==='labor'&&p.dayRate)?fmt(p.dayRate)+' × '+p.days:'—';return `<tr><td style="color:var(--muted)">${d}</td><td class="payee">${esc(p.payee||'—')}</td><td><span class="badge b-${p.category}">${catLabel(p.category)}</span></td><td class="hide-sm" style="color:var(--muted)">${per}</td><td class="hide-sm r" style="color:var(--muted)">${rd}</td><td class="r amt">${fmt(p.amount)}</td><td class="r"><button class="iact" onclick="openEdit('${p.id}')">✎</button></td></tr>`;}).join(''):`<tr><td colspan="7"><div class="empty">None yet.</div></td></tr>`)+`</tbody></table></div>`;
+  return h;
+}
+
+/* ---- Money In ---- */
+function vIncome(){
+  const ds=wonInRange();
+  const groups={of:[],retail:[],ws:[],lend:[],tc:[],comm:[],other:[]};
+  ds.forEach(d=>{(groups[incomeType(d)]||groups.other).push(d);});
+  const ofActive=DEALS.filter(d=>!d.lost&&d.outcome!=='lost'&&d.outcome!=='archived'&&incomeType(d)==='of'&&(Number(d.budget)||0)>0);
+  let h=`<div class="muted" style="margin-bottom:12px">Where the money comes in, pulled from the CRM. Owner-finance shows each note’s financed balance; everything else is realized at close. <b>Monthly note collection isn’t tracked yet</b> — that’s the next piece we can add.</div>`;
+  h+=section('Owner-finance clients','active notes',fmt(ofActive.reduce((a,d)=>a+(Number(d.budget)||0),0))+' financed',
+     ofActive.length?table(['Client','Property','Stage','Financed'],ofActive.map(d=>{const c=clientById(d.clientId);const pr=d.propertyId?propById(d.propertyId):null;return [esc(c?c.name:'—'),esc(pr?propShort(pr):(d.propInterest||'—')),esc(stageName(d)),{amt:fmt(d.budget)}];})):emptyCard('No active owner-finance notes.'));
+  const retail=groups.retail;
+  h+=section('Retail clients','closed sales · '+rangeLabel(),fmt(revenueOf(retail)),
+     retail.length?table(['Client','Property','Closed','Received'],retail.map(d=>{const c=clientById(d.clientId);const pr=d.propertyId?propById(d.propertyId):null;return [esc(c?c.name:'—'),esc(pr?propShort(pr):(d.propInterest||'—')),fdshort(closedD(d)),{amt:fmt(d.revenue)}];})):emptyCard('No retail closings in range.'));
+  const ws=groups.ws;
+  h+=section('Wholesale','assignment fees · '+rangeLabel(),fmt(revenueOf(ws)),
+     ws.length?table(['Deal','Closed','Fee'],ws.map(d=>[esc(d.propInterest||'—'),fdshort(closedD(d)),{amt:fmt(d.revenue)}])):emptyCard('No wholesale fees in range.'));
+  const other=[['lend',groups.lend],['tc',groups.tc],['comm',groups.comm]].filter(x=>x[1].length);
+  if(other.length){h+=`<div class="sec-h"><h2>Other money in</h2><span class="cnt">lending, coordination, RL commissions</span></div><div class="card-tbl">`+other.map(x=>brk(INCOME_LABELS[x[0]],revenueOf(x[1]),revenueOf(ds),INCOME_COLOR[x[0]])).join('')+`</div>`;}
+  return h;
+}
+
+/* ---- modal ---- */
+function fillProjOptions(sel){
+  const cur=sel;
+  const opts=['<option value="">General / not tied to a project</option>'].concat(
+    PROPS.slice().sort((a,b)=>propShort(a).localeCompare(propShort(b))).map(p=>`<option value="${p.id}">${esc(propShort(p))}</option>`));
+  e('fProj').innerHTML=opts.join('');
+  e('fProj').value=cur||'';
+}
+function catToggle(){e('laborBox').style.display=e('fCat').value==='labor'?'block':'none';}
+function calcAmt(){const r=parseFloat((e('fRate').value||'').replace(/[^0-9.]/g,''))||0,d=parseFloat((e('fDays').value||'').replace(/[^0-9.]/g,''))||0;if(e('fCat').value==='labor'&&(r||d))e('fAmount').value=Math.round(r*d);}
+function openAdd(){
+  editId=null;e('mTitle').textContent='Record payment';
+  e('fCat').value='labor';e('fBiz').value='';e('fPayee').value='';e('fAmount').value='';
+  e('fDate').value=new Date().toISOString().slice(0,10);e('fMethod').value='';e('fNote').value='';
+  e('fRate').value='';e('fDays').value='';e('fPS').value='';e('fPE').value='';
+  fillProjOptions('');catToggle();
+  e('payModal').classList.add('show');setTimeout(()=>e('fPayee').focus(),50);
+}
+function openAddForProject(pid){openAdd();e('fProj').value=pid;}
+function openEdit(id){
+  const p=PAY.find(x=>x.id===id);if(!p)return;editId=id;e('mTitle').textContent='Edit payment';
+  e('fCat').value=p.category||'other';e('fBiz').value=p.business||'';e('fPayee').value=p.payee||'';
+  e('fAmount').value=p.amount||'';e('fDate').value=p.date||'';e('fMethod').value=p.method||'';e('fNote').value=p.note||'';
+  e('fRate').value=p.dayRate||'';e('fDays').value=p.days||'';e('fPS').value=p.periodStart||'';e('fPE').value=p.periodEnd||'';
+  fillProjOptions(p.projectId||'');catToggle();
+  e('payModal').classList.add('show');
+}
 function closeM(){e('payModal').classList.remove('show');}
 async function savePay(){
   const payee=e('fPayee').value.trim();
   const amount=parseFloat((e('fAmount').value||'').replace(/[^0-9.]/g,''))||0;
   if(!payee){toast('Enter who was paid');return;}
   if(!amount){toast('Enter an amount');return;}
+  const cat=e('fCat').value;
   const rec=editId?{...PAY.find(x=>x.id===editId)}:{id:'pay_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),createdAt:new Date().toISOString(),createdBy:ME&&ME.name};
   rec.payee=payee;rec.amount=amount;rec.date=e('fDate').value||new Date().toISOString().slice(0,10);
-  rec.category=e('fCat').value;rec.business=e('fBiz').value;rec.method=e('fMethod').value;rec.note=e('fNote').value.trim();
+  rec.category=cat;rec.business=e('fBiz').value;rec.method=e('fMethod').value;rec.note=e('fNote').value.trim();
+  rec.projectId=e('fProj').value||null;
+  if(cat==='labor'){rec.dayRate=parseFloat((e('fRate').value||'').replace(/[^0-9.]/g,''))||0;rec.days=parseFloat((e('fDays').value||'').replace(/[^0-9.]/g,''))||0;rec.periodStart=e('fPS').value||'';rec.periodEnd=e('fPE').value||'';}
+  else{rec.dayRate=0;rec.days=0;rec.periodStart='';rec.periodEnd='';}
   rec.updatedAt=new Date().toISOString();
   const ok=await push(rec);
   if(!ok){toast('Could not save — check connection');return;}
@@ -307,18 +525,18 @@ async function removePay(id){
   PAY=PAY.filter(x=>x.id!==id);render();toast('Deleted');
 }
 
-// ── CSV ──
+/* ---- CSV ---- */
 function exportCSV(){
-  const list=filtered();
-  const head=['Date','Payee','Category','Business','Method','Amount','Note'];
-  const rows=list.map(p=>[p.date||'',p.payee||'',catLabel(p.category),p.business||'',p.method||'',(Number(p.amount)||0),(p.note||'').replace(/\n/g,' ')]);
+  const list=filteredPay(payInRange());
+  const head=['Date','Payee','Category','Business','Project','Day-rate','Days','Period start','Period end','Method','Amount','Note'];
+  const rows=list.map(p=>{const pr=p.projectId?propById(p.projectId):null;return [p.date||'',p.payee||'',catLabel(p.category),p.business||'',pr?propShort(pr):'',(p.dayRate||''),(p.days||''),(p.periodStart||''),(p.periodEnd||''),p.method||'',(Number(p.amount)||0),(p.note||'').replace(/\n/g,' ')];});
   const csv=[head].concat(rows).map(r=>r.map(c=>{const s=String(c);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\n');
   const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download='payroll_'+e('range').value+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.href=URL.createObjectURL(blob);a.download='payroll_'+curRange()+'_'+new Date().toISOString().slice(0,10)+'.csv';
   document.body.appendChild(a);a.click();a.remove();toast('CSV downloaded');
 }
 
-// ── boot / SSO ──
+/* ---- boot / SSO ---- */
 (async()=>{
   const sb=client();
   if(!sb){e('checking').innerHTML='<div style="color:var(--red)">Could not start — refresh.</div>';return;}

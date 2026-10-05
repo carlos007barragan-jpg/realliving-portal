@@ -729,33 +729,6 @@ function seed(){
     {id:'t13',clientId:'c4',agentId:'u1',ts:d(1),kind:'call_out',dur:660},
     {id:'t14',clientId:'c4',agentId:'u1',ts:d(3),kind:'text_out'}
   ],
-  payees:[
-    {id:'pe1',name:'BARR Crew — José',type:'labor',dayRate:180,business:'H2M',note:'Framing / rough carpentry'},
-    {id:'pe2',name:'BARR Crew — Miguel',type:'labor',dayRate:160,business:'H2M',note:'General labor'},
-    {id:'pe3',name:'H2M Rehab — Danny',type:'labor',dayRate:200,business:'H2M',note:'Lead / finish'},
-    {id:'pe4',name:'JR Construction (Jesús)',type:'vendor',dayRate:0,business:'H2M',note:'Framing / floor system sub'},
-    {id:'pe5',name:'Barraza Foundation',type:'vendor',dayRate:0,business:'H2M',note:'Waterproofing / drainage'},
-    {id:'pe6',name:'Marcus Hill',type:'referral',dayRate:0,business:'RL',note:'Agent referral'}
-  ],
-  payments:[
-    /* 1427 Bales (p1) — flip labor + subs */
-    {id:'pay1',date:day(44),category:'labor',payeeId:'pe1',payeeName:'BARR Crew — José',projectId:'p1',business:'H2M',dayRate:180,days:5,amount:900,periodStart:day(48),periodEnd:day(44),note:'Demo + framing week 1',by:'u1'},
-    {id:'pay2',date:day(37),category:'labor',payeeId:'pe1',payeeName:'BARR Crew — José',projectId:'p1',business:'H2M',dayRate:180,days:4.5,amount:810,periodStart:day(41),periodEnd:day(37),note:'Framing week 2',by:'u1'},
-    {id:'pay3',date:day(37),category:'labor',payeeId:'pe2',payeeName:'BARR Crew — Miguel',projectId:'p1',business:'H2M',dayRate:160,days:5,amount:800,periodStart:day(41),periodEnd:day(37),note:'General labor',by:'u1'},
-    {id:'pay4',date:day(30),category:'labor',payeeId:'pe3',payeeName:'H2M Rehab — Danny',projectId:'p1',business:'H2M',dayRate:200,days:6,amount:1200,periodStart:day(34),periodEnd:day(30),note:'Finish carpentry + trim',by:'u1'},
-    {id:'pay5',date:day(40),category:'vendor',payeeId:'pe5',payeeName:'Barraza Foundation',projectId:'p1',business:'H2M',dayRate:0,days:0,amount:3200,note:'Foundation drainage + sump',by:'u1'},
-    {id:'pay6',date:day(28),category:'vendor',payeeName:'ProSource Flooring',projectId:'p1',business:'H2M',dayRate:0,days:0,amount:4100,note:'LVP + tile materials',by:'u1'},
-    /* 2215 Chelsea (p3) — owner-finance inventory rehab */
-    {id:'pay7',date:day(26),category:'labor',payeeId:'pe2',payeeName:'BARR Crew — Miguel',projectId:'p3',business:'H2M',dayRate:160,days:3,amount:480,periodStart:day(30),periodEnd:day(26),note:'Turn + paint',by:'u1'},
-    {id:'pay8',date:day(24),category:'vendor',payeeName:'KC Appliance Outlet',projectId:'p3',business:'H2M',dayRate:0,days:0,amount:1850,note:'Appliance package',by:'u1'},
-    /* 5310 Askew (p4) — closed flip, full labor history */
-    {id:'pay9',date:day(205),category:'labor',payeeId:'pe1',payeeName:'BARR Crew — José',projectId:'p4',business:'H2M',dayRate:175,days:6,amount:1050,periodStart:day(209),periodEnd:day(205),note:'Demo + framing',by:'u1'},
-    {id:'pay10',date:day(198),category:'labor',payeeId:'pe3',payeeName:'H2M Rehab — Danny',projectId:'p4',business:'H2M',dayRate:200,days:7,amount:1400,periodStart:day(202),periodEnd:day(198),note:'Finish',by:'u1'},
-    {id:'pay11',date:day(200),category:'vendor',payeeId:'pe4',payeeName:'JR Construction (Jesús)',projectId:'p4',business:'H2M',dayRate:0,days:0,amount:5200,note:'Floor system rebuild',by:'u1'},
-    /* sales commission + referral examples */
-    {id:'pay12',date:day(10),category:'commission',payeeId:null,payeeName:'Marcus Hill',projectId:'p4',business:'RL',dayRate:0,days:0,amount:2730,note:'Buyer-side commission — 5310 Askew',by:'u1'},
-    {id:'pay13',date:day(9),category:'referral',payeeId:'pe6',payeeName:'Marcus Hill',projectId:null,business:'RL',dayRate:0,days:0,amount:500,note:'Referral — Whitfield listing',by:'u1'}
-  ],
   seq:100
 };}
 let S=null;
@@ -764,8 +737,6 @@ function load(){try{S=JSON.parse(localStorage.getItem(LS))}catch(e){S=null} if(!
   if(!S.appts){S.appts=fresh.appts;dirty=true}
   if(!S.targets){S.targets=fresh.targets;dirty=true}
   if(!S.touches){S.touches=fresh.touches;dirty=true}
-  if(!S.payees){S.payees=fresh.payees;dirty=true}
-  if(!S.payments){S.payments=fresh.payments;dirty=true}
   if(!S.sessions){S.sessions=fresh.sessions;dirty=true}
   if(!S.presence){S.presence={};dirty=true}
   if(!S.tasks){S.tasks=fresh.tasks;dirty=true}
@@ -1285,7 +1256,6 @@ function pagesFor(){
   out.push({k:'comms',label:'Communications',icon:I.comm});
   if(me.role!=='agent')out.push({k:'reports',rep:'perf',label:'Reports',icon:I.rep});
   if(me.role!=='marketing')out.push({k:'commissions',label:'Commissions',icon:I.comm2});
-  if(me.role==='owner')out.push({k:'finance',label:'Finance',icon:I.fin});
   if(me.role!=='marketing')out.push({k:'followups',label:'Follow-Ups',icon:I.fu});
   if(me.role==='owner'||me.role==='manager')out.push({k:'settings',label:'Settings',icon:I.set});
   if(DEV||REAL_OWNER)out.push({sec:DEV?'Developer':'Ownership'},{k:'devview',label:'Change View',icon:I.set});
@@ -1303,7 +1273,7 @@ function renderNav(){
   }).join('');
 }
 /* ================= SHELL ================= *//* ================= SHELL ================= *//* ================= SHELL ================= */
-let page='dash', propTab='avail', propCat='', profFull=false, histFull=false, dormView=false, pageArg=null, pipeSel=null, bizSel=null, boardFilter='', dashFilter='ALL', scAg='ALL', scDays=7, velPipe='h2m_dispo', repTab='perf', trendRange='M', profTab='all', taskFull=false, calMode='month', calOff=0, calWOff=0, calBiz='ALL', setTab='general', fuDone=false, commKind='ALL', finTab='overview', finProj=null, finRange='ytd', finBiz='ALL';
+let page='dash', propTab='avail', propCat='', profFull=false, histFull=false, dormView=false, pageArg=null, pipeSel=null, bizSel=null, boardFilter='', dashFilter='ALL', scAg='ALL', scDays=7, velPipe='h2m_dispo', repTab='perf', trendRange='M', profTab='all', taskFull=false, calMode='month', calOff=0, calWOff=0, calBiz='ALL', setTab='general', fuDone=false, commKind='ALL';
 function refresh(){go(page,pageArg)}
 (function(){const _go=null})();
 function bellSeenKey(){return 'rl_bell_'+(me.id==='admin'?realUid():me.id);}
@@ -1383,7 +1353,7 @@ function go(k,arg){
   page=k;pageArg=arg;if(k==='biz')bizSel=arg;
   renderNav();closeAll();try{renderBell();}catch(_e){}
   const M=document.getElementById('main');
-  const crumb=k==='biz'?BIZ[arg]:{dash:'Dashboard',xsearch:'Cross-Search',leads:'My Leads',clients:'Contacts',props:'Properties',reports:'Reports',calendar:'Calendar',comms:'Communications',commissions:'Commissions',finance:'Finance',followups:'Follow-Ups',settings:'Settings',devview:'Change View',client:'Contact Profile',prop:'Property'}[k]||'';
+  const crumb=k==='biz'?BIZ[arg]:{dash:'Dashboard',xsearch:'Cross-Search',leads:'My Leads',clients:'Contacts',props:'Properties',reports:'Reports',calendar:'Calendar',comms:'Communications',commissions:'Commissions',followups:'Follow-Ups',settings:'Settings',devview:'Change View',client:'Contact Profile',prop:'Property'}[k]||'';
   document.getElementById('crumb').textContent=crumb;
   if(k==='dash')M.innerHTML=vDash();
   if(k==='biz')M.innerHTML=vBiz(arg);
@@ -1397,7 +1367,6 @@ function go(k,arg){
   if(k==='calendar')M.innerHTML=vCalendar();
   if(k==='comms')M.innerHTML=vComms();
   if(k==='commissions')M.innerHTML=vCommissions();
-  if(k==='finance')M.innerHTML=vFinance();
   if(k==='followups')M.innerHTML=vFollowups();
   if(k==='settings')M.innerHTML=vSettings();
   if(k==='devview')M.innerHTML=vDevView();
@@ -3357,270 +3326,6 @@ function vCommissions(){
     '<div class="mut" style="font-size:12px;margin-top:8px">Ownership sets each pipeline to a percentage split or a flat fee in Settings → Commission splits.</div>';
   return h;
 }
-/* ======================= FINANCE / PAYMENTS ======================= */
-const PAY_CATS={labor:'Labor',vendor:'Vendor / Materials',commission:'Sales commission',referral:'Referral',acquisition:'Acquisition',other:'Other'};
-const PAY_CAT_COLOR={labor:'#5F8A47',vendor:'#B08A36',commission:'#3F7089',referral:'#9A5B74',acquisition:'#8a6d3b',other:'#8691a3'};
-const PAYEE_TYPES={labor:'Labor (day-rate)',vendor:'Vendor / Sub',referral:'Referral partner',other:'Other'};
-const INCOME_LABELS={of:'Owner finance',retail:'Retail sales',ws:'Wholesale',lend:'Lending (ASAP)',tc:'Transaction coord.',comm:'RL commissions',other:'Other'};
-const INCOME_COLOR={of:'#5F8A47',retail:'#3F7089',ws:'#9A5B74',lend:'#B08A36',tc:'#7a8a57',comm:'#6b7bbf',other:'#8691a3'};
-function PE(id){return (S.payees||[]).find(p=>p.id===id)||null;}
-function finWon(){return S.deals.filter(d=>isWon(d)&&closedDate(d)&&d.pipe!=='h2m_acq');}
-function dealIncomeType(d){
-  const t=(d.type||'').toLowerCase(),p=d.pipe;
-  if(p==='h2m_of'||/owner finance|contract for deed|lease option/.test(t))return 'of';
-  if(p==='h2m_ws'||/assignment|double close/.test(t))return 'ws';
-  if(p==='asap')return 'lend';
-  if(p==='tc')return 'tc';
-  if(p==='h2m_dispo'||/retail|cash sale/.test(t))return 'retail';
-  if(p==='rl_buy'||p==='rl_list')return 'comm';
-  return 'other';
-}
-function finRangeBounds(){
-  const n=NOW();
-  if(finRange==='mtd')return [new Date(n.getFullYear(),n.getMonth(),1),new Date(n.getFullYear(),n.getMonth()+1,1)];
-  if(finRange==='ytd')return [new Date(n.getFullYear(),0,1),new Date(n.getFullYear()+1,0,1)];
-  if(finRange==='l12')return [new Date(n.getFullYear(),n.getMonth()-11,1),new Date(n.getFullYear(),n.getMonth()+1,1)];
-  return [new Date(2000,0,1),new Date(n.getFullYear()+1,0,1)];
-}
-function finInRange(dateStr){if(!dateStr)return false;const [a,b]=finRangeBounds();const t=new Date(dateStr).getTime();return t>=a.getTime()&&t<b.getTime();}
-function finBizOk(biz){return finBiz==='ALL'||biz===finBiz;}
-function finPayments(){return (S.payments||[]).filter(p=>finInRange(p.date)&&finBizOk(p.business));}
-function finDeals(){return finWon().filter(d=>finInRange(closedDate(d))&&finBizOk(PIPES[d.pipe].biz));}
-function finRangeLabel(){return {mtd:'This month',ytd:NOW().getFullYear()+' YTD',l12:'Last 12 months',all:'All time'}[finRange];}
-function money0(n){return n||n===0?'$'+Math.round(Number(n)).toLocaleString():'—';}
-/* revenue of a deal counted as income this range (one-time gain on close) */
-function finRevenue(ds){return ds.reduce((a,d)=>a+(d.revenue||0),0);}
-function finExpense(ps){return ps.reduce((a,p)=>a+(p.amount||0),0);}
-/* active owner-finance notes + the financed balance on them. NOTE: deals store the
-   financed price in `budget`, not a monthly payment — so we report the outstanding
-   balance here, and monthly receipts will come from the receipts ledger (next step). */
-function ofNotes(){return S.deals.filter(d=>!isLost(d)&&!isArchived(d)&&dealIncomeType(d)==='of'&&(d.budget||0)>0&&finBizOk(PIPES[d.pipe].biz));}
-function ofFinanced(){return ofNotes().reduce((a,d)=>a+(d.budget||0),0);}
-
-function vFinance(){
-  const tab=(t,lbl)=>'<button class="pipetab'+(finTab===t?' on':'')+'" onclick="finTab=\''+t+'\';go(\'finance\')">'+lbl+'</button>';
-  const rsel='<select class="subsel" onchange="finRange=this.value;go(\'finance\')">'+
-    [['mtd','This month'],['ytd',NOW().getFullYear()+' YTD'],['l12','Last 12 months'],['all','All time']].map(o=>'<option value="'+o[0]+'"'+(finRange===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';
-  const bsel='<select class="subsel" onchange="finBiz=this.value;go(\'finance\')"><option value="ALL"'+(finBiz==='ALL'?' selected':'')+'>All businesses</option>'+
-    Object.keys(BIZ).map(b=>'<option value="'+b+'"'+(finBiz===b?' selected':'')+'>'+BIZ[b]+'</option>').join('')+'</select>';
-  let h='<div class="dash-head" style="align-items:flex-start"><div><h2 class="disp">Finance</h2><div class="mut" style="font-size:13px;margin-top:2px">Money in vs money out across every business</div></div>'+
-    '<span class="spacer" style="flex:1"></span>'+bsel+rsel+
-    '<button class="btn small" onclick="mAddPayment()">+ Record payment</button></div>';
-  h+='<div class="pipetabs" style="margin:14px 0 16px">'+tab('overview','Overview')+tab('projects','Projects')+tab('payments','Payments ledger')+tab('income','Income')+tab('payees','Payees &amp; rates')+'</div>';
-  if(finProj&&finTab==='projects')return h+vFinProject(finProj);
-  if(finTab==='overview')return h+vFinOverview();
-  if(finTab==='projects')return h+vFinProjects();
-  if(finTab==='payments')return h+vFinLedger();
-  if(finTab==='income')return h+vFinIncome();
-  if(finTab==='payees')return h+vFinPayees();
-  return h;
-}
-function finBar(rev,exp){
-  const max=Math.max(rev,exp,1);
-  return '<div class="finbars">'+
-    '<div class="finbar"><span class="fbl">Revenue</span><div class="fbt"><div class="fbf rev" style="width:'+(rev/max*100)+'%"></div></div><span class="fbv">'+money0(rev)+'</span></div>'+
-    '<div class="finbar"><span class="fbl">Expenses</span><div class="fbt"><div class="fbf exp" style="width:'+(exp/max*100)+'%"></div></div><span class="fbv">'+money0(exp)+'</span></div></div>';
-}
-function vFinOverview(){
-  const ds=finDeals(),ps=finPayments();
-  const rev=finRevenue(ds),exp=finExpense(ps),net=rev-exp;
-  const ofn=ofNotes().length,off=ofFinanced();
-  let h='<div class="grid cards4">'+
-    '<div class="card"><div class="eyebrow">Revenue</div><div class="big">'+money0(rev)+'</div><div class="sub">'+finRangeLabel()+' · closed deals</div></div>'+
-    '<div class="card"><div class="eyebrow">Expenses</div><div class="big">'+money0(exp)+'</div><div class="sub">'+ps.length+' payment'+(ps.length===1?'':'s')+' out</div></div>'+
-    '<div class="card"><div class="eyebrow">Net</div><div class="big" style="color:'+(net>=0?'var(--green)':'var(--red)')+'">'+money0(net)+'</div><div class="sub">revenue minus expenses</div></div>'+
-    '<div class="card"><div class="eyebrow">Owner-finance notes</div><div class="big">'+money0(off)+'</div><div class="sub">financed balance · '+ofn+' active note'+(ofn===1?'':'s')+'</div></div></div>';
-  h+='<div class="sect"><div class="card">'+finBar(rev,exp)+'</div></div>';
-  /* by business */
-  const biz={};Object.keys(BIZ).forEach(b=>biz[b]={rev:0,exp:0});
-  ds.forEach(d=>{const b=PIPES[d.pipe].biz;biz[b].rev+=d.revenue||0;});
-  ps.forEach(p=>{if(biz[p.business])biz[p.business].exp+=p.amount||0;});
-  h+='<div class="sect"><div class="sect-head"><h2>By business</h2></div><div class="card" style="padding:0;overflow:auto"><table>'+
-    '<tr><th>Business</th><th style="text-align:right">Revenue</th><th style="text-align:right">Expenses</th><th style="text-align:right">Net</th></tr>'+
-    Object.keys(BIZ).map(b=>{const r=biz[b];const nt=r.rev-r.exp;return '<tr><td><span class="bizdot" style="background:'+BIZCOLOR[b]+'"></span>'+BIZ[b]+'</td><td class="money" style="text-align:right">'+money0(r.rev)+'</td><td class="money" style="text-align:right">'+money0(r.exp)+'</td><td class="money" style="text-align:right;color:'+(nt>=0?'var(--green)':'var(--red)')+'">'+money0(nt)+'</td></tr>';}).join('')+
-    '</table></div></div>';
-  /* revenue by source + expense by category, side by side */
-  const inc={};ds.forEach(d=>{const k=dealIncomeType(d);inc[k]=(inc[k]||0)+(d.revenue||0);});
-  const cat={};ps.forEach(p=>{cat[p.category]=(cat[p.category]||0)+(p.amount||0);});
-  const incRows=Object.keys(inc).sort((a,b)=>inc[b]-inc[a]).map(k=>breakRow(INCOME_LABELS[k]||k,inc[k],rev,INCOME_COLOR[k]||'#888')).join('')||'<div class="empty">No revenue in range.</div>';
-  const catRows=Object.keys(cat).sort((a,b)=>cat[b]-cat[a]).map(k=>breakRow(PAY_CATS[k]||k,cat[k],exp,PAY_CAT_COLOR[k]||'#888')).join('')||'<div class="empty">No expenses in range.</div>';
-  h+='<div class="two sect">'+
-    '<div><div class="sect-head"><h2>Revenue by source</h2></div><div class="card">'+incRows+'</div></div>'+
-    '<div><div class="sect-head"><h2>Expenses by category</h2></div><div class="card">'+catRows+'</div></div></div>';
-  return h;
-}
-function breakRow(label,val,tot,color){
-  const pct=tot>0?Math.round(val/tot*100):0;
-  return '<div class="brk"><span class="brk-l">'+esc(label)+'</span><div class="brk-t"><div class="brk-f" style="width:'+pct+'%;background:'+color+'"></div></div><span class="brk-v">'+money0(val)+'</span><span class="brk-p">'+pct+'%</span></div>';
-}
-/* ---- Projects ---- */
-function projStats(pid){
-  const p=P(pid);
-  const ds=finWon().filter(d=>d.propertyId===pid&&finBizOk(PIPES[d.pipe].biz));
-  const ps=(S.payments||[]).filter(x=>x.projectId===pid&&finBizOk(x.business));
-  const rev=ds.reduce((a,d)=>a+(d.revenue||0),0);
-  const acq=(p&&p.acqPrice)||0;
-  const paid=ps.reduce((a,x)=>a+(x.amount||0),0);
-  const labor=ps.filter(x=>x.category==='labor').reduce((a,x)=>a+(x.amount||0),0);
-  const cost=acq+paid;
-  return {p,ds,ps,rev,acq,paid,labor,cost,profit:rev-cost};
-}
-function vFinProjects(){
-  /* only properties with actual money moving — payments logged or revenue booked.
-     146 inventory rows with all zeros is noise; a project is something you're spending on. */
-  const rows=(S.properties||[]).map(p=>projStats(p.id)).filter(s=>s.ps.length||s.rev>0).sort((a,b)=>b.paid-a.paid);
-  let h='<div class="mut" style="font-size:12.5px;margin:-4px 0 12px">Each property is a project. <b>Cost to run</b> is every payment tagged to it (labor + vendor + materials). Revenue is the deal fees booked on it so far — record the resale as a dispo deal for full flip profit. Click a project for the per-person breakdown.</div>';
-  if(!rows.length)return h+'<div class="card"><div class="empty">No project spending yet. Record a payment and tag it to a property.</div></div>';
-  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Project</th><th style="text-align:right">Labor</th><th style="text-align:right">Cost to run</th><th style="text-align:right">Acquisition</th><th style="text-align:right">Revenue</th><th style="text-align:right">Net</th></tr>'+
-    rows.map(s=>'<tr class="rowlink" onclick="finProj=\''+s.p.id+'\';finTab=\'projects\';go(\'finance\')"><td>'+esc(s.p.address.split(',')[0])+'</td>'+
-      '<td class="money" style="text-align:right">'+money0(s.labor)+'</td>'+
-      '<td class="money" style="text-align:right">'+money0(s.paid)+'</td>'+
-      '<td class="money" style="text-align:right">'+(s.acq?money0(s.acq):'—')+'</td>'+
-      '<td class="money" style="text-align:right">'+money0(s.rev)+'</td>'+
-      '<td class="money" style="text-align:right;color:'+(s.profit>=0?'var(--green)':'var(--red)')+'">'+money0(s.profit)+'</td></tr>').join('')+
-    '</table></div>';
-  return h;
-}
-function vFinProject(pid){
-  const s=projStats(pid);if(!s.p)return '<div class="empty">Project not found.</div>';
-  let h='<button class="back" onclick="finProj=null;go(\'finance\')">← All projects</button>';
-  h+='<div class="sect-head" style="margin-top:6px"><h2>'+esc(s.p.address)+'</h2><span class="cnt">cost to run this project</span>'+
-     '<span class="spacer"></span><button class="btn small" onclick="mAddPayment(null,\''+pid+'\')">+ Record payment</button></div>';
-  h+='<div class="grid cards4">'+
-    '<div class="card"><div class="eyebrow">Cost to run</div><div class="big">'+money0(s.paid)+'</div><div class="sub">labor + vendor + materials</div></div>'+
-    '<div class="card"><div class="eyebrow">Labor</div><div class="big">'+money0(s.labor)+'</div><div class="sub">paid to crew</div></div>'+
-    '<div class="card"><div class="eyebrow">Revenue booked</div><div class="big">'+money0(s.rev)+'</div><div class="sub">deal fees on this property</div></div>'+
-    '<div class="card"><div class="eyebrow">Net</div><div class="big" style="color:'+(s.profit>=0?'var(--green)':'var(--red)')+'">'+money0(s.profit)+'</div><div class="sub">'+(s.acq?'incl. acquisition '+money0(s.acq):'revenue minus cost to run')+'</div></div></div>';
-  /* labor paid per individual */
-  const byPerson={};s.ps.forEach(x=>{const k=x.payeeName||'—';if(!byPerson[k])byPerson[k]={amt:0,days:0,cat:x.category};byPerson[k].amt+=x.amount||0;byPerson[k].days+=(x.category==='labor'?(x.days||0):0);});
-  const personRows=Object.keys(byPerson).sort((a,b)=>byPerson[b].amt-byPerson[a].amt);
-  h+='<div class="sect"><div class="sect-head"><h2>Paid by person</h2></div>'+
-    (personRows.length?'<div class="card" style="padding:0;overflow:auto"><table><tr><th>Person / vendor</th><th>Type</th><th style="text-align:right">Days</th><th style="text-align:right">Paid</th></tr>'+
-      personRows.map(k=>{const r=byPerson[k];return '<tr><td>'+esc(k)+'</td><td class="mut">'+(PAY_CATS[r.cat]||r.cat)+'</td><td style="text-align:right">'+(r.days?r.days:'—')+'</td><td class="money" style="text-align:right">'+money0(r.amt)+'</td></tr>';}).join('')+
-      '</table></div>':'<div class="card"><div class="empty">No payments recorded for this project yet.</div></div>')+'</div>';
-  /* every payment on the project */
-  h+='<div class="sect"><div class="sect-head"><h2>All payments</h2></div>'+vPayTable(s.ps.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')),true)+'</div>';
-  return h;
-}
-/* ---- Ledger ---- */
-function vPayTable(ps,hideProj){
-  if(!ps.length)return '<div class="card"><div class="empty">No payments here yet.</div></div>';
-  return '<div class="card" style="padding:0;overflow:auto"><table><tr><th>Date</th><th>Payee</th><th>Category</th>'+(hideProj?'':'<th>Project</th>')+'<th>Period</th><th style="text-align:right">Rate × days</th><th style="text-align:right">Amount</th><th></th></tr>'+
-    ps.map(p=>{const prop=p.projectId?P(p.projectId):null;const per=(p.periodStart&&p.periodEnd)?fdate(p.periodStart)+'–'+fdate(p.periodEnd):'—';
-      const rd=(p.category==='labor'&&p.dayRate)?money0(p.dayRate)+' × '+p.days:'—';
-      return '<tr><td class="mut">'+fdate(p.date)+'</td><td>'+esc(p.payeeName||'—')+'</td>'+
-        '<td><span class="pcat" style="background:'+(PAY_CAT_COLOR[p.category]||'#888')+'1f;color:'+(PAY_CAT_COLOR[p.category]||'#888')+'">'+(PAY_CATS[p.category]||p.category)+'</span></td>'+
-        (hideProj?'':'<td class="mut">'+esc(prop?prop.address.split(',')[0]:(p.projectId?'—':'General'))+'</td>')+
-        '<td class="mut">'+per+'</td><td class="mut" style="text-align:right">'+rd+'</td>'+
-        '<td class="money" style="text-align:right">'+money0(p.amount)+'</td>'+
-        '<td style="text-align:right"><button class="lnk" onclick="mAddPayment(\''+p.id+'\')">edit</button></td></tr>';}).join('')+
-    '</table></div>';
-}
-function vFinLedger(){
-  const ps=finPayments().slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const tot=finExpense(ps);
-  let h='<div class="mut" style="font-size:12.5px;margin:-4px 0 12px">Every dollar out — labor, vendors, commissions, referrals. '+finRangeLabel()+': <b>'+money0(tot)+'</b> across '+ps.length+' payment'+(ps.length===1?'':'s')+'.</div>';
-  h+=vPayTable(ps,false);
-  return h;
-}
-/* ---- Income ---- */
-function vFinIncome(){
-  const ds=finDeals();
-  const groups={of:[],retail:[],ws:[],lend:[],tc:[],comm:[],other:[]};
-  ds.forEach(d=>{groups[dealIncomeType(d)].push(d);});
-  const ofActive=ofNotes();
-  let h='<div class="mut" style="font-size:12.5px;margin:-4px 0 12px">Where the money comes in, pulled from the CRM. Owner-finance shows each note’s financed balance; everything else is realized at close. <b>Monthly payment collection isn’t tracked yet</b> — that’s the receipts ledger we can add next.</div>';
-  /* owner finance — financed balance (budget holds the financed price, not a monthly) */
-  h+='<div class="sect"><div class="sect-head"><h2>Owner-finance clients</h2><span class="cnt">active notes</span><span class="spacer"></span><span class="pill">'+money0(ofActive.reduce((a,d)=>a+(d.budget||0),0))+' financed</span></div>'+
-    (ofActive.length?'<div class="card" style="padding:0;overflow:auto"><table><tr><th>Client</th><th>Property</th><th>Stage</th><th style="text-align:right">Down</th><th style="text-align:right">Financed</th></tr>'+
-      ofActive.map(d=>{const c=C(d.clientId);const prop=d.propertyId?P(d.propertyId):null;return '<tr class="rowlink" onclick="go(\'client\',\''+d.clientId+'\')"><td>'+esc(c?c.name:'—')+'</td><td class="mut">'+esc(prop?prop.address.split(',')[0]:(d.propInterest||'—'))+'</td><td class="mut">'+esc(PIPES[d.pipe].stages[d.stage])+'</td><td class="money" style="text-align:right">'+money0(d.down)+'</td><td class="money" style="text-align:right">'+money0(d.budget)+'</td></tr>';}).join('')+
-      '</table></div>':'<div class="card"><div class="empty">No active owner-finance notes.</div></div>')+'</div>';
-  /* retail clients */
-  const retail=groups.retail;
-  h+='<div class="sect"><div class="sect-head"><h2>Retail clients</h2><span class="cnt">closed sales '+finRangeLabel()+'</span><span class="spacer"></span><span class="pill">'+money0(finRevenue(retail))+'</span></div>'+
-    (retail.length?'<div class="card" style="padding:0;overflow:auto"><table><tr><th>Client</th><th>Property</th><th>Closed</th><th style="text-align:right">Received</th></tr>'+
-      retail.map(d=>{const c=C(d.clientId);const prop=d.propertyId?P(d.propertyId):null;return '<tr class="rowlink" onclick="openDeal(\''+d.id+'\')"><td>'+esc(c?c.name:'—')+'</td><td class="mut">'+esc(prop?prop.address.split(',')[0]:(d.propInterest||'—'))+'</td><td class="mut">'+fdate(closedDate(d))+'</td><td class="money" style="text-align:right">'+money0(d.revenue)+'</td></tr>';}).join('')+
-      '</table></div>':'<div class="card"><div class="empty">No retail closings in range.</div></div>')+'</div>';
-  /* wholesale */
-  const ws=groups.ws;
-  h+='<div class="sect"><div class="sect-head"><h2>Wholesale</h2><span class="cnt">assignment fees '+finRangeLabel()+'</span><span class="spacer"></span><span class="pill">'+money0(finRevenue(ws))+'</span></div>'+
-    (ws.length?'<div class="card" style="padding:0;overflow:auto"><table><tr><th>Deal</th><th>Closed</th><th style="text-align:right">Fee</th></tr>'+
-      ws.map(d=>'<tr class="rowlink" onclick="openDeal(\''+d.id+'\')"><td>'+esc(d.propInterest||dealTitle(d))+'</td><td class="mut">'+fdate(closedDate(d))+'</td><td class="money" style="text-align:right">'+money0(d.revenue)+'</td></tr>').join('')+
-      '</table></div>':'<div class="card"><div class="empty">No wholesale fees in range.</div></div>')+'</div>';
-  /* other income rollup */
-  const other=[['lend',groups.lend],['tc',groups.tc],['comm',groups.comm]].filter(x=>x[1].length);
-  if(other.length){
-    h+='<div class="sect"><div class="sect-head"><h2>Other income</h2><span class="cnt">lending, coordination, RL commissions</span></div><div class="card">'+
-      other.map(x=>breakRow(INCOME_LABELS[x[0]],finRevenue(x[1]),finRevenue(ds),INCOME_COLOR[x[0]])).join('')+'</div></div>';
-  }
-  return h;
-}
-/* ---- Payees ---- */
-function vFinPayees(){
-  const list=(S.payees||[]).slice().sort((a,b)=>(a.type||'').localeCompare(b.type||'')||(a.name||'').localeCompare(b.name||''));
-  let h='<div class="mut" style="font-size:12.5px;margin:-4px 0 12px">Everyone you pay, with a default day-rate for labor so recording a payment is just rate × days. <button class="btn small" onclick="mAddPayee()">+ Add payee</button></div>';
-  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Name</th><th>Type</th><th>Business</th><th style="text-align:right">Day-rate</th><th>Note</th><th></th></tr>'+
-    (list.length?list.map(pe=>'<tr><td>'+esc(pe.name)+'</td><td class="mut">'+(PAYEE_TYPES[pe.type]||pe.type)+'</td><td class="mut">'+(pe.business?BIZ[pe.business]||pe.business:'—')+'</td><td class="money" style="text-align:right">'+(pe.type==='labor'&&pe.dayRate?money0(pe.dayRate):'—')+'</td><td class="mut">'+esc(pe.note||'')+'</td><td style="text-align:right"><button class="lnk" onclick="mAddPayee(\''+pe.id+'\')">edit</button></td></tr>').join(''):'<tr><td colspan="6"><div class="empty">No payees yet.</div></td></tr>')+
-    '</table></div>';
-  return h;
-}
-/* ---- Modals ---- */
-function mAddPayment(edit,presetProj){
-  const p=edit?(S.payments||[]).find(x=>x.id===edit):{category:'labor',date:NOW().toISOString().slice(0,10),projectId:presetProj||'',business:'H2M',dayRate:'',days:'',amount:'',payeeId:'',payeeName:'',periodStart:'',periodEnd:'',note:''};
-  if(!p)return;
-  const payeeOpts='<option value="">— pick or type below —</option>'+(S.payees||[]).map(pe=>'<option value="'+pe.id+'"'+(p.payeeId===pe.id?' selected':'')+' data-rate="'+(pe.dayRate||'')+'" data-type="'+esc(pe.type)+'" data-biz="'+esc(pe.business||'')+'">'+esc(pe.name)+'</option>').join('');
-  const catOpts=Object.keys(PAY_CATS).map(k=>'<option value="'+k+'"'+(p.category===k?' selected':'')+'>'+PAY_CATS[k]+'</option>').join('');
-  const projOpts='<option value="">General / not a project</option>'+(S.properties||[]).map(pr=>'<option value="'+pr.id+'"'+(p.projectId===pr.id?' selected':'')+'>'+esc(pr.address.split(',')[0])+'</option>').join('');
-  const bizOpts=Object.keys(BIZ).map(b=>'<option value="'+b+'"'+(p.business===b?' selected':'')+'>'+BIZ[b]+'</option>').join('');
-  modal('<h2>'+(edit?'Edit payment':'Record payment')+'</h2>'+
-    '<div class="frow"><div><label>Payee (saved)</label><select id="pm-payee" onchange="pmPayeePick()">'+payeeOpts+'</select></div><div><label>Payee name</label><input id="pm-name" value="'+esc(p.payeeName||'')+'" placeholder="Name on the payment"></div></div>'+
-    '<div class="frow"><div><label>Category</label><select id="pm-cat" onchange="pmCatToggle()">'+catOpts+'</select></div><div><label>Business</label><select id="pm-biz">'+bizOpts+'</select></div></div>'+
-    '<div class="frow"><div><label>Project (property)</label><select id="pm-proj">'+projOpts+'</select></div><div><label>Date paid</label><input id="pm-date" type="date" value="'+esc(p.date||'')+'"></div></div>'+
-    '<div id="pm-labor" style="display:'+(p.category==='labor'?'block':'none')+'">'+
-      '<div class="frow"><div><label>Day-rate</label><input id="pm-rate" type="number" value="'+esc(p.dayRate||'')+'" oninput="pmCalc()"></div><div><label>Days (0.5 = half)</label><input id="pm-days" type="number" step="0.5" value="'+esc(p.days||'')+'" oninput="pmCalc()"></div></div>'+
-      '<div class="frow"><div><label>Pay period start</label><input id="pm-ps" type="date" value="'+esc(p.periodStart||'')+'"></div><div><label>Pay period end</label><input id="pm-pe" type="date" value="'+esc(p.periodEnd||'')+'"></div></div>'+
-    '</div>'+
-    '<label>Amount</label><input id="pm-amt" type="number" value="'+esc(p.amount||'')+'">'+
-    '<label>Note</label><input id="pm-note" value="'+esc(p.note||'')+'" placeholder="What this covered">'+
-    '<div class="mrow">'+(edit?'<button class="btn ghost" style="color:var(--red)" onclick="rmPayment(\''+edit+'\')">Delete</button>':'')+'<span style="flex:1"></span><button class="btn ghost" onclick="closeAll()">Cancel</button><button class="btn" onclick="savePayment('+(edit?'\''+edit+'\'':'null')+')">Save payment</button></div>');
-}
-function pmPayeePick(){const sel=document.getElementById('pm-payee');const o=sel.options[sel.selectedIndex];if(!o||!o.value)return;document.getElementById('pm-name').value=o.textContent;const rate=o.getAttribute('data-rate'),typ=o.getAttribute('data-type'),biz=o.getAttribute('data-biz');if(typ){const c=document.getElementById('pm-cat');if(typ==='labor')c.value='labor';else if(typ==='vendor')c.value='vendor';else if(typ==='referral')c.value='referral';pmCatToggle();}if(rate){document.getElementById('pm-rate').value=rate;}if(biz){document.getElementById('pm-biz').value=biz;}pmCalc();}
-function pmCatToggle(){const cat=document.getElementById('pm-cat').value;document.getElementById('pm-labor').style.display=cat==='labor'?'block':'none';}
-function pmCalc(){const r=parseFloat(document.getElementById('pm-rate').value)||0,d=parseFloat(document.getElementById('pm-days').value)||0;if(document.getElementById('pm-cat').value==='labor'&&(r||d))document.getElementById('pm-amt').value=Math.round(r*d);}
-function savePayment(edit){
-  const g=id=>{const el=document.getElementById(id);return el?el.value.trim():'';};
-  const cat=g('pm-cat');const name=g('pm-name');const amt=parseFloat(g('pm-amt'))||0;
-  if(!name){toast('Add a payee name');return;}
-  if(!amt){toast('Add an amount');return;}
-  const rec={category:cat,payeeId:g('pm-payee')||null,payeeName:name,business:g('pm-biz'),projectId:g('pm-proj')||null,
-    date:g('pm-date')||NOW().toISOString().slice(0,10),amount:amt,note:g('pm-note'),
-    dayRate:cat==='labor'?(parseFloat(g('pm-rate'))||0):0,days:cat==='labor'?(parseFloat(g('pm-days'))||0):0,
-    periodStart:cat==='labor'?g('pm-ps'):'',periodEnd:cat==='labor'?g('pm-pe'):''};
-  if(edit){const x=(S.payments||[]).find(y=>y.id===edit);if(x)Object.assign(x,rec);}
-  else{rec.id=uid('pay');rec.by=me.id==='admin'?realUid():me.id;(S.payments=S.payments||[]).push(rec);}
-  save();closeAll();go('finance');toast('Payment saved');
-}
-function rmPayment(id){if(!confirm('Delete this payment?'))return;S.payments=(S.payments||[]).filter(x=>x.id!==id);markDel('payments',id);save();closeAll();go('finance');toast('Payment deleted');}
-function mAddPayee(edit){
-  const pe=edit?(S.payees||[]).find(x=>x.id===edit):{name:'',type:'labor',dayRate:'',business:'H2M',note:''};
-  if(!pe)return;
-  const typeOpts=Object.keys(PAYEE_TYPES).map(k=>'<option value="'+k+'"'+(pe.type===k?' selected':'')+'>'+PAYEE_TYPES[k]+'</option>').join('');
-  const bizOpts='<option value="">—</option>'+Object.keys(BIZ).map(b=>'<option value="'+b+'"'+(pe.business===b?' selected':'')+'>'+BIZ[b]+'</option>').join('');
-  modal('<h2>'+(edit?'Edit payee':'Add payee')+'</h2>'+
-    '<label>Name</label><input id="pe-name" value="'+esc(pe.name||'')+'">'+
-    '<div class="frow"><div><label>Type</label><select id="pe-type">'+typeOpts+'</select></div><div><label>Default day-rate</label><input id="pe-rate" type="number" value="'+esc(pe.dayRate||'')+'" placeholder="labor only"></div></div>'+
-    '<div class="frow"><div><label>Business</label><select id="pe-biz">'+bizOpts+'</select></div><div><label>Note</label><input id="pe-note" value="'+esc(pe.note||'')+'"></div></div>'+
-    '<div class="mrow">'+(edit?'<button class="btn ghost" style="color:var(--red)" onclick="rmPayee(\''+edit+'\')">Delete</button>':'')+'<span style="flex:1"></span><button class="btn ghost" onclick="closeAll()">Cancel</button><button class="btn" onclick="savePayee('+(edit?'\''+edit+'\'':'null')+')">Save</button></div>');
-}
-function savePayee(edit){
-  const g=id=>{const el=document.getElementById(id);return el?el.value.trim():'';};
-  const name=g('pe-name');if(!name){toast('Add a name');return;}
-  const rec={name,type:g('pe-type'),dayRate:parseFloat(g('pe-rate'))||0,business:g('pe-biz'),note:g('pe-note')};
-  if(edit){const x=(S.payees||[]).find(y=>y.id===edit);if(x)Object.assign(x,rec);}
-  else{rec.id=uid('pe');(S.payees=S.payees||[]).push(rec);}
-  save();closeAll();go('finance');toast('Payee saved');
-}
-function rmPayee(id){if(!confirm('Delete this payee?'))return;S.payees=(S.payees||[]).filter(x=>x.id!==id);markDel('payees',id);save();closeAll();go('finance');toast('Payee deleted');}
 /* ================= FOLLOW-UPS ================= */
 function vFollowups(){
   const all=myTasks();
@@ -5107,7 +4812,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='li-pa
    One generic 'records' table holds every collection as JSON rows.
    save() stamps changed rows; the engine pushes them and pulls
    teammates' changes every 15s. Newest row wins per record. */
-const SYNC_COLS=['clients','deals','properties','acts','appts','touches','users','tasks','smartlists','payees','payments'];
+const SYNC_COLS=['clients','deals','properties','acts','appts','touches','users','tasks','smartlists'];
 let _snap={},_del={},_pushQ={},_lastPull='1970-01-01T00:00:00Z',_syncTimer=null,_pushing=false;
 function snapKey(o){return JSON.stringify(o)}
 /* Deletions are EXPLICIT. Only a real remove (rmProp, rmDeal, rmUser, rmList,
