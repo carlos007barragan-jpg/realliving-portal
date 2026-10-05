@@ -443,6 +443,21 @@ select.tfilter{padding:7px 9px}
 .dialer .dl-inc button{flex:1;border:none;border-radius:11px;padding:13px 0;font-weight:700;font-size:14px;cursor:pointer}
 .dialer .dl-inc .ans{background:#2E9E5B;color:#fff}
 .dialer .dl-inc .dec{background:#C0392B;color:#fff}
+.dialer .dl-script{display:none;margin-top:12px;padding-top:11px;border-top:1px solid #2A2F4D;max-height:40vh;overflow-y:auto}
+.dialer .dls-h{font-weight:700;font-size:12.5px;color:#fff;margin-bottom:9px;line-height:1.3}
+.dialer .dls-stage{display:inline-block;background:#232741;color:#D8B65A;border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:700;margin-left:2px;vertical-align:middle}
+.dialer .dls-lab{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#7E8699;font-weight:700;margin-bottom:4px}
+.dialer .dls-q{list-style:none;margin:0 0 11px;padding:0}
+.dialer .dls-q li{display:flex;gap:8px;align-items:flex-start;padding:6px 0;font-size:12.5px;line-height:1.35;color:#E7DCC0;cursor:pointer;border-bottom:1px solid #20243C}
+.dialer .dls-q li:last-child{border-bottom:none}
+.dialer .dls-q .qck{flex:none;width:15px;height:15px;border:1.5px solid #4A5170;border-radius:4px;margin-top:1px}
+.dialer .dls-q li.done{color:#6B7488}
+.dialer .dls-q li.done span:last-child{text-decoration:line-through}
+.dialer .dls-q li.done .qck{background:#2E9E5B;border-color:#2E9E5B;position:relative}
+.dialer .dls-q li.done .qck:after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.dialer .dls-sig{font-size:11.5px;line-height:1.4;color:#B9C0D0;margin-bottom:5px}
+.dialer .dls-sig b{margin-right:4px}
+.dialer .dls-next{margin-top:9px;padding-top:9px;border-top:1px solid #2A2F4D;font-size:12px;line-height:1.4;color:#E7DCC0}
 </style>
 </head>
 <body>
@@ -4373,11 +4388,30 @@ function ensureDialer(){
     '<div class="dl-timer" id="dlTimer" style="display:none">00:00</div>'+
     '<div class="dl-keys" id="dlKeys" style="display:none">'+keys+'</div>'+
     '<div class="dl-actions" id="dlActions"><button id="dlKeypadBtn" onclick="toggleKeys()">\u2328 Keypad</button><button id="dlMuteBtn" onclick="voiceMute()">Mute</button><button class="danger" onclick="voiceHangup()">Hang up</button></div>'+
-    '<div class="dl-inc" id="dlInc" style="display:none"><button class="ans" onclick="voiceAnswer()">Answer</button><button class="dec" onclick="voiceDecline()">Decline</button></div>';
+    '<div class="dl-inc" id="dlInc" style="display:none"><button class="ans" onclick="voiceAnswer()">Answer</button><button class="dec" onclick="voiceDecline()">Decline</button></div>'+
+    '<div class="dl-script" id="dlScript"></div>';
   document.body.appendChild(d);
 }
+function fillDialerScript(cid){
+  ensureDialer();const el=document.getElementById('dlScript');if(!el)return;
+  const c=(typeof C==='function')?C(cid):null;
+  if(!c){el.style.display='none';el.innerHTML='';return;}
+  let open=[];try{open=(S&&S.deals?S.deals.filter(d=>d.clientId===cid):[]).filter(d=>!isFinal(d));}catch(_){ }
+  const key=pbKeyFor(c,open);const sc=SCRIPTS[key];
+  if(!sc){el.style.display='none';el.innerHTML='';return;}
+  let stage='New';try{if(open&&open.length&&PIPES[open[0].pipe])stage=PIPES[open[0].pipe].stages[open[0].stage];}catch(_){ }
+  const qs=sc.q.map(x=>'<li onclick="this.classList.toggle(\'done\')"><span class="qck"></span><span>'+esc(x)+'</span></li>').join('');
+  el.innerHTML='<div class="dls-h">Playbook — '+esc(sc.name)+' <span class="dls-stage">'+esc(stage)+'</span></div>'+
+    '<div class="dls-lab">Ask — tap to check off</div><ul class="dls-q">'+qs+'</ul>'+
+    '<div class="dls-sig"><b style="color:#3FBF6B">Green</b>'+esc(sc.g)+'</div>'+
+    '<div class="dls-sig"><b style="color:#E0A93B">Yellow</b>'+esc(sc.y)+'</div>'+
+    '<div class="dls-sig"><b style="color:#D9654A">Red</b>'+esc(sc.r)+'</div>'+
+    '<div class="dls-next"><div class="dls-lab">Convert — the next step</div>'+esc(sc.next)+'</div>';
+  el.style.display='block';
+}
+function clearDialerScript(){const el=document.getElementById('dlScript');if(el){el.style.display='none';el.innerHTML='';}}
 function showDialer(){ensureDialer();document.getElementById('dialerWidget').style.display='block';}
-function hideDialer(){const d=document.getElementById('dialerWidget');if(d)d.style.display='none';stopTimer();}
+function hideDialer(){const d=document.getElementById('dialerWidget');if(d)d.style.display='none';stopTimer();clearDialerScript();}
 function dlSet(name,num,status){ensureDialer();document.getElementById('dlName').textContent=name||'\u2014';document.getElementById('dlNum').textContent=num||'';document.getElementById('dlStatus').textContent=status||'';}
 function setStatus(x){const el=document.getElementById('dlStatus');if(el)el.textContent=x;}
 function startTimer(){stopTimer();_vsecs=0;const t=document.getElementById('dlTimer');if(!t)return;t.style.display='block';t.textContent='00:00';_vt=setInterval(()=>{_vsecs++;const m=String(Math.floor(_vsecs/60)).padStart(2,'0'),s=String(_vsecs%60).padStart(2,'0');t.textContent=m+':'+s;},1000);}
@@ -4388,7 +4422,7 @@ async function browserCall(cid){
   const c=(typeof C==='function')?C(cid):null; if(!c){toast&&toast('Contact not found');return;}
   if(!c.phone){toast&&toast('No phone number on file');return;}
   if(!CLOUD||!sb||!SEAT_ID){ if(typeof mLogTouch==='function')mLogTouch(cid,'call'); return; }
-  showDialer();ensureDialer();_dialMode();dlSet(c.name,c.phone,'Connecting\u2026');
+  showDialer();ensureDialer();_dialMode();dlSet(c.name,c.phone,'Connecting\u2026');fillDialerScript(cid);
   try{
     const ok=await ensureVoice();
     if(!ok||!voiceDevice){setStatus('Phone not ready');toast&&toast('Calling not ready \u2014 reload the CRM');return;}
@@ -4418,6 +4452,7 @@ function showIncoming(call){
   document.getElementById('dlActions').style.display='none';
   document.getElementById('dlKeys').style.display='none';
   document.getElementById('dlInc').style.display='flex';
+  if(voiceIncCid)fillDialerScript(voiceIncCid);else clearDialerScript();
 }
 function voiceAnswer(){
   if(!voiceIncoming)return;
