@@ -2321,31 +2321,6 @@ function vClient(id){
   h+='</div>';
   /* ---- RIGHT: associated records ---- */
   h+='<div>';
-  h+='<div class="card"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:17px">Deals</h2><span class="cnt">'+ds.length+'</span></div>'+
-    (ds.length?ds.map(d=>{const p=PIPES[d.pipe];
-      /* A deal on this card can be live, sold, archived-for-audit, or closed out. Only a
-         live one deserves a stage bar — showing one for an archived or sold deal made it
-         read as still in flight, which is exactly the confusion here. Each state gets its
-         own label and its own action. */
-      const arch=isArchived(d)&&d.outcome!=='sold';
-      const sold=d.outcome==='sold'||(isWon(d)&&!arch);
-      const lost=isLost(d);
-      let badge='',sub='';
-      if(sold){badge='<span class="tag gr" style="flex:0 0 auto">SOLD</span>';
-        sub='Closed'+(d.lastStageLabel?' at '+esc(d.lastStageLabel):'')+(d.closeDate?' · '+fdate(d.closeDate):'');}
-      else if(arch){badge='<span class="tag" style="flex:0 0 auto;border-color:var(--amber);color:var(--amber)">ARCHIVED</span>';
-        sub='Parked for audit · last stage '+esc(d.lastStageLabel||p.stages[d.stage]);}
-      else if(lost){badge='<span class="tag" style="flex:0 0 auto;border-color:var(--mut);color:var(--mut)">CLOSED OUT</span>';
-        sub=esc(d.lostReason||'not moving forward');}
-      else{badge='';sub=esc(p.stages[d.stage])+(d.closeDate?' · closes '+fdate(d.closeDate):'');}
-      return '<div class="deal-row" onclick="openDeal(\''+d.id+'\')"><div class="a" style="width:100%">'+
-      '<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">'+badge+'<span>'+esc(p.name)+' — '+esc(d.type)+'</span></div>'+
-      '<small>'+sub+(hideMoney()?'':(d.budget&&!sold&&!arch?' · budget '+money(d.budget)+'/mo':''))+'</small>'+
-      /* live deals still get the progress bar; everything else does not */
-      (!sold&&!arch&&!lost?'<div class="minibar">'+p.stages.map((_,i)=>'<i'+(i<=d.stage?' class="on"':'')+'></i>').join('')+'</div>':'')+
-      '<div class="link3" style="color:var(--gold2)">'+(sold||arch||lost?'Open to change stage, edit or reopen ›':'Open to move stage or mark sold ›')+'</div>'+
-      '</div>'+
-      (hideMoney()||!d.revenue?'':'<div class="money" style="font-size:13px;white-space:nowrap">'+money(d.revenue)+'</div>')+'</div>'}).join(''):'<div class="empty">No deals yet.</div>')+'</div>';
   /* properties of interest */
   const seen=new Set();let props='';
   ds.forEach(d=>{
@@ -2390,6 +2365,31 @@ function vClient(id){
       '<small style="display:block" class="mut">'+esc(U(fl.by).name)+' · '+fdate(fl.ts)+(fl.size?' · '+(fl.size>1048576?(fl.size/1048576).toFixed(1)+' MB':Math.round(fl.size/1024)+' KB'):'')+'</small></span>'+
       (me.role!=='marketing'?'<button class="btn danger small" onclick="rmDoc(\''+c.id+'\','+i+')">Remove</button>':'')+'</div>').join(''):'<div class="empty" style="padding:10px 0">No documents on file.</div>')+
     '<div class="mut" style="font-size:11.5px;margin-top:10px">Files are stored securely — click a name to open it. Only signed-in team members can view them.</div></div>';
+  h+='<div class="card"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:17px">Deals</h2><span class="cnt">'+ds.length+'</span></div>'+
+    (ds.length?ds.map(d=>{const p=PIPES[d.pipe];
+      /* A deal on this card can be live, sold, archived-for-audit, or closed out. Only a
+         live one deserves a stage bar — showing one for an archived or sold deal made it
+         read as still in flight, which is exactly the confusion here. Each state gets its
+         own label and its own action. */
+      const arch=isArchived(d)&&d.outcome!=='sold';
+      const sold=d.outcome==='sold'||(isWon(d)&&!arch);
+      const lost=isLost(d);
+      let badge='',sub='';
+      if(sold){badge='<span class="tag gr" style="flex:0 0 auto">SOLD</span>';
+        sub='Closed'+(d.lastStageLabel?' at '+esc(d.lastStageLabel):'')+(d.closeDate?' · '+fdate(d.closeDate):'');}
+      else if(arch){badge='<span class="tag" style="flex:0 0 auto;border-color:var(--amber);color:var(--amber)">ARCHIVED</span>';
+        sub='Parked for audit · last stage '+esc(d.lastStageLabel||p.stages[d.stage]);}
+      else if(lost){badge='<span class="tag" style="flex:0 0 auto;border-color:var(--mut);color:var(--mut)">CLOSED OUT</span>';
+        sub=esc(d.lostReason||'not moving forward');}
+      else{badge='';sub=esc(p.stages[d.stage])+(d.closeDate?' · closes '+fdate(d.closeDate):'');}
+      return '<div class="deal-row" onclick="openDeal(\''+d.id+'\')"><div class="a" style="width:100%">'+
+      '<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">'+badge+'<span>'+esc(p.name)+' — '+esc(d.type)+'</span></div>'+
+      '<small>'+sub+(hideMoney()?'':(d.budget&&!sold&&!arch?' · budget '+money(d.budget)+'/mo':''))+'</small>'+
+      /* live deals still get the progress bar; everything else does not */
+      (!sold&&!arch&&!lost?'<div class="minibar">'+p.stages.map((_,i)=>'<i'+(i<=d.stage?' class="on"':'')+'></i>').join('')+'</div>':'')+
+      '<div class="link3" style="color:var(--gold2)">'+(sold||arch||lost?'Open to change stage, edit or reopen ›':'Open to move stage or mark sold ›')+'</div>'+
+      '</div>'+
+      (hideMoney()||!d.revenue?'':'<div class="money" style="font-size:13px;white-space:nowrap">'+money(d.revenue)+'</div>')+'</div>'}).join(''):'<div class="empty">No deals yet.</div>')+'</div>';
   h+='</div></div>';
   return h;
 }
