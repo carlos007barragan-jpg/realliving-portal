@@ -2181,7 +2181,7 @@ function vClient(id){
   const ds=S.deals.filter(d=>d.clientId===id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   const open=ds.filter(d=>!isFinal(d)),won=ds.filter(d=>isWon(d)&&d.pipe!=='h2m_acq'),lost=ds.filter(isLost);
   const life=won.reduce((a,d)=>a+(d.revenue||0),0);
-  const assignedId=(open.find(d=>d.agentId)||{}).agentId||c.genBy;const assignedName=assignedId?U(assignedId).name:'—';
+  const assignedId=c.assignedTo||(open.find(d=>d.agentId)||{}).agentId||c.genBy;const assignedName=assignedId?U(assignedId).name:'—';
   const bizs=[...new Set(ds.map(d=>PIPES[d.pipe].biz))];
   const canNote=me.role!=='marketing'||c.genBy===me.id||allowedPipes(me).length>0;
   const tlAll=S.acts.filter(a=>a.clientId===id);
@@ -3760,13 +3760,14 @@ function closeAll(){var _bp=document.getElementById('bellpanel');if(_bp)_bp.styl
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',2200)}
 function mAddClient(edit){
   const c=edit?C(edit):{name:'',phone:'',email:'',address:'',spouseName:'',spousePhone:'',spouseEmail:'',source:SOURCES[0]};
+  const curAssigned=edit?((c.assignedTo)||((S.deals.find(d=>d.clientId===edit&&d.agentId&&!isFinal(d))||{}).agentId)||c.genBy):null;
   modal('<h2>'+(edit?'Edit client':'New client')+'</h2>'+
   '<label>Full name</label><input id="mc-name" value="'+esc(c.name)+'">'+
   '<div class="frow"><div><label>Phone</label><input id="mc-phone" value="'+esc(c.phone)+'"></div><div><label>Email</label><input id="mc-email" value="'+esc(c.email)+'"></div></div>'+
   '<label>Address / area</label><input id="mc-addr" value="'+esc(c.address)+'">'+
   '<div class="frow"><div><label>Spouse name</label><input id="mc-sname" value="'+esc(c.spouseName)+'"></div><div><label>Spouse phone</label><input id="mc-sphone" value="'+esc(c.spousePhone)+'"></div></div>'+
   '<label>Spouse email</label><input id="mc-semail" value="'+esc(c.spouseEmail)+'">'+
-  '<label>Lead source</label><select id="mc-src">'+SOURCES.map(s=>'<option'+(s===c.source?' selected':'')+'>'+s+'</option>').join('')+'</select>'+
+  (edit?'<label>Assigned to</label><select id="mc-agent">'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===curAssigned?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select>':'<label>Lead source</label><select id="mc-src">'+SOURCES.map(s=>'<option'+(s===c.source?' selected':'')+'>'+s+'</option>').join('')+'</select>')+
   '<label>Client type <span class="mut" style="font-weight:400">(pick any that apply)</span></label><div id="mc-ctypes" class="chips">'+CTYPES.map(t=>'<span class="ctchip'+(getCtypes(c).indexOf(t)>-1?' on':'')+'" data-val="'+esc(t)+'" onclick="ctToggle(this)">'+t+'</span>').join('')+'</div>'+
   (edit?'':'<label>Route to vertical</label><select id="mc-route"><option value="">— just add the contact —</option>'+
     Object.entries(LEAD_TARGETS).map(([p,l])=>'<option value="'+p+'">'+l+'</option>').join('')+'</select>')+
@@ -3777,7 +3778,7 @@ function mEditClient(id){mAddClient(id)}
 function saveClient(edit){
   const g=x=>document.getElementById(x).value.trim();
   if(!g('mc-name')){toast('Name is required');return}
-  if(edit){const c=C(edit);Object.assign(c,{name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail'),source:g('mc-src')});c.ctypes=ctSel();delete c.ctype;
+  if(edit){const c=C(edit);Object.assign(c,{name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail')});const _ag=document.getElementById('mc-agent');if(_ag&&_ag.value)c.assignedTo=_ag.value;c.ctypes=ctSel();delete c.ctype;
     save();closeAll();go('client',edit);toast('Client updated');return}
   const c={id:uid('c'),name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail'),source:g('mc-src'),ctypes:ctSel(),genBy:me.id,createdAt:new Date().toISOString(),docs:[],interests:[]};
   S.clients.unshift(c);logAct(null,c.id,'Client created — source '+c.source+'.');startLeadPlan(c,null,myPipes()[0]);
