@@ -3391,8 +3391,11 @@ function money0(n){return n||n===0?'$'+Math.round(Number(n)).toLocaleString():'�
 /* revenue of a deal counted as income this range (one-time gain on close) */
 function finRevenue(ds){return ds.reduce((a,d)=>a+(d.revenue||0),0);}
 function finExpense(ps){return ps.reduce((a,p)=>a+(p.amount||0),0);}
-/* expected monthly owner-finance income from active CFD/OF deals */
-function ofMonthly(){return S.deals.filter(d=>!isLost(d)&&!isArchived(d)&&dealIncomeType(d)==='of'&&(d.budget||0)>0&&finBizOk(PIPES[d.pipe].biz)).reduce((a,d)=>a+(d.budget||0),0);}
+/* active owner-finance notes + the financed balance on them. NOTE: deals store the
+   financed price in `budget`, not a monthly payment — so we report the outstanding
+   balance here, and monthly receipts will come from the receipts ledger (next step). */
+function ofNotes(){return S.deals.filter(d=>!isLost(d)&&!isArchived(d)&&dealIncomeType(d)==='of'&&(d.budget||0)>0&&finBizOk(PIPES[d.pipe].biz));}
+function ofFinanced(){return ofNotes().reduce((a,d)=>a+(d.budget||0),0);}
 
 function vFinance(){
   const tab=(t,lbl)=>'<button class="pipetab'+(finTab===t?' on':'')+'" onclick="finTab=\''+t+'\';go(\'finance\')">'+lbl+'</button>';
@@ -3421,12 +3424,12 @@ function finBar(rev,exp){
 function vFinOverview(){
   const ds=finDeals(),ps=finPayments();
   const rev=finRevenue(ds),exp=finExpense(ps),net=rev-exp;
-  const ofm=ofMonthly();
+  const ofn=ofNotes().length,off=ofFinanced();
   let h='<div class="grid cards4">'+
     '<div class="card"><div class="eyebrow">Revenue</div><div class="big">'+money0(rev)+'</div><div class="sub">'+finRangeLabel()+' · closed deals</div></div>'+
     '<div class="card"><div class="eyebrow">Expenses</div><div class="big">'+money0(exp)+'</div><div class="sub">'+ps.length+' payment'+(ps.length===1?'':'s')+' out</div></div>'+
     '<div class="card"><div class="eyebrow">Net</div><div class="big" style="color:'+(net>=0?'var(--green)':'var(--red)')+'">'+money0(net)+'</div><div class="sub">revenue minus expenses</div></div>'+
-    '<div class="card"><div class="eyebrow">Owner-finance / mo</div><div class="big">'+money0(ofm)+'</div><div class="sub">recurring from active notes</div></div></div>';
+    '<div class="card"><div class="eyebrow">Owner-finance notes</div><div class="big">'+money0(off)+'</div><div class="sub">financed balance · '+ofn+' active note'+(ofn===1?'':'s')+'</div></div></div>';
   h+='<div class="sect"><div class="card">'+finBar(rev,exp)+'</div></div>';
   /* by business */
   const biz={};Object.keys(BIZ).forEach(b=>biz[b]={rev:0,exp:0});
@@ -3522,11 +3525,11 @@ function vFinIncome(){
   const ds=finDeals();
   const groups={of:[],retail:[],ws:[],lend:[],tc:[],comm:[],other:[]};
   ds.forEach(d=>{groups[dealIncomeType(d)].push(d);});
-  const ofActive=S.deals.filter(d=>!isLost(d)&&!isArchived(d)&&dealIncomeType(d)==='of'&&(d.budget||0)>0&&finBizOk(PIPES[d.pipe].biz));
-  let h='<div class="mut" style="font-size:12.5px;margin:-4px 0 12px">Where the money comes in, pulled from the CRM. Owner-finance shows the monthly note; everything else is realized at close.</div>';
-  /* owner finance — recurring */
-  h+='<div class="sect"><div class="sect-head"><h2>Owner-finance clients</h2><span class="cnt">monthly notes</span><span class="spacer"></span><span class="pill">'+money0(ofActive.reduce((a,d)=>a+(d.budget||0),0))+' / mo</span></div>'+
-    (ofActive.length?'<div class="card" style="padding:0;overflow:auto"><table><tr><th>Client</th><th>Property</th><th>Stage</th><th style="text-align:right">Down</th><th style="text-align:right">Monthly</th></tr>'+
+  const ofActive=ofNotes();
+  let h='<div class="mut" style="font-size:12.5px;margin:-4px 0 12px">Where the money comes in, pulled from the CRM. Owner-finance shows each note’s financed balance; everything else is realized at close. <b>Monthly payment collection isn’t tracked yet</b> — that’s the receipts ledger we can add next.</div>';
+  /* owner finance — financed balance (budget holds the financed price, not a monthly) */
+  h+='<div class="sect"><div class="sect-head"><h2>Owner-finance clients</h2><span class="cnt">active notes</span><span class="spacer"></span><span class="pill">'+money0(ofActive.reduce((a,d)=>a+(d.budget||0),0))+' financed</span></div>'+
+    (ofActive.length?'<div class="card" style="padding:0;overflow:auto"><table><tr><th>Client</th><th>Property</th><th>Stage</th><th style="text-align:right">Down</th><th style="text-align:right">Financed</th></tr>'+
       ofActive.map(d=>{const c=C(d.clientId);const prop=d.propertyId?P(d.propertyId):null;return '<tr class="rowlink" onclick="go(\'client\',\''+d.clientId+'\')"><td>'+esc(c?c.name:'—')+'</td><td class="mut">'+esc(prop?prop.address.split(',')[0]:(d.propInterest||'—'))+'</td><td class="mut">'+esc(PIPES[d.pipe].stages[d.stage])+'</td><td class="money" style="text-align:right">'+money0(d.down)+'</td><td class="money" style="text-align:right">'+money0(d.budget)+'</td></tr>';}).join('')+
       '</table></div>':'<div class="card"><div class="empty">No active owner-finance notes.</div></div>')+'</div>';
   /* retail clients */
