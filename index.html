@@ -893,7 +893,7 @@ function renderDashboard(){
       const {data:{session}}=await sb.auth.getSession();
       const res=await fetch(SUPABASE_URL+'/functions/v1/admin-create-user',{method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-        body:JSON.stringify({email,name,role,business:biz,seat_id:slot.id})});
+        body:JSON.stringify({email,name,role,business:biz,seat_id:slot.id,phone,portalUrl:location.origin+location.pathname.replace(/[^/]*$/,'')})});
       const out=await res.json();
       if(!res.ok||out.error)throw new Error(out.error||'Could not create the login');
       const seatData={id:slot.id,name,email,phone,ext:slot.ext,role,business:biz};
@@ -901,7 +901,8 @@ function renderDashboard(){
       await sb.from('records').upsert({collection:'users',id:slot.id,data:seatData,updated_at:new Date().toISOString(),deleted:false});
       const portal=location.origin+location.pathname.replace(/[^/]*$/,'');
       const msg="You're set up on the Real Living Business Suite!\n\nSign in here: "+portal+"\nEmail: "+out.email+"\nTemporary password: "+out.tempPass+"\n\nYou'll set your own password the first time you sign in. One login covers every app.";
-      $("ir-detail").innerHTML='<b>'+name+'</b> · '+out.email+'<br>Temp password: <b style="color:#B8860B">'+out.tempPass+'</b>';
+      const emailLine=out.emailSent?'<div style="color:#1e7a44;font-weight:600;margin-bottom:6px">✅ Welcome email sent to '+out.email+'</div>':'<div style="color:#a5281c;font-weight:600;margin-bottom:6px">⚠️ Couldn\'t auto-send the welcome email'+(out.emailError?' ('+out.emailError+')':'')+' — send it with the buttons below.</div>';
+      $("ir-detail").innerHTML=emailLine+'<b>'+name+'</b> · '+out.email+'<br>Temp password: <b style="color:#B8860B">'+out.tempPass+'</b>';
       $("ir-mail").href='mailto:'+encodeURIComponent(out.email)+'?subject='+encodeURIComponent('Your Real Living Business Suite login')+'&body='+encodeURIComponent(msg);
       const smsA=$("ir-sms");
       if(phone){smsA.style.display='';smsA.href='sms:'+encodeURIComponent(phone)+'?&body='+encodeURIComponent(msg);}else smsA.style.display='none';

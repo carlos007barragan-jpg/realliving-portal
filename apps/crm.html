@@ -4294,10 +4294,10 @@ async function saveUser(editId){
       const {data:{session}}=await sb.auth.getSession();
       const res=await fetch(SUPABASE_URL+'/functions/v1/admin-create-user',{method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-        body:JSON.stringify({email:seat.email,name:seat.name,role:seat.role,business:seat.business,seat_id:seat.id})});
+        body:JSON.stringify({email:seat.email,name:seat.name,role:seat.role,business:seat.business,seat_id:seat.id,phone:seat.phone,portalUrl:portalUrl()})});
       const out=await res.json();
       if(!res.ok||out.error)throw new Error(out.error||'Could not create login');
-      invite={email:out.email,pass:out.tempPass};
+      invite={email:out.email,pass:out.tempPass,emailSent:!!out.emailSent,emailError:out.emailError||''};
     }catch(e){
       document.getElementById('mu-err').textContent=String(e.message||e);
       document.getElementById('mu-go').disabled=false;document.getElementById('mu-go').textContent='Add team member';return;
@@ -4339,7 +4339,11 @@ function copyInvite(btn){try{navigator.clipboard.writeText(btn.dataset.m);toast(
 function mInviteReady(seat,inv){
   const url=portalUrl();
   const msg='You\'re set up on the Real Living Business Suite!\n\nSign in here: '+url+'\nEmail: '+inv.email+'\nTemporary password: '+inv.pass+'\n\nYou\'ll be asked to set your own password the first time you sign in. Every app in the suite uses this one login.';
+  const banner = inv.emailSent
+    ? '<div class="card" style="padding:11px 14px;margin-bottom:12px;border-color:#2E9E5B;background:rgba(46,158,91,.08)"><div style="font-size:13px;color:#1e7a44;font-weight:600">✅ Welcome email sent to '+esc(inv.email)+'</div><div class="mut" style="font-size:11.5px;margin-top:3px">They\'ve got their sign-in link and temporary password. The details below are your copy in case they need it re-sent.</div></div>'
+    : '<div class="card" style="padding:11px 14px;margin-bottom:12px;border-color:#C0392B;background:rgba(192,57,43,.07)"><div style="font-size:13px;color:#a5281c;font-weight:600">⚠️ Couldn\'t auto-send the welcome email</div><div class="mut" style="font-size:11.5px;margin-top:3px">'+(inv.emailError?esc(inv.emailError):'Email service not ready')+' — send it yourself with the buttons below for now.</div></div>';
   modal('<h2>Invite ready — '+esc(seat.name)+'</h2>'+
+  banner+
   '<div class="card" style="padding:14px 16px;margin-bottom:12px;border-color:var(--gold2)">'+
     '<div class="eyebrow" style="margin-bottom:6px">Their sign-in</div>'+
     '<div style="font-size:13.5px;line-height:1.7"><b>Portal:</b> '+esc(url)+'<br><b>Email:</b> '+esc(inv.email)+'<br><b>Temp password:</b> <b style="color:var(--gold2)">'+esc(inv.pass)+'</b></div>'+
