@@ -1170,8 +1170,8 @@ function renderDashboard(){
   </script>
 
 <style>
-/* suite-wide phone — floats above whatever app is open */
-.dialer{position:fixed;right:20px;bottom:20px;z-index:4000;width:296px;background:#14172A;color:#F1E6C8;border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.42);padding:16px 18px;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+/* suite-wide phone — floats above whatever app is open; carries dialpad, checklist and notes */
+.dialer{position:fixed;right:20px;bottom:20px;z-index:4000;width:300px;max-height:88vh;overflow-y:auto;background:#14172A;color:#F1E6C8;border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.42);padding:16px 18px;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
 .dialer .dl-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
 .dialer .dl-name{font-weight:600;font-size:16px;color:#fff}
 .dialer .dl-num{font-size:12.5px;color:#9AA3B2;margin-top:1px}
@@ -1188,22 +1188,41 @@ function renderDashboard(){
 .dialer .dl-inc button{flex:1;border:none;border-radius:11px;padding:13px 0;font-weight:700;font-size:14px;cursor:pointer}
 .dialer .dl-inc .ans{background:#2E9E5B;color:#fff}
 .dialer .dl-inc .dec{background:#C0392B;color:#fff}
+/* checklist (sent from the CRM) */
+.dialer .dl-script{display:none;margin-top:12px;padding-top:11px;border-top:1px solid #2A2F4D}
+.dialer .dls-h{font-weight:700;font-size:12.5px;color:#fff;margin-bottom:9px;line-height:1.3}
+.dialer .dls-stage{display:inline-block;background:#232741;color:#D8B65A;border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:700;margin-left:2px;vertical-align:middle}
+.dialer .dls-lab{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#7E8699;font-weight:700;margin-bottom:4px}
+.dialer .dls-q{list-style:none;margin:0 0 11px;padding:0}
+.dialer .dls-q li{display:flex;gap:8px;align-items:flex-start;padding:6px 0;font-size:12.5px;line-height:1.35;color:#E7DCC0;cursor:pointer;border-bottom:1px solid #20243C}
+.dialer .dls-q li:last-child{border-bottom:none}
+.dialer .dls-q .qck{flex:none;width:15px;height:15px;border:1.5px solid #4A5170;border-radius:4px;margin-top:1px}
+.dialer .dls-q li.done{color:#6B7488}
+.dialer .dls-q li.done span:last-child{text-decoration:line-through}
+.dialer .dls-q li.done .qck{background:#2E9E5B;border-color:#2E9E5B;position:relative}
+.dialer .dls-q li.done .qck:after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.dialer .dls-sig{font-size:11.5px;line-height:1.4;color:#B9C0D0;margin-bottom:5px}
+.dialer .dls-sig b{margin-right:4px}
+.dialer .dls-next{margin-top:9px;padding-top:9px;border-top:1px solid #2A2F4D;font-size:12px;line-height:1.4;color:#E7DCC0}
+/* notes */
+.dialer .dl-notes{display:none;margin-top:12px;padding-top:11px;border-top:1px solid #2A2F4D}
+.dialer .dl-notes textarea{width:100%;min-height:62px;resize:vertical;background:#0F1324;border:1px solid #2A2F4D;border-radius:9px;color:#F1E6C8;font-size:12.5px;padding:8px 10px;font-family:inherit;outline:none;margin-top:5px}
+.dialer .dl-notes textarea:focus{border-color:#D8B65A}
 </style>
 <script>
 /* ===================== Suite-wide phone =====================
-   The Twilio device and the call box live in the shell, not inside an app iframe,
-   so an active call survives switching between the CRM, Inventory, Deal Analyzer…
-   Apps ask the shell to place a call via postMessage({rl:'voice',action:'call',…});
-   the shell relays call events back ({rl:'voice',event:'started'|'ended',…}) so the
-   CRM can show its playbook. Inbound calls now ring anywhere in the suite. */
+   The Twilio device and the call box (dialpad + checklist + notes) live in the shell,
+   not inside an app iframe, so the whole block follows you as you move CRM -> Inventory
+   -> Deal Analyzer, and inbound calls ring anywhere in the suite. The CRM sends the
+   lead's checklist; notes typed here save to the lead's activity timeline on hang up. */
 (function(){
   let dev=null, ready=false, call=null, incoming=null, incCid=null, incName=null, tmr=null, secs=0, muted=false;
-  let _idx=null, _idxAt=0;
+  let activeCid=null, seat=null, _idx=null, _idxAt=0;
   const $v=id=>document.getElementById(id);
   async function token(){
     const {data:{session}}=await sb.auth.getSession(); if(!session)throw new Error('Not signed in');
     const r=await fetch(SUPABASE_URL+'/functions/v1/voice',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'token'})});
-    const o=await r.json(); if(!r.ok||!o.token)throw new Error(o.error||'Could not start the phone'); return o.token;
+    const o=await r.json(); if(!r.ok||!o.token)throw new Error(o.error||'Could not start the phone'); if(o.seat)seat=o.seat; return o.token;
   }
   async function init(){
     if(dev||typeof Twilio==='undefined'||!Twilio.Device||!sb)return;
@@ -1227,21 +1246,26 @@ function renderDashboard(){
       '<div class="dl-timer" id="svTimer" style="display:none">00:00</div>'+
       '<div class="dl-keys" id="svKeys" style="display:none">'+keys+'</div>'+
       '<div class="dl-actions" id="svActions"><button onclick="suiteVoice.toggleKeys()">⌨ Keypad</button><button id="svMute" onclick="suiteVoice.mute()">Mute</button><button class="danger" onclick="suiteVoice.hangup()">Hang up</button></div>'+
-      '<div class="dl-inc" id="svInc" style="display:none"><button class="ans" onclick="suiteVoice.answer()">Answer</button><button class="dec" onclick="suiteVoice.decline()">Decline</button></div>';
+      '<div class="dl-inc" id="svInc" style="display:none"><button class="ans" onclick="suiteVoice.answer()">Answer</button><button class="dec" onclick="suiteVoice.decline()">Decline</button></div>'+
+      '<div class="dl-script" id="svPb"></div>'+
+      '<div class="dl-notes" id="svNotesWrap"><div class="dls-lab">Notes — saved to the lead’s activity on hang up</div><textarea id="svNotes" placeholder="Type notes during the call…"></textarea></div>';
     document.body.appendChild(d);
   }
   function show(){build();$v('suiteDialer').style.display='block';}
   function hide(){const d=$v('suiteDialer');if(d)d.style.display='none';stopTimer();}
   function set(name,num,status){build();$v('svName').textContent=name||'—';$v('svNum').textContent=num||'';$v('svStatus').textContent=status||'';}
   function setStatus(x){const el=$v('svStatus');if(el)el.textContent=x;}
+  function setPlaybook(html){build();const el=$v('svPb');if(!el)return;if(html){el.innerHTML=html;el.style.display='block';}else{el.innerHTML='';el.style.display='none';}}
+  function showNotes(on){build();const w=$v('svNotesWrap');if(w)w.style.display=on?'block':'none';if(on){const t=$v('svNotes');if(t)t.value='';}}
   function startTimer(){stopTimer();secs=0;const t=$v('svTimer');if(!t)return;t.style.display='block';t.textContent='00:00';tmr=setInterval(()=>{secs++;const m=String(Math.floor(secs/60)).padStart(2,'0'),s=String(secs%60).padStart(2,'0');t.textContent=m+':'+s;},1000);}
   function stopTimer(){if(tmr){clearInterval(tmr);tmr=null;}}
   function dialMode(){$v('svInc').style.display='none';$v('svActions').style.display='flex';$v('svKeys').style.display='none';}
   function toggleKeys(){const k=$v('svKeys');if(k)k.style.display=(k.style.display==='none'?'grid':'none');}
   function emit(event,cid,name){try{const f=$v('appFrame');if(f&&f.contentWindow)f.contentWindow.postMessage({rl:'voice',event:event,clientId:cid||null,name:name||null},'*');}catch(_){}}
-  async function place(to,cid,name){
+  async function place(to,cid,name,playbook){
     const digits=String(to||'').replace(/[^\d+]/g,''); if(!digits)return;
-    show();dialMode();set(name||digits,to,'Connecting…');
+    activeCid=cid||null;
+    show();dialMode();set(name||digits,to,'Connecting…');setPlaybook(playbook||'');showNotes(!!cid);
     try{
       const ok=await ensure(); if(!ok){setStatus('Phone not ready');return;}
       call=await dev.connect({params:cid?{To:digits,clientId:cid}:{To:digits}});
@@ -1253,7 +1277,21 @@ function renderDashboard(){
     c.on('accept',()=>{setStatus('On call');startTimer();emit('started',cid,name);});
     c.on('disconnect',ended);c.on('cancel',ended);c.on('error',()=>setStatus('Error'));
   }
-  function ended(){stopTimer();setStatus('Call ended');muted=false;const b=$v('svMute');if(b){b.textContent='Mute';b.classList.remove('on');}const c=incCid;call=null;incCid=null;incName=null;emit('ended',c);setTimeout(hide,1200);}
+  function ended(){
+    stopTimer();setStatus('Call ended');muted=false;const b=$v('svMute');if(b){b.textContent='Mute';b.classList.remove('on');}
+    const cid=activeCid; saveNotes(cid);
+    call=null;incCid=null;incName=null;activeCid=null;emit('ended',cid);
+    setTimeout(()=>{hide();setPlaybook('');showNotes(false);},1400);
+  }
+  async function saveNotes(cid){
+    const el=$v('svNotes'); const txt=el?el.value.trim():''; if(el)el.value='';
+    if(!txt||!cid||!sb)return;
+    try{
+      const id='a'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      await sb.from('records').upsert({collection:'acts',id:id,data:{id:id,clientId:cid,dealId:null,by:seat||'u1',ts:new Date().toISOString(),text:'📞 Call notes: '+txt},updated_at:new Date().toISOString(),deleted:false},{onConflict:'collection,id'});
+      try{const f=$v('appFrame');if(f&&f.contentWindow)f.contentWindow.postMessage({rl:'voice',event:'note-saved',clientId:cid},'*');}catch(_){}
+    }catch(e){console.warn('[suite notes]',e&&e.message);}
+  }
   async function idx(){
     if(_idx && (Date.now()-_idxAt<300000))return _idx;
     const m={};
@@ -1265,24 +1303,31 @@ function renderDashboard(){
   function showIncoming(c){
     show();
     const from=(c&&c.parameters&&c.parameters.From)||'';
-    incCid=null;incName=null;
-    set('Incoming call',from||'Unknown','Incoming…');
+    incCid=null;incName=null;activeCid=null;
+    set('Incoming call',from||'Unknown','Incoming…');setPlaybook('');showNotes(false);
     $v('svActions').style.display='none';$v('svKeys').style.display='none';$v('svInc').style.display='flex';
     idx().then(m=>{const k=String(from).replace(/\D/g,'').slice(-10);const hit=m[k];if(hit){incCid=hit.id;incName=hit.name;set(hit.name,from,'Incoming…');}});
   }
   function answer(){
     if(!incoming)return;try{incoming.accept();}catch(_){}
-    call=incoming;incoming=null;
+    call=incoming;incoming=null;activeCid=incCid;
     $v('svInc').style.display='none';$v('svActions').style.display='flex';
-    setStatus('On call');startTimer();wire(call,incCid,incName);
-    if(incCid){try{window.suiteOpenApp('crm','client/'+incCid);}catch(_){}}
+    setStatus('On call');startTimer();wire(call,incCid,incName);showNotes(!!incCid);
+    if(incCid){ try{window.suiteOpenApp('crm','client/'+incCid);}catch(_){}
+      /* ask the CRM for this lead's checklist once it is open */
+      setTimeout(()=>{try{const f=$v('appFrame');if(f&&f.contentWindow)f.contentWindow.postMessage({rl:'voice',event:'need-playbook',clientId:incCid},'*');}catch(_){}},1500);
+    }
     emit('started',incCid,incName);
   }
   function decline(){try{if(incoming)incoming.reject();}catch(_){}incoming=null;hide();}
   function mute(){if(!call)return;muted=!muted;try{call.mute(muted);}catch(_){}const b=$v('svMute');if(b){b.textContent=muted?'Unmute':'Mute';b.classList.toggle('on',muted);}}
   function hangup(){try{if(call)call.disconnect();}catch(_){}ended();}
   function digit(d){try{if(call)call.sendDigits(String(d));}catch(_){}}
-  window.addEventListener('message',e=>{const d=e.data;if(!d||d.rl!=='voice'||!d.action)return;if(d.action==='call')place(d.to,d.clientId,d.name);else if(d.action==='hangup')hangup();});
+  window.addEventListener('message',e=>{const d=e.data;if(!d||d.rl!=='voice')return;
+    if(d.action==='call')place(d.to,d.clientId,d.name,d.playbook);
+    else if(d.action==='hangup')hangup();
+    else if(d.action==='playbook'){ if(d.clientId&&d.clientId===activeCid) setPlaybook(d.html||''); }
+  });
   window.suiteVoice={init:init,answer:answer,decline:decline,mute:mute,hangup:hangup,digit:digit,toggleKeys:toggleKeys,ready:function(){return ready;}};
 })();
 </script>
