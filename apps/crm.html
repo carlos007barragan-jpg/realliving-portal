@@ -460,6 +460,9 @@ select.tfilter{padding:7px 9px}
 </style>
 <style>
 .dialer{position:fixed;right:20px;bottom:20px;z-index:400;width:296px;background:#14172A;color:#F1E6C8;border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.42);padding:16px 18px;font-size:14px}
+.dialer.pbpanel{right:auto;left:20px;bottom:20px;width:300px}
+.dialer.pbpanel .pb-hd{font-weight:700;font-size:13px;color:#fff;margin-bottom:8px;border-bottom:1px solid #2A2F4D;padding-bottom:8px}
+.dialer.pbpanel .dl-script{max-height:46vh;overflow-y:auto}
 .dialer .dl-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
 .dialer .dl-name{font-weight:600;font-size:16px;color:#fff}
 .dialer .dl-num{font-size:12.5px;color:#9AA3B2;margin-top:1px}
@@ -4478,6 +4481,11 @@ async function voiceToken(){
   const o=await r.json(); if(!r.ok||!o.token)throw new Error(o.error||'Could not start the phone'); return o.token;
 }
 async function initVoice(){
+  /* The phone now lives in the Suite shell (index.html) so a call survives switching
+     apps. The CRM no longer registers its own Twilio device — two devices on the same
+     identity would conflict. Calls route to the shell via postMessage (see browserCall). */
+  return;
+  /* eslint-disable no-unreachable */
   if(!CLOUD||!sb||!SEAT_ID||voiceDevice||typeof Twilio==='undefined'||!Twilio.Device)return;
   try{
     const token=await voiceToken();
@@ -4529,30 +4537,50 @@ function startTimer(){stopTimer();_vsecs=0;const t=document.getElementById('dlTi
 function stopTimer(){if(_vt){clearInterval(_vt);_vt=null;}}
 function toggleKeys(){const k=document.getElementById('dlKeys');if(k)k.style.display=(k.style.display==='none'?'grid':'none');}
 function _dialMode(){document.getElementById('dlInc').style.display='none';document.getElementById('dlActions').style.display='flex';document.getElementById('dlKeys').style.display='none';}
+/* The phone lives in the Suite shell so a call survives switching apps. The CRM asks
+   the shell to place the call, and shows the playbook here while you're on the line. */
+function callViaShell(to,cid,name){
+  try{if(window.parent&&window.parent!==window){window.parent.postMessage({rl:'voice',action:'call',to:to,clientId:cid||null,name:name||null},'*');return true;}}catch(_e){}
+  return false;
+}
 async function browserCall(cid){
   const c=(typeof C==='function')?C(cid):null; if(!c){toast&&toast('Contact not found');return;}
   if(!c.phone){toast&&toast('No phone number on file');return;}
   if(!CLOUD||!sb||!SEAT_ID){ if(typeof mLogTouch==='function')mLogTouch(cid,'call'); return; }
-  showDialer();ensureDialer();_dialMode();dlSet(c.name,c.phone,'Connecting\u2026');fillDialerScript(cid);
-  try{
-    const ok=await ensureVoice();
-    if(!ok||!voiceDevice){setStatus('Phone not ready');toast&&toast('Calling not ready \u2014 reload the CRM');return;}
-    voiceCall=await voiceDevice.connect({params:{To:String(c.phone).replace(/[^\d+]/g,''),clientId:cid}});
-    wireCall(voiceCall);
-  }catch(e){setStatus('Failed');toast&&toast(String(e.message||e));}
+  if(callViaShell(c.phone,cid,c.name)){ showPlaybookPanel(cid); return; }
+  toast&&toast('Open the CRM from the Suite to make calls');
 }
 async function browserCallNum(num){
   const digits=String(num||'').replace(/[^\d+]/g,'');
   if(!digits){toast&&toast('No number to call');return;}
   if(!CLOUD||!sb||!SEAT_ID){toast&&toast('Calling not ready');return;}
-  showDialer();ensureDialer();_dialMode();dlSet(fmtPhone(num),num,'Connecting…');clearDialerScript();
-  try{
-    const ok=await ensureVoice();
-    if(!ok||!voiceDevice){setStatus('Phone not ready');toast&&toast('Calling not ready — reload the CRM');return;}
-    voiceCall=await voiceDevice.connect({params:{To:digits}});
-    wireCall(voiceCall);
-  }catch(e){setStatus('Failed');toast&&toast(String(e.message||e));}
+  if(!callViaShell(num,null,fmtPhone(num))) toast&&toast('Open the CRM from the Suite to make calls');
 }
+/* playbook panel shown on the CRM while a call is live (controls live in the shell box) */
+function showPlaybookPanel(cid){
+  let el=document.getElementById('crmPb');
+  if(!el){el=document.createElement('div');el.id='crmPb';el.className='dialer pbpanel';document.body.appendChild(el);}
+  const c=(typeof C==='function')?C(cid):null; if(!c){el.style.display='none';return;}
+  let open=[];try{open=(S&&S.deals?S.deals.filter(d=>d.clientId===cid):[]).filter(d=>!isFinal(d));}catch(_e){}
+  const key=pbKeyFor(c,open);const sc=SCRIPTS[key];
+  if(!sc){el.style.display='none';return;}
+  let stage='New';try{if(open.length&&PIPES[open[0].pipe])stage=PIPES[open[0].pipe].stages[open[0].stage];}catch(_e){}
+  const qs=sc.q.map(x=>'<li onclick="this.classList.toggle(\'done\')"><span class="qck"></span><span>'+esc(x)+'</span></li>').join('');
+  el.innerHTML='<div class="pb-hd">On call — '+esc(c.name)+'</div><div class="dl-script" style="display:block">'+
+    '<div class="dls-h">Playbook — '+esc(sc.name)+' <span class="dls-stage">'+esc(stage)+'</span></div>'+
+    '<div class="dls-lab">Ask — tap to check off</div><ul class="dls-q">'+qs+'</ul>'+
+    '<div class="dls-sig"><b style="color:#3FBF6B">Green</b>'+esc(sc.g)+'</div>'+
+    '<div class="dls-sig"><b style="color:#E0A93B">Yellow</b>'+esc(sc.y)+'</div>'+
+    '<div class="dls-sig"><b style="color:#D9654A">Red</b>'+esc(sc.r)+'</div>'+
+    '<div class="dls-next"><div class="dls-lab">Convert — the next step</div>'+esc(sc.next)+'</div></div>';
+  el.style.display='block';
+}
+function hidePlaybookPanel(){const el=document.getElementById('crmPb');if(el)el.style.display='none';}
+/* the shell tells us when a call starts/ends so we can show/clear the playbook */
+window.addEventListener('message',function(e){var d=e.data;if(!d||d.rl!=='voice'||!d.event)return;
+  if(d.event==='started'){ if(d.clientId)showPlaybookPanel(d.clientId); }
+  else if(d.event==='ended'){ hidePlaybookPanel(); }
+});
 function wireCall(call){
   if(!call)return;
   call.on('ringing',()=>setStatus('Ringing\u2026'));
@@ -4590,8 +4618,9 @@ function voiceDecline(){try{if(voiceIncoming)voiceIncoming.reject();}catch(_){}v
 /* ---------- incoming call ringing (CRM-first answer) ---------- */
 let _ringTimer=null,_ringIgnored={},_ringShown=null;
 function startRingWatch(){
-  if(!CLOUD||!sb||!SEAT_ID||_ringTimer)return;
-  _ringTimer=setInterval(checkRings,4000);
+  /* Inbound calls now ring the Suite shell's phone directly, anywhere in the suite,
+     so the CRM's cell-fallback ring-watch is no longer needed. */
+  return;
 }
 async function checkRings(){
   try{
