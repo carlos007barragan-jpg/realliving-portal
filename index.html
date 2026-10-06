@@ -1219,6 +1219,13 @@ function renderDashboard(){
   let dev=null, ready=false, call=null, incoming=null, incCid=null, incName=null, tmr=null, secs=0, muted=false;
   let activeCid=null, seat=null, _idx=null, _idxAt=0;
   const $v=id=>document.getElementById(id);
+  async function vlog(kind,msg){
+    if(!sb)return;
+    try{
+      const id='vl'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      await sb.from('records').upsert({collection:'voicelog',id:id,data:{id:id,kind:kind,msg:String(msg||''),seat:seat||null,callSid:(call&&call.parameters&&call.parameters.CallSid)||null,ua:navigator.userAgent,ts:new Date().toISOString()},updated_at:new Date().toISOString(),deleted:false},{onConflict:'collection,id'});
+    }catch(_){}
+  }
   async function token(){
     const {data:{session}}=await sb.auth.getSession(); if(!session)throw new Error('Not signed in');
     const r=await fetch(SUPABASE_URL+'/functions/v1/voice',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'token'})});
@@ -1229,14 +1236,18 @@ function renderDashboard(){
     try{
       const tk=await token();
       dev=new Twilio.Device(tk,{codecPreferences:['opus','pcmu'],logLevel:'error'});
-      dev.on('registered',()=>{ready=true;});
-      dev.on('unregistered',()=>{ready=false;});
-      dev.on('error',e=>console.warn('[suite voice]',e&&e.message));
+      dev.on('registered',()=>{ready=true;vlog('registered','device ready');});
+      dev.on('unregistered',()=>{ready=false;vlog('unregistered','device went offline'+(call?' during an active call':''));});
+      dev.on('error',e=>{const m=(e&&e.message)||'unknown';console.warn('[suite voice]',m);vlog('error',(e&&e.code?('['+e.code+'] '):'')+m);});
       dev.on('tokenWillExpire',async()=>{try{dev.updateToken(await token());}catch(_){}});
       dev.on('incoming',c=>{incoming=c;showIncoming(c);c.on('cancel',()=>{incoming=null;hide();});c.on('disconnect',ended);c.on('reject',()=>{incoming=null;hide();});});
       await dev.register();
-    }catch(e){console.warn('[suite voice init]',e&&e.message);}
+    }catch(e){console.warn('[suite voice init]',e&&e.message);vlog('init-fail',e&&e.message);}
   }
+  /* tear the device down cleanly on refresh/close so a stale registration
+     on the same identity can't linger and bump the next live call */
+  window.addEventListener('beforeunload',function(){try{if(dev)dev.destroy();}catch(_){}});
+  window.addEventListener('pagehide',function(){try{if(dev)dev.destroy();}catch(_){}});
   async function ensure(){ if(!dev)await init(); return !!dev; }
   function build(){
     if($v('suiteDialer'))return;
@@ -1274,8 +1285,10 @@ function renderDashboard(){
   }
   function wire(c,cid,name){
     c.on('ringing',()=>setStatus('Ringing…'));
-    c.on('accept',()=>{setStatus('On call');startTimer();emit('started',cid,name);});
-    c.on('disconnect',ended);c.on('cancel',ended);c.on('error',()=>setStatus('Error'));
+    c.on('accept',()=>{setStatus('On call');startTimer();emit('started',cid,name);vlog('accept','call connected ('+(secs)+'s elapsed)');});
+    c.on('disconnect',()=>{vlog('disconnect','call ended after '+secs+'s');ended();});
+    c.on('cancel',()=>{vlog('cancel','call canceled after '+secs+'s');ended();});
+    c.on('error',e=>{setStatus('Error');vlog('call-error',(e&&e.code?('['+e.code+'] '):'')+((e&&e.message)||'unknown'));});
   }
   function ended(){
     stopTimer();setStatus('Call ended');muted=false;const b=$v('svMute');if(b){b.textContent='Mute';b.classList.remove('on');}
