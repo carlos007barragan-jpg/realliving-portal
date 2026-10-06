@@ -1285,10 +1285,18 @@ function renderDashboard(){
   }
   function wire(c,cid,name){
     c.on('ringing',()=>setStatus('Ringing…'));
-    c.on('accept',()=>{setStatus('On call');startTimer();emit('started',cid,name);vlog('accept','call connected ('+(secs)+'s elapsed)');});
-    c.on('disconnect',()=>{vlog('disconnect','call ended after '+secs+'s');ended();});
+    c.on('accept',()=>{setStatus('On call');startTimer();emit('started',cid,name);vlog('accept','call connected');});
+    c.on('disconnect',()=>{vlog('disconnect','call ended normally after '+secs+'s');ended();});
     c.on('cancel',()=>{vlog('cancel','call canceled after '+secs+'s');ended();});
-    c.on('error',e=>{setStatus('Error');vlog('call-error',(e&&e.code?('['+e.code+'] '):'')+((e&&e.message)||'unknown'));});
+    /* network trouble — 'ice-connectivity-lost' here means the audio path dropped,
+       which is what silently kills a call a few seconds in */
+    c.on('warning',(name,data)=>{vlog('warning',name+' at '+secs+'s');if(name==='ice-connectivity-lost')setStatus('Reconnecting…');});
+    c.on('warning-cleared',name=>{vlog('warning-cleared',name+' at '+secs+'s');if(name==='ice-connectivity-lost'&&call)setStatus('On call');});
+    c.on('reconnecting',e=>{setStatus('Reconnecting…');vlog('reconnecting',(e&&e.code?('['+e.code+'] '):'')+((e&&e.message)||'')+' at '+secs+'s');});
+    c.on('reconnected',()=>{setStatus('On call');vlog('reconnected','recovered at '+secs+'s');});
+    /* a call-level error is terminal — tear the box down so the timer stops
+       instead of running on as if we were still connected */
+    c.on('error',e=>{setStatus('Error');vlog('call-error',(e&&e.code?('['+e.code+'] '):'')+((e&&e.message)||'unknown')+' after '+secs+'s');ended();});
   }
   function ended(){
     stopTimer();setStatus('Call ended');muted=false;const b=$v('svMute');if(b){b.textContent='Mute';b.classList.remove('on');}
