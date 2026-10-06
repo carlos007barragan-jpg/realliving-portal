@@ -593,6 +593,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     $("shellView").classList.add("on");
     renderDashboard();
     loadOnboarding();
+    restoreFromHash();   /* a refresh inside an app reopens that app, not the welcome screen */
   }
   async function needsFirstPassword(){
     try{const {data:{user}}=await sb.auth.getUser();return !!(user&&user.user_metadata&&user.user_metadata.must_set_password);}catch(e){return false}
@@ -657,10 +658,24 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
   $("lbtn").addEventListener("click", attemptLogin);
   ["lemail","lpass"].forEach(id => $(id).addEventListener("keydown", e => { if(e.key==="Enter") attemptLogin(); }));
 
-  function openCard(id){
+  /* Which app is open, mirrored into the URL hash so a browser refresh reopens the
+     same app (and, for apps that report it, the same inner page) instead of bouncing
+     the person back to the welcome screen. */
+  let currentApp = null;
+  function setAppHash(id, sub){ try{ history.replaceState(null,'','#'+id+(sub?('/'+sub):'')); }catch(e){} }
+  function clearAppHash(){ try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){} currentApp=null; }
+  function openCard(id, sub){
     const c = CARDS.find(x=>x.id===id); if(!c||!c.url) return;
-    const f=$("appFrame"); f.removeAttribute("srcdoc"); f.src=appUrl(c.url);
+    const f=$("appFrame"); f.removeAttribute("srcdoc"); f.src=appUrl(c.url)+(sub?('#'+sub):'');
     $("appTitle").textContent=c.name; $("appView").classList.add("on");
+    currentApp=id; setAppHash(id, sub);
+  }
+  function restoreFromHash(){
+    const h=(location.hash||'').replace(/^#/,''); if(!h) return;
+    const slash=h.indexOf('/'); const id=slash>-1?h.slice(0,slash):h; const sub=slash>-1?h.slice(slash+1):'';
+    const c=CARDS.find(x=>x.id===id); if(!c||!c.url) return;
+    if(!c.ownerOnly && lockReason(c.id)) return;   /* never reopen a locked app */
+    openCard(id, sub);
   }
 
   /* ---------- DASHBOARD ---------- */
@@ -737,9 +752,11 @@ function renderDashboard(){
   window.addEventListener('message', e => {
     if(e.data && e.data.rl==='onboarding'){
       if(e.data.go==='training'){ loadOnboarding().then(()=>openCard('training')); return; }
-      if(e.data.go==='home'){ $("appView").classList.remove("on"); $("appFrame").src='about:blank'; }
+      if(e.data.go==='home'){ $("appView").classList.remove("on"); $("appFrame").src='about:blank'; clearAppHash(); }
       loadOnboarding();
     }
+    /* an app reports its inner page so a refresh can land back on it */
+    if(e.data && e.data.rl==='nav'){ if(currentApp) setAppHash(currentApp, e.data.sub||''); return; }
   });
 
   $("cardGrid").addEventListener("click", e => {
@@ -754,10 +771,7 @@ function renderDashboard(){
     const f = $("appFrame");
     if(c.url){
       /* live URL loading — the suite always serves the latest version of each app */
-      f.removeAttribute("srcdoc");
-      f.src = appUrl(c.url);
-      $("appTitle").textContent = c.name;
-      $("appView").classList.add("on");
+      openCard(c.id);
       return;
     }
     const src = APP_SOURCES[c.id];
@@ -776,6 +790,7 @@ function renderDashboard(){
     const f = $("appFrame");
     f.removeAttribute("srcdoc");
     f.src = "about:blank";
+    clearAppHash();
   });
 
   /* ---------- SETTINGS ---------- */

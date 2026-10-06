@@ -1343,14 +1343,26 @@ function enter(){
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
   renderWho();
+  /* restore the page from the URL hash (set by the portal shell) so a browser
+     refresh lands back where you were, not on the dashboard */
+  const _OKPAGES={dash:1,biz:1,clients:1,client:1,props:1,prop:1,reports:1,xsearch:1,leads:1,calendar:1,comms:1,commissions:1,followups:1,settings:1};
+  let _start='dash',_startArg;
+  try{const h=(location.hash||'').replace(/^#/,'');if(h){const i=h.indexOf('/');const pg=i>-1?h.slice(0,i):h;if(_OKPAGES[pg]){_start=pg;_startArg=i>-1?decodeURIComponent(h.slice(i+1)):undefined;}}}catch(_e){}
   page='dash';pipeSel=myPipes()[0]||null;
-  renderNav();go('dash');startRingWatch();initVoice();
+  renderNav();go(_start,_startArg);startRingWatch();initVoice();
+}
+/* tell the portal shell which page we're on, so refresh can restore it */
+function reportNav(k,arg){
+  const sub=k+(arg?('/'+encodeURIComponent(arg)):'');
+  try{if((location.hash||'').replace(/^#/,'')!==sub)history.replaceState(null,'','#'+sub);}catch(_e){}
+  try{if(window.parent&&window.parent!==window)window.parent.postMessage({rl:'nav',sub:sub},'*');}catch(_e){}
 }
 function go(k,arg){
   const _same=(k===page&&arg===pageArg);const _keepSc=_same?((document.getElementById('main')||{}).scrollTop||0):0;
   document.body.classList.remove('side-open');
   try{viewBanner()}catch(e){}
   page=k;pageArg=arg;if(k==='biz')bizSel=arg;
+  try{reportNav(k,arg);}catch(_e){}
   renderNav();closeAll();try{renderBell();}catch(_e){}
   const M=document.getElementById('main');
   const crumb=k==='biz'?BIZ[arg]:{dash:'Dashboard',xsearch:'Cross-Search',leads:'My Leads',clients:'Contacts',props:'Properties',reports:'Reports',calendar:'Calendar',comms:'Communications',commissions:'Commissions',followups:'Follow-Ups',settings:'Settings',devview:'Change View',client:'Contact Profile',prop:'Property'}[k]||'';
