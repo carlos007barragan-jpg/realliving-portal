@@ -760,8 +760,13 @@ function renderDashboard(){
       if(e.data.go==='home'){ $("appView").classList.remove("on"); $("appFrame").src='about:blank'; clearAppHash(); }
       loadOnboarding();
     }
-    /* an app reports its inner page so a refresh can land back on it */
-    if(e.data && e.data.rl==='nav'){ if(currentApp) setAppHash(currentApp, e.data.sub||''); return; }
+    /* an app reports its inner page so a refresh can land back on it — only accept it
+       from the app that's actually open, so a late report from the app you just left
+       can't tack its page onto the new one's URL */
+    if(e.data && e.data.rl==='nav'){
+      try{ if(e.source && e.source!==$("appFrame").contentWindow) return; }catch(_e){}
+      if(currentApp) setAppHash(currentApp, e.data.sub||''); return;
+    }
   });
 
   $("cardGrid").addEventListener("click", e => {
