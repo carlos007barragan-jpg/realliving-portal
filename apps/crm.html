@@ -283,12 +283,13 @@ tr.rowlink:hover td{background:var(--goldsoft)}
 .cbar div{border-radius:2px;margin-top:1px}
 .clab{text-align:center;font-size:11px;color:var(--mut);margin-top:6px;letter-spacing:.06em}
 .ctot{text-align:center;font-size:11px;color:var(--gold2);margin-bottom:4px;font-variant-numeric:tabular-nums}
-.appt{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.appt{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px}
 .appt.done .who{text-decoration:line-through;color:var(--mut)}
-.appt .when{min-width:86px;text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:11.5px;color:var(--gold2);line-height:1.4}
+.appt .when{flex:0 0 auto;min-width:72px;text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:11.5px;color:var(--gold2);line-height:1.4}
 .appt .when b{display:block;font-family:var(--disp);font-size:16px;color:var(--ink);font-weight:600}
-.appt .who{flex:1}.appt .who small{display:block;color:var(--mut);font-size:12px;margin-top:1px}
-.appt button{flex:none}
+.appt .who{flex:1 1 120px;min-width:0}.appt .who small{display:block;color:var(--mut);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
+.appt button{flex:0 0 auto}
+.appt .actions{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px}
 /* ---------- owner dashboard modules ---------- */
 .delta{font-size:11px;border-radius:12px;padding:2px 8px;margin-left:8px;vertical-align:4px;font-family:var(--body);font-weight:400;letter-spacing:.02em;white-space:nowrap}
 .delta.up{color:var(--green);background:rgba(95,138,71,.12)}
@@ -2528,11 +2529,12 @@ function vClient(id){
     (cappts.length?cappts.map(a=>{const t=new Date(a.dt);const past=!a.done&&!a.outcome&&t<NOW();
       return '<div class="appt"'+(past?' style="border-color:var(--amber)"':'')+'><span class="when"><b>'+t.getDate()+'</b>'+t.toLocaleDateString('en-US',{month:'short'})+' · '+t.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+'</span>'+
       '<span class="who">'+esc(a.type)+'<small>'+(past?'<b style="color:var(--amber)">what happened?</b> · ':'')+'with '+esc(U(a.agentId).name)+' · '+BIZ[a.biz||'RL']+'</small></span>'+
+      '<span class="actions">'+
       (past?'<button class="btn ghost small" onclick="apptOutcome(\''+a.id+'\',\'showed\')">Showed</button>'+
             '<button class="btn ghost small" style="color:var(--red);border-color:var(--red)" onclick="apptOutcome(\''+a.id+'\',\'noshow\')">No-show</button>'+
             '<button class="btn ghost small" onclick="apptOutcome(\''+a.id+'\',\'resched\')">Rebook</button>'
            :'<button class="btn ghost small" onclick="apptDone(\''+a.id+'\')">Done</button>')+
-      '<button class="btn ghost small" title="Cancel" onclick="rmAppt(\''+a.id+'\')">×</button></div>'}).join(''):'<div class="empty" style="padding:10px 0">None upcoming.</div>')+'</div>';
+      '<button class="btn ghost small" title="Cancel" onclick="rmAppt(\''+a.id+'\')">×</button></span></div>'}).join(''):'<div class="empty" style="padding:10px 0">None upcoming.</div>')+'</div>';
   h+='<div class="card"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:17px">Deals</h2><span class="cnt">'+ds.length+'</span></div>'+
     (ds.length?ds.map(d=>{const p=PIPES[d.pipe];
       /* A deal on this card can be live, sold, archived-for-audit, or closed out. Only a
@@ -2550,7 +2552,7 @@ function vClient(id){
       else if(lost){badge='<span class="tag" style="flex:0 0 auto;border-color:var(--mut);color:var(--mut)">CLOSED OUT</span>';
         sub=esc(d.lostReason||'not moving forward');}
       else{badge='';sub=esc(p.stages[d.stage])+(d.closeDate?' · closes '+fdate(d.closeDate):'');}
-      return '<div class="deal-row" onclick="openDeal(\''+d.id+'\')"><div class="a" style="width:100%">'+
+      return '<div class="deal-row" onclick="openDeal(\''+d.id+'\')"><div class="a" style="flex:1;min-width:0">'+
       '<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">'+badge+'<span>'+esc(p.name)+' — '+esc(d.type)+'</span></div>'+
       '<small>'+sub+(hideMoney()?'':(d.budget&&!sold&&!arch?' · budget '+money(d.budget)+'/mo':''))+'</small>'+
       /* live deals still get the progress bar; everything else does not */
