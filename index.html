@@ -1219,6 +1219,21 @@ function renderDashboard(){
 .dialer .dl-auto .da-btns{display:flex;gap:6px;margin-top:9px}
 .dialer .dl-auto .da-btns button{flex:1;border:none;border-radius:8px;padding:8px 4px;font-size:11.5px;font-weight:600;cursor:pointer;background:#232741;color:#fff}
 .dialer .dl-auto .da-btns button.go{background:#2E9E5B}.dialer .dl-auto .da-btns button.stop{background:#C0392B}
+.dialer .dl-wrap{border-top:1px solid #2A2F4D;margin-top:12px;padding-top:11px}
+.dialer .dl-wrap .dw-h{font-weight:700;font-size:11px;color:#E6C76A;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.dialer .dl-wrap .dw-lab{font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:#9AA3B2;margin:9px 0 4px}
+.dialer .dl-wrap .dw-temps{display:flex;gap:5px;flex-wrap:wrap}
+.dialer .dl-wrap .dw-temps button{flex:1;min-width:58px;border:1px solid #2A2F4D;background:#0F1324;color:#F1E6C8;border-radius:8px;padding:7px 3px;font-size:11.5px;cursor:pointer}
+.dialer .dl-wrap .dw-temps button.on{border-color:#D8B65A;background:#B8873A;color:#14172A;font-weight:700}
+.dialer .dl-wrap .dw-assign{display:flex;gap:5px}
+.dialer .dl-wrap select{flex:1;background:#0F1324;border:1px solid #2A2F4D;color:#F1E6C8;border-radius:8px;padding:7px;font-size:12px}
+.dialer .dl-wrap .dw-claim{border:1px solid #D8B65A;color:#D8B65A;background:transparent;border-radius:8px;padding:0 9px;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.dialer .dl-wrap .dw-task{display:flex;align-items:center;gap:6px;margin-top:9px;font-size:12px;color:#F1E6C8}
+.dialer .dl-wrap .dw-task input{width:auto;margin:0}
+.dialer .dl-wrap textarea{width:100%;min-height:46px;resize:vertical;background:#0F1324;border:1px solid #2A2F4D;border-radius:8px;color:#F1E6C8;font:inherit;font-size:12px;padding:7px 9px;box-sizing:border-box;margin-top:4px}
+.dialer .dl-wrap .dw-btns{display:flex;gap:6px;margin-top:10px}
+.dialer .dl-wrap .dw-btns button{flex:1;border:none;border-radius:8px;padding:9px 4px;font-size:12.5px;font-weight:600;cursor:pointer;background:#232741;color:#fff}
+.dialer .dl-wrap .dw-btns button.go{background:#2E9E5B}
 </style>
 <script>
 /* ===================== Suite-wide phone =====================
@@ -1228,7 +1243,7 @@ function renderDashboard(){
    lead's checklist; notes typed here save to the lead's activity timeline on hang up. */
 (function(){
   let dev=null, ready=false, call=null, incoming=null, incCid=null, incName=null, tmr=null, secs=0, muted=false;
-  let activeCid=null, seat=null, _idx=null, _idxAt=0, autoState=null;
+  let activeCid=null, seat=null, _idx=null, _idxAt=0, autoState=null, wrapOpen=false, _wrapData=null, _wrapTemp='';
   const $v=id=>document.getElementById(id);
   async function vlog(kind,msg){
     if(!sb)return;
@@ -1271,7 +1286,8 @@ function renderDashboard(){
       '<div class="dl-actions" id="svActions"><button onclick="suiteVoice.toggleKeys()">⌨ Keypad</button><button id="svMute" onclick="suiteVoice.mute()">Mute</button><button class="danger" onclick="suiteVoice.hangup()">Hang up</button></div>'+
       '<div class="dl-inc" id="svInc" style="display:none"><button class="ans" onclick="suiteVoice.answer()">Answer</button><button class="dec" onclick="suiteVoice.decline()">Decline</button></div>'+
       '<div class="dl-script" id="svPb"></div>'+
-      '<div class="dl-notes" id="svNotesWrap"><div class="dls-lab">Notes — saved to the lead’s activity on hang up</div><textarea id="svNotes" placeholder="Type notes during the call…"></textarea></div>';
+      '<div class="dl-notes" id="svNotesWrap"><div class="dls-lab">Notes — saved to the lead’s activity on hang up</div><textarea id="svNotes" placeholder="Type notes during the call…"></textarea></div>'+
+      '<div class="dl-wrap" id="svWrap" style="display:none"></div>';
     document.body.appendChild(d);
   }
   function show(){build();$v('suiteDialer').style.display='block';}
@@ -1314,7 +1330,7 @@ function renderDashboard(){
     stopTimer();setStatus('Call ended');muted=false;const b=$v('svMute');if(b){b.textContent='Mute';b.classList.remove('on');}
     const cid=activeCid; saveNotes(cid);
     call=null;incCid=null;incName=null;activeCid=null;emit('ended',cid);
-    setTimeout(()=>{ if(!(autoState&&autoState.active)) hide(); setPlaybook(''); showNotes(false); },1400);
+    setTimeout(()=>{ if(!(autoState&&autoState.active) && !wrapOpen) hide(); setPlaybook(''); showNotes(false); },1400);
   }
   async function saveNotes(cid){
     const el=$v('svNotes'); const txt=el?el.value.trim():''; if(el)el.value='';
@@ -1389,8 +1405,39 @@ function renderDashboard(){
   window.addEventListener('message',e=>{const d=e.data;if(!d||d.rl!=='autodial')return;
     if(d.event==='state'){ autoState=d.state||null; renderAuto(autoState); }
   });
+  /* the post-call wrap-up card, rendered in the phone box under the call that just ended.
+     The CRM sends what to show; Save posts the filled values back to it. */
+  function postWrap(cmd,payload,auto){try{const f=$v('appFrame');if(f&&f.contentWindow)f.contentWindow.postMessage({rl:'wrap',cmd:cmd,payload:payload||null,auto:!!auto},'*');}catch(_e){}}
+  function hideWrap(){wrapOpen=false;_wrapData=null;_wrapTemp='';const el=$v('svWrap');if(el){el.style.display='none';el.innerHTML='';}if(!call&&!(autoState&&autoState.active))hide();}
+  function renderWrap(data){
+    build();const el=$v('svWrap');if(!el)return;
+    _wrapData=data||null;_wrapTemp='';
+    if(!data){el.style.display='none';el.innerHTML='';wrapOpen=false;return;}
+    const temps=['Cold','Warm','Hot','Not interested'];
+    const agents=data.agents||[];
+    el.innerHTML='<div class="dw-h">After the call — '+esc2(data.name)+'</div>'+
+      '<div class="dw-lab">Lead temperature</div>'+
+      '<div class="dw-temps">'+temps.map(t=>'<button type="button" onclick="suiteVoice.wrapTemp(\''+t+'\',this)">'+t+'</button>').join('')+'</div>'+
+      '<div class="dw-lab">Assign to</div>'+
+      '<div class="dw-assign"><select id="svWrapAgent">'+agents.map(a=>'<option value="'+esc2(a.id)+'"'+((a.id===data.curOwner)?' selected':'')+'>'+esc2(a.name)+(a.me?' (me)':'')+'</option>').join('')+'</select>'+
+        '<button type="button" class="dw-claim" onclick="suiteVoice.wrapClaim()">Claim to me</button></div>'+
+      '<label class="dw-task"><input type="checkbox" id="svWrapTask"> Follow-up task tomorrow</label>'+
+      '<div class="dw-lab">Note</div>'+
+      '<textarea id="svWrapNote" placeholder="What happened on the call?"></textarea>'+
+      '<div class="dw-btns"><button type="button" class="go" onclick="suiteVoice.wrapSave()">'+(data.auto?'Save &amp; next':'Save')+'</button>'+
+        '<button type="button" onclick="suiteVoice.wrapSkip()">'+(data.auto?'Skip':'Close')+'</button></div>';
+    el.style.display='block';wrapOpen=true;show();
+  }
+  window.addEventListener('message',e=>{const d=e.data;if(!d||d.rl!=='wrap')return;
+    if(d.event==='open'){ show(); renderWrap(d.data); }
+    else if(d.event==='close'){ hideWrap(); }
+  });
   window.suiteVoice={init:init,answer:answer,decline:decline,mute:mute,hangup:hangup,digit:digit,toggleKeys:toggleKeys,ready:function(){return ready;},
-    ad:function(cmd){try{const f=$v('appFrame');if(f&&f.contentWindow)f.contentWindow.postMessage({rl:'autodial',cmd:cmd},'*');}catch(_e){}}};
+    ad:function(cmd){try{const f=$v('appFrame');if(f&&f.contentWindow)f.contentWindow.postMessage({rl:'autodial',cmd:cmd},'*');}catch(_e){}},
+    wrapTemp:function(t,btn){_wrapTemp=t;try{var p=btn.parentNode;[].forEach.call(p.querySelectorAll('button'),function(b){b.classList.remove('on');});btn.classList.add('on');}catch(_e){}},
+    wrapClaim:function(){try{var m=(_wrapData&&(_wrapData.agents||[]).filter(function(a){return a.me;})[0]);var sel=$v('svWrapAgent');if(m&&sel)sel.value=m.id;}catch(_e){}},
+    wrapSave:function(){ if(!_wrapData)return; var payload={cid:_wrapData.cid,temp:_wrapTemp,agentId:(($v('svWrapAgent')||{}).value||''),task:!!(($v('svWrapTask')||{}).checked),note:(($v('svWrapNote')||{}).value||''),auto:!!_wrapData.auto}; postWrap('save',payload,!!_wrapData.auto); hideWrap(); },
+    wrapSkip:function(){ var auto=!!(_wrapData&&_wrapData.auto); postWrap('skip',null,auto); hideWrap(); }};
 })();
 </script>
 </body>

@@ -3159,90 +3159,47 @@ window.addEventListener('message',function(e){var d=e.data;if(!d||d.rl!=='autodi
    gets logged without leaving the dialer: a note, a lead temperature, a one-tap follow-up
    task, and — key for cold-list dialing — claim/assign the lead into an agent's bucket so
    they own and work it. In an auto-dial session it holds the next call until Save or Skip. */
-let _wrapCid=null, _wrapTemp='', _wrapAuto=false;
 function meId(){return me.id==='admin'?realUid():me.id;}
 function tempBadge(c){ if(!c||!c.temp)return ''; var col=c.temp==='Hot'?'#C0392B':(c.temp==='Warm'?'#E0A93B':'#5B7FA6'); return '<span class="tag" style="border-color:'+col+';color:'+col+';background:'+col+'18;font-weight:700">'+esc(c.temp)+' lead</span> '; }
 function dncBadge(c){ return (c&&c.doNotCall)?'<span class="tag" style="border-color:#C0392B;color:#C0392B;font-weight:700">Do not call</span> ':''; }
-function wrapEnsure(){
-  if(document.getElementById('callWrap'))return;
-  if(!document.getElementById('cwStyle')){
-    var st=document.createElement('style');st.id='cwStyle';
-    st.textContent='.callwrap{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:3900;width:330px;max-width:92vw;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.28);padding:15px 17px;font-size:13.5px}'+
-      '.callwrap .cw-h{display:flex;align-items:center;font-weight:800;font-size:11.5px;color:var(--gold2);text-transform:uppercase;letter-spacing:.5px}'+
-      '.callwrap .cw-h .cw-x{margin-left:auto;cursor:pointer;opacity:.5;font-size:18px;line-height:1}'+
-      '.callwrap .cw-name{font-weight:700;font-size:16px;margin:4px 0 2px}'+
-      '.callwrap .cw-num{color:var(--mut);font-weight:400;font-size:12.5px}'+
-      '.callwrap .cw-lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);margin:11px 0 4px}'+
-      '.callwrap .cw-temps{display:flex;gap:6px;flex-wrap:wrap}'+
-      '.callwrap .cw-temps button{flex:1;min-width:62px;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 4px;font-size:12px;cursor:pointer}'+
-      '.callwrap .cw-temps button.on{border-color:var(--gold2);background:var(--gold2);color:#1a1a1a;font-weight:700}'+
-      '.callwrap .cw-assign{display:flex;gap:6px}'+
-      '.callwrap .cw-assign select{flex:1;padding:8px;border:1px solid var(--line);border-radius:9px}'+
-      '.callwrap .cw-assign .cw-claim{border:1px solid var(--gold2);color:var(--gold2);background:#fff;border-radius:9px;padding:0 10px;font-size:12px;cursor:pointer;white-space:nowrap}'+
-      '.callwrap .cw-task{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12.5px}'+
-      '.callwrap .cw-task input{width:auto;margin:0}'+
-      '.callwrap textarea{width:100%;min-height:50px;resize:vertical;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font:inherit;font-size:12.5px;box-sizing:border-box}'+
-      '.callwrap .cw-btns{display:flex;gap:8px;margin-top:12px}'+
-      '.callwrap .cw-btns button{flex:1;border:none;border-radius:10px;padding:10px 4px;font-size:13px;font-weight:600;cursor:pointer;background:var(--line);color:#222}'+
-      '.callwrap .cw-btns button.go{background:#2E9E5B;color:#fff}';
-    document.head.appendChild(st);
-  }
-  var d=document.createElement('div');d.id='callWrap';d.className='callwrap';d.style.display='none';document.body.appendChild(d);
-}
+/* The wrap-up card renders inside the Suite phone box (same stack, under the call that
+   just ended). We send it the data it needs; the agent fills it there; its Save posts the
+   values back here to apply (note, temperature, task, claim/assign). */
 function callWrapUp(cid, duringAuto){
   var c=C(cid); if(!c)return;
-  _wrapCid=cid; _wrapTemp=''; _wrapAuto=!!duringAuto;
-  wrapEnsure();
-  var agents=S.users.filter(function(u){return u.role!=='marketing';});
   var mid=meId();
-  var curOwner=c.assignedTo||c.genBy||mid;
-  var el=document.getElementById('callWrap');
-  el.innerHTML=
-    '<div class="cw-h">After the call<span class="cw-x" onclick="wrapClose()">×</span></div>'+
-    '<div class="cw-name">'+esc(c.name)+' <span class="cw-num">'+esc(c.phone||'')+'</span></div>'+
-    '<div class="cw-lab">Lead temperature</div>'+
-    '<div class="cw-temps">'+['Cold','Warm','Hot','Not interested'].map(function(t){return '<button type="button" class="cw-temp" onclick="wrapTemp(\''+t+'\',this)">'+t+'</button>';}).join('')+'</div>'+
-    '<div class="cw-lab">Assign to</div>'+
-    '<div class="cw-assign"><select id="cw-agent">'+agents.map(function(u){return '<option value="'+u.id+'"'+((u.id===curOwner)?' selected':'')+'>'+esc(u.name)+(u.id===mid?' (me)':'')+'</option>';}).join('')+'</select>'+
-      '<button type="button" class="cw-claim" onclick="var a=document.getElementById(\'cw-agent\');if(a)a.value=\''+mid+'\'">Claim to me</button></div>'+
-    '<label class="cw-task"><input type="checkbox" id="cw-task"> Follow-up task tomorrow</label>'+
-    '<div class="cw-lab">Note</div>'+
-    '<textarea id="cw-note" placeholder="What happened on the call?"></textarea>'+
-    '<div class="cw-btns"><button type="button" class="go" onclick="wrapSave()">'+(_wrapAuto?'Save &amp; next':'Save')+'</button>'+
-      '<button type="button" onclick="wrapSkip()">'+(_wrapAuto?'Skip':'Close')+'</button></div>';
-  el.style.display='block';
+  var agents=S.users.filter(function(u){return u.role!=='marketing';}).map(function(u){return {id:u.id,name:u.name,me:u.id===mid};});
+  var data={cid:cid,name:c.name,phone:c.phone||'',agents:agents,curOwner:(c.assignedTo||c.genBy||mid),auto:!!duringAuto};
+  try{ if(window.parent&&window.parent!==window) window.parent.postMessage({rl:'wrap',event:'open',data:data},'*'); }catch(_e){}
 }
-function wrapTemp(t,btn){_wrapTemp=t;var p=btn.parentNode;[].forEach.call(p.querySelectorAll('.cw-temp'),function(b){b.classList.remove('on');});btn.classList.add('on');}
-function wrapClose(){var el=document.getElementById('callWrap');if(el)el.style.display='none';_wrapCid=null;}
-function wrapSkip(){var auto=_wrapAuto;wrapClose();if(auto){try{adResume();}catch(_e){}}}
-function wrapSave(){
-  var cid=_wrapCid; if(!cid){wrapClose();return;}
-  var c=C(cid); if(!c){wrapClose();return;}
-  var note=((document.getElementById('cw-note')||{}).value||'').trim();
-  var agentSel=(document.getElementById('cw-agent')||{}).value||'';
-  var mkTask=!!(document.getElementById('cw-task')||{}).checked;
+function applyWrap(p){
+  if(!p||!p.cid)return; var c=C(p.cid); if(!c)return;
   var acts=[];
-  if(_wrapTemp==='Not interested'){ c.doNotCall=true; if(!isDormant(c))c.dormant=true; acts.push('Marked not interested — set to do-not-call.'); }
-  else if(_wrapTemp){ c.temp=_wrapTemp; if(c.doNotCall)delete c.doNotCall; acts.push('Lead marked '+_wrapTemp+'.'); }
-  if(agentSel){
+  if(p.temp==='Not interested'){ c.doNotCall=true; if(!isDormant(c))c.dormant=true; acts.push('Marked not interested — set to do-not-call.'); }
+  else if(p.temp){ c.temp=p.temp; if(c.doNotCall)delete c.doNotCall; acts.push('Lead marked '+p.temp+'.'); }
+  if(p.agentId){
     var prev=c.assignedTo||c.genBy;
-    c.assignedTo=agentSel; c.genBy=agentSel;
-    if(c.dormant&&_wrapTemp!=='Not interested')c.dormant=false;
-    if(agentSel!==prev)acts.push('Assigned to '+U(agentSel).name+' — now in their leads.');
+    c.assignedTo=p.agentId; c.genBy=p.agentId;
+    if(c.dormant&&p.temp!=='Not interested')c.dormant=false;
+    if(p.agentId!==prev)acts.push('Assigned to '+U(p.agentId).name+' — now in their leads.');
   }
-  if(mkTask){
-    var who=agentSel||meId();
-    S.tasks.push({id:uid('t'),title:'Follow up — '+c.name,clientId:cid,agentId:who,due:new Date(Date.now()+864e5).toISOString().slice(0,10),done:false,createdAt:new Date().toISOString(),by:meId()});
+  if(p.task){
+    var who=p.agentId||meId();
+    S.tasks.push({id:uid('t'),title:'Follow up — '+c.name,clientId:p.cid,agentId:who,due:new Date(Date.now()+864e5).toISOString().slice(0,10),done:false,createdAt:new Date().toISOString(),by:meId()});
     acts.push('Follow-up task set for tomorrow.');
   }
-  var summary=acts.join(' ');
-  if(note||summary)logAct(null,cid,(note?note:'')+(note&&summary?' — ':'')+(summary||''));
+  var note=(p.note||'').trim(); var summary=acts.join(' ');
+  if(note||summary)logAct(null,p.cid,(note?note:'')+(note&&summary?' — ':'')+(summary||''));
   save();
-  if(page==='client'&&pageArg===cid)refresh();
-  var auto=_wrapAuto; wrapClose();
-  if(auto){try{adCallNow();}catch(_e){}}
+  if(page==='client'&&pageArg===p.cid)refresh();
   toast('Saved');
 }
+window.addEventListener('message',function(e){var d=e.data;if(!d||d.rl!=='wrap'||!d.cmd)return;
+  try{
+    if(d.cmd==='save'){ applyWrap(d.payload||{}); if(d.payload&&d.payload.auto){try{adCallNow();}catch(_e){}} }
+    else if(d.cmd==='skip'){ if(d.auto){try{adResume();}catch(_e){}} }
+  }catch(_e){}
+});
 /* ================= MY LEADS (marketing tracker) ================= */
 function leadStatus(c){
   const ds=S.deals.filter(x=>x.clientId===c.id);
