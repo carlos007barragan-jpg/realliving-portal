@@ -1195,7 +1195,12 @@ function viewBanner(){
 }
 function logout(){try{if(sb)sb.auth.signOut();}catch(e){}sessionStorage.removeItem('rl_adm');sessionStorage.removeItem('rl_view');setTimeout(()=>location.reload(),150)}
 function realUid(){return SEAT_ID||(me&&me.id!=='admin'?me.id:'u1')}
-const hideMoney=()=>me.role==='marketing'||me.role==='va';
+/* Agents are kept out of company revenue/commission figures everywhere by design — they
+   stay focused on selling, and see only their OWN pay on the dedicated Commissions page.
+   Client-facing figures an agent legitimately needs (the client's budget, a sale price)
+   are gated separately on marketing/va, not here. */
+const hideMoney=()=>me.role==='marketing'||me.role==='va'||me.role==='agent';
+const moneyEntryHidden=()=>me.role==='marketing'||me.role==='va';
 const dealMoneyHidden=d=>hideMoney()||(me.role==='agent'&&d.agentId!==me.id);
 /* inventory archive: sold or explicitly archived files live in Archive (owners/managers only) */
 const propArchived=p=>p.archived===true||/^\s*sold\s*$/i.test(p.status||'');
@@ -2052,7 +2057,7 @@ function vLinked(){
   if(!multi.length)return '';
   return '<div class="sect"><div class="sect-head"><h2>Linked transactions</h2><span class="cnt">one property, revenue in multiple businesses</span></div>'+
     multi.map(([pid,ds])=>{const p=P(pid);
-      return '<div class="deal-row" onclick="go(\'prop\',\''+pid+'\')"><div class="a">'+esc(p.address)+'<small>'+ds.map(d=>PIPES[d.pipe].name+' — '+money(d.revenue)).join(' · ')+'</small></div><span class="tag bl">×'+ds.length+' transactions</span></div>'}).join('')+'</div>';
+      return '<div class="deal-row" onclick="go(\'prop\',\''+pid+'\')"><div class="a">'+esc(p.address)+'<small>'+ds.map(d=>PIPES[d.pipe].name+(hideMoney()?'':' — '+money(d.revenue))).join(' · ')+'</small></div><span class="tag bl">×'+ds.length+' transactions</span></div>'}).join('')+'</div>';
 }
 /* ================= BUSINESS VERTICALS / KANBAN ================= */
 function vBiz(b){
@@ -2134,7 +2139,7 @@ function mCloseOut(id,stage){
     '<div><label>Close date</label><input type="date" id="co-date" value="'+(d.closeDate||new Date().toISOString().slice(0,10))+'"></div></div>'+
     '<label>Property address</label><input id="co-addr" value="'+esc(d.propInterest||(d.propertyId&&P(d.propertyId)?P(d.propertyId).address:''))+'" placeholder="Full address of the property sold">'+
     (props.length?'<label>Link an inventory property (optional)</label><select id="co-prop"><option value="">— none —</option>'+props.map(p=>'<option value="'+p.id+'"'+(d.propertyId===p.id?' selected':'')+'>'+esc(p.address)+'</option>').join('')+'</select>':'')+
-    (hideMoney()?'':(canSetNumbers()
+    (moneyEntryHidden()?'':(canSetNumbers()
       ?'<div class="frow"><div><label>Sale price</label><input type="number" id="co-price" value="'+(d.budget||'')+'" placeholder="0"></div>'+
         '<div><label>Our revenue / commission</label><input type="number" id="co-rev" value="'+(d.revenue||'')+'" placeholder="0"></div></div>'+
         '<label>Title company / closing office</label><input id="co-title" value="'+esc(d.titleOffice||'')+'">'
@@ -2554,7 +2559,7 @@ function vClient(id){
       else{badge='';sub=esc(p.stages[d.stage])+(d.closeDate?' · closes '+fdate(d.closeDate):'');}
       return '<div class="deal-row" onclick="openDeal(\''+d.id+'\')"><div class="a" style="flex:1;min-width:0">'+
       '<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">'+badge+'<span>'+esc(p.name)+' — '+esc(d.type)+'</span></div>'+
-      '<small>'+sub+(hideMoney()?'':(d.budget&&!sold&&!arch?' · budget '+money(d.budget)+'/mo':''))+'</small>'+
+      '<small>'+sub+(moneyEntryHidden()?'':(d.budget&&!sold&&!arch?' · budget '+money(d.budget)+'/mo':''))+'</small>'+
       /* live deals still get the progress bar; everything else does not */
       (!sold&&!arch&&!lost?'<div class="minibar">'+p.stages.map((_,i)=>'<i'+(i<=d.stage?' class="on"':'')+'></i>').join('')+'</div>':'')+
       '<div class="link3" style="color:var(--gold2)">'+(sold||arch||lost?'Open to change stage, edit or reopen ›':'Open to move stage or mark sold ›')+'</div>'+
@@ -3579,6 +3584,7 @@ function wallChecks(){
   const asRole=(uid,fn)=>{try{me=uid?S.users.find(u=>u.id===uid):ADMIN;return fn()}catch(e){return false}finally{me=saveMe;setTab=saveTab}};
   return [
     ['Marketing never sees money',asRole('u6',()=>hideMoney()===true)],
+    ['Agents never see company revenue',asRole('u4',()=>hideMoney()===true)],
     ['Agents see only their own deals',asRole('u4',()=>myPipes().every(p=>visibleDeals(p).every(d=>d.agentId==='u4')))],
     ['Agents get no Settings page',asRole('u4',()=>!pagesFor().some(it=>it.k==='settings'))],
     ['Agents are walled to their granted pipelines',asRole('u4',()=>myPipes().every(p=>allowedPipes(me).includes(p)))],
