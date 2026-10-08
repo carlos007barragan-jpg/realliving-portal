@@ -230,7 +230,10 @@ tr.rowlink:hover td{background:var(--goldsoft)}
 .tl li{padding:10px 0 10px 16px;border-left:1px solid var(--line2);position:relative;font-size:13.5px}
 .tl li::before{content:"";position:absolute;left:-4px;top:16px;width:7px;height:7px;border-radius:50%;background:var(--gold)}
 .tl li small{display:block;color:var(--mut);font-size:11.5px;margin-top:3px}
-.doc{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.doc{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.doc>span:first-child{flex:1;min-width:0;overflow-wrap:anywhere}
+.doc>button,.doc .btn{flex:0 0 auto}
+.doc small{margin-top:3px}
 .deal-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:11px 13px;margin-bottom:8px;cursor:pointer;box-shadow:0 1px 2px rgba(50,38,14,.05)}
 .deal-row:hover{border-color:var(--line2)}
 .deal-row .a{font-size:14px}.deal-row .a small{display:block;color:var(--mut);font-size:12px;margin-top:2px}
@@ -360,7 +363,10 @@ tr.rowlink:hover td{background:var(--goldsoft)}
 .ttab.on{border-color:var(--gold2);color:var(--gold2);background:rgba(176,138,54,.07)}
 .tl .tico{display:inline-flex;width:17px;height:17px;border-radius:50%;background:var(--panel2);align-items:center;justify-content:center;margin-right:7px;vertical-align:-3px}
 .tl .tico svg{width:9.5px;height:9.5px;stroke:var(--gold2);fill:none;stroke-width:2}
-.pchip{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.pchip{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.pchip>span:first-child{flex:1;min-width:0;overflow-wrap:anywhere}
+.pchip small{display:block;color:var(--mut);font-size:11.5px;margin-top:2px}
+.pchip>.tag,.pchip>button{flex:0 0 auto}
 .pchip:last-child{border-bottom:none}
 .pchip small{display:block;color:var(--mut);font-size:11.5px}
 .minibar{display:flex;gap:2.5px;margin-top:6px}
@@ -2430,6 +2436,14 @@ function vClient(id){
       '<div class="kv">'+shown.map(x=>kv(x.k,x.v)).join('')+'</div>'+
       (more?'<button class="btn ghost small" style="margin-top:10px" onclick="profFull=!profFull;go(\'client\',\''+c.id+'\')">'+(profFull?'Show less':'Show all '+PF.length+' details')+'</button>':'')+'</div>';
   }
+  /* documents */
+  h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Documents</h2><span class="spacer"></span>'+
+    '<label class="btn ghost small" style="display:inline;margin:0;text-transform:none;letter-spacing:0;font-size:12px;cursor:pointer">Attach<input type="file" style="display:none" onchange="addDoc(\''+c.id+'\',this)"></label></div>'+
+    (c.docs.length?c.docs.map((fl,i)=>'<div class="doc"><span>'+
+      (fl.path?'<span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="openDoc(\''+c.id+'\','+i+')">'+esc(fl.name)+'</span>':esc(fl.name)+(fl.missing?' <span class="tag" style="border-color:var(--red);color:var(--red);font-size:10px">file too large to copy</span>':''))+
+      '<small style="display:block" class="mut">'+esc(U(fl.by).name)+' · '+fdate(fl.ts)+(fl.size?' · '+(fl.size>1048576?(fl.size/1048576).toFixed(1)+' MB':Math.round(fl.size/1024)+' KB'):'')+'</small></span>'+
+      (me.role!=='marketing'?'<button class="btn danger small" onclick="rmDoc(\''+c.id+'\','+i+')">Remove</button>':'')+'</div>').join(''):'<div class="empty" style="padding:10px 0">No documents on file.</div>')+
+    '<div class="mut" style="font-size:11.5px;margin-top:10px">Files are stored securely — click a name to open it. Only signed-in team members can view them.</div></div>';
   h+='</div>';
   /* ---- MIDDLE: composer + timeline ---- */
   const tl=S.acts.filter(a=>a.clientId===id).sort((a,b)=>b.ts.localeCompare(a.ts));
@@ -2519,14 +2533,6 @@ function vClient(id){
             '<button class="btn ghost small" onclick="apptOutcome(\''+a.id+'\',\'resched\')">Rebook</button>'
            :'<button class="btn ghost small" onclick="apptDone(\''+a.id+'\')">Done</button>')+
       '<button class="btn ghost small" title="Cancel" onclick="rmAppt(\''+a.id+'\')">×</button></div>'}).join(''):'<div class="empty" style="padding:10px 0">None upcoming.</div>')+'</div>';
-  /* documents */
-  h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Documents</h2><span class="spacer"></span>'+
-    '<label class="btn ghost small" style="display:inline;margin:0;text-transform:none;letter-spacing:0;font-size:12px;cursor:pointer">Attach<input type="file" style="display:none" onchange="addDoc(\''+c.id+'\',this)"></label></div>'+
-    (c.docs.length?c.docs.map((fl,i)=>'<div class="doc"><span>'+
-      (fl.path?'<span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="openDoc(\''+c.id+'\','+i+')">'+esc(fl.name)+'</span>':esc(fl.name)+(fl.missing?' <span class="tag" style="border-color:var(--red);color:var(--red);font-size:10px">file too large to copy</span>':''))+
-      '<small style="display:block" class="mut">'+esc(U(fl.by).name)+' · '+fdate(fl.ts)+(fl.size?' · '+(fl.size>1048576?(fl.size/1048576).toFixed(1)+' MB':Math.round(fl.size/1024)+' KB'):'')+'</small></span>'+
-      (me.role!=='marketing'?'<button class="btn danger small" onclick="rmDoc(\''+c.id+'\','+i+')">Remove</button>':'')+'</div>').join(''):'<div class="empty" style="padding:10px 0">No documents on file.</div>')+
-    '<div class="mut" style="font-size:11.5px;margin-top:10px">Files are stored securely — click a name to open it. Only signed-in team members can view them.</div></div>';
   h+='<div class="card"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:17px">Deals</h2><span class="cnt">'+ds.length+'</span></div>'+
     (ds.length?ds.map(d=>{const p=PIPES[d.pipe];
       /* A deal on this card can be live, sold, archived-for-audit, or closed out. Only a
