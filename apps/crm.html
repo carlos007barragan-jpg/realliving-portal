@@ -2287,7 +2287,8 @@ function vClients(){
     S.smartlists.map(l=>'<button class="ttab'+(slSel===l.id?' on':'')+'" onclick="slSel=\''+l.id+'\';go(\'clients\')">'+esc(l.name)+' · '+listMembers(l.q).length+
       (slSel===l.id&&me.role!=='marketing'?' <span onclick="event.stopPropagation();rmList(\''+l.id+'\')" title="Delete list" style="opacity:.6">×</span>':'')+'</button>').join('')+
     '<button class="ttab" onclick="mAddList()">+ New list</button>'+
-    (list.length?'<button class="ttab" style="border-color:var(--gold2);color:var(--gold2)" onclick="startSession()">▸ Start call session</button>':'')+'</div>';
+    (list.length?'<button class="ttab" style="border-color:var(--gold2);color:var(--gold2)" onclick="startSession()">▸ Start call session</button>':'')+
+    (list.length?'<button class="ttab" style="border-color:#2E9E5B;color:#2E9E5B" onclick="startAutoDial()">⚡ Auto-dial list</button>':'')+'</div>';
   h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Contact</th><th>Phone</th><th>Source</th><th>Type</th><th>Last activity</th><th>Active deals</th><th>Businesses</th></tr>'+
     list.map(c=>{const ds=S.deals.filter(d=>d.clientId===c.id);const open=ds.filter(d=>!isFinal(d));
       const bizs=[...new Set(ds.map(d=>PIPES[d.pipe].biz))];
@@ -3057,6 +3058,128 @@ function csLog(outcome){
   logAct(null,c.id,'Call session — '+outcome+'.'+(note?' '+note:''));
   save();csI++;vSession();
 }
+/* ================= AUTO-DIALER (power dialer) =================
+   Drives the Suite softphone straight down a custom list, hands-free: it places
+   each call (the phone records + transcribes every one automatically), and when
+   the agent hangs up — or a call isn't answered — it waits a short beat and dials
+   the next number on its own, all the way down the list. Contacts with no number,
+   a duplicate number, or a Do-Not-Call flag are skipped. */
+let adQueue=[],adIdx=0,adActive=false,adPaused=false,adGap=null,adGapLeft=0,adOnCall=false;
+const AD_DELAY=5;              /* seconds between hang-up and the next call */
+function adEligible(c){ return !!(c && c.phone && c.doNotCall!==true); }
+function adBaseList(){
+  const l=S.smartlists.find(x=>x.id===slSel);
+  let list=l?listMembers(l.q):S.clients.slice();
+  list=list.filter(c=>(dormView==='past'?c.pastClient:(dormView?isDormant(c)&&!c.pastClient:!isDormant(c))));
+  if(ctypeFilter)list=list.filter(c=>getCtypes(c).indexOf(ctypeFilter)>-1);
+  return {list:list,name:l?l.name:'All shown'};
+}
+function startAutoDial(){
+  if(!CLOUD||!sb||!SEAT_ID){toast('Open the CRM from the Business Suite to use the dialer');return;}
+  const base=adBaseList();
+  const seen={},q=[];
+  base.list.forEach(c=>{ if(!adEligible(c))return; const k=digits10(c.phone); if(!k||seen[k])return; seen[k]=1; q.push(c); });
+  const skipped=base.list.length-q.length;
+  if(!q.length){toast('Nobody with a callable number in this list');return;}
+  const msg='Auto-dial '+q.length+' contact'+(q.length===1?'':'s')+' in “'+base.name+'”'+
+    (skipped?(' — '+skipped+' skipped (no number, duplicate, or do-not-call)'):'')+'.\n\n'+
+    'The phone calls straight down the list, records and transcribes each one, and moves to the next when you hang up.\n\n'+
+    'Only dial people who have agreed to hear from you and who aren’t on a Do-Not-Call list.\n\nStart now?';
+  if(!window.confirm(msg))return;
+  adQueue=q;adIdx=0;adActive=true;adPaused=false;adOnCall=false;_adListName=base.name;
+  adPlaceCurrent();
+}
+function adPlaceCurrent(){
+  adClearGap();
+  if(!adActive)return;
+  if(adIdx>=adQueue.length){adFinish();return;}
+  const c=adQueue[adIdx];
+  adOnCall=true;
+  callViaShell(c.phone,c.id,c.name,(typeof playbookHtml==='function')?playbookHtml(c.id):'');
+  adRender();
+}
+function adOnEnded(){
+  if(!adActive)return;
+  adOnCall=false;
+  if(adPaused){adRender();return;}
+  adStartGap();
+}
+function adStartGap(){
+  adClearGap();
+  adGapLeft=AD_DELAY;adRender();
+  adGap=setInterval(function(){
+    adGapLeft--;
+    if(adGapLeft<=0){adClearGap();adIdx++;adPlaceCurrent();}
+    else adRender();
+  },1000);
+}
+function adClearGap(){ if(adGap){clearInterval(adGap);adGap=null;} adGapLeft=0; }
+function adCallNow(){ adClearGap(); adIdx++; adPlaceCurrent(); }
+function adPause(){ adPaused=true; adClearGap(); adRender(); }
+function adResume(){ adPaused=false; if(!adOnCall){ adStartGap(); } else adRender(); }
+function adSkip(){
+  if(adOnCall){ try{window.parent.postMessage({rl:'voice',action:'hangup'},'*');}catch(_e){} }
+  else { adClearGap(); adIdx++; adPlaceCurrent(); }
+}
+function adStop(){
+  adActive=false;adPaused=false;adClearGap();adOnCall=false;
+  try{window.parent.postMessage({rl:'voice',action:'hangup'},'*');}catch(_e){}
+  adRender();
+  toast('Auto-dial stopped');
+}
+function adFinish(){
+  adActive=false;adClearGap();adOnCall=false;adRender();
+  toast('Auto-dial done — '+adQueue.length+' contact'+(adQueue.length===1?'':'s')+' called');
+}
+function adEnsure(){
+  if(document.getElementById('autoDialer'))return document.getElementById('autoDialer');
+  if(!document.getElementById('adStyle')){
+    const st=document.createElement('style');st.id='adStyle';
+    st.textContent='.autodialer{position:fixed;left:18px;bottom:18px;z-index:3800;width:280px;background:#14172A;color:#F1E6C8;border-radius:15px;box-shadow:0 16px 46px rgba(0,0,0,.44);padding:14px 16px;font-size:13.5px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}'+
+      '.autodialer .ad-h{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;color:#E6C76A;letter-spacing:.2px}'+
+      '.autodialer .ad-h .ad-x{margin-left:auto;cursor:pointer;opacity:.6;font-size:16px;line-height:1}'+
+      '.autodialer .ad-prog{height:5px;border-radius:4px;background:#2A2F4C;margin:9px 0 8px;overflow:hidden}'+
+      '.autodialer .ad-prog i{display:block;height:100%;background:#B8873A;transition:width .3s}'+
+      '.autodialer .ad-now{font-weight:600;font-size:15px;color:#fff;margin-bottom:1px}'+
+      '.autodialer .ad-num{font-size:12px;color:#9AA3B2}'+
+      '.autodialer .ad-stat{font-size:12px;margin-top:6px;color:#D8B65A;min-height:16px}'+
+      '.autodialer .ad-btns{display:flex;gap:6px;margin-top:11px}'+
+      '.autodialer .ad-btns button{flex:1;border:none;border-radius:9px;padding:9px 4px;font-size:12px;font-weight:600;cursor:pointer;background:#232741;color:#fff}'+
+      '.autodialer .ad-btns button.go{background:#2E9E5B}.autodialer .ad-btns button.stop{background:#C0392B}';
+    document.head.appendChild(st);
+  }
+  const d=document.createElement('div');d.id='autoDialer';d.className='autodialer';document.body.appendChild(d);
+  return d;
+}
+function adRender(){
+  const w=document.getElementById('autoDialer');
+  if(!adActive){ if(w)w.remove(); return; }
+  const d=adEnsure();
+  const total=adQueue.length;
+  const pos=Math.min(adIdx+1,total);
+  /* who the status line is about: the one on the phone now, or the one coming up */
+  const gap=adGapLeft>0, showNext=(gap||adPaused)&&!adOnCall;
+  const subject=showNext?adQueue[Math.min(adIdx+1,total-1)]:adQueue[adIdx];
+  let stat;
+  if(adPaused) stat='Paused';
+  else if(gap) stat='Next call in '+adGapLeft+'s';
+  else if(adOnCall) stat='On call — hang up to move on';
+  else stat='Dialing…';
+  const pct=Math.round(pos/Math.max(1,total)*100);
+  const btns = adPaused
+    ? '<button class="go" onclick="adResume()">Resume</button><button onclick="adSkip()">Skip</button><button class="stop" onclick="adStop()">Stop</button>'
+    : (gap
+        ? '<button class="go" onclick="adCallNow()">Call now</button><button onclick="adPause()">Pause</button><button class="stop" onclick="adStop()">Stop</button>'
+        : '<button onclick="adPause()">Pause</button><button onclick="adSkip()">Skip</button><button class="stop" onclick="adStop()">Stop</button>');
+  d.innerHTML='<div class="ad-h">⚡ Auto-dial<span class="mut" style="color:#9AA3B2;font-weight:600;margin-left:4px">'+esc(adListName())+'</span><span class="ad-x" onclick="adStop()">×</span></div>'+
+    '<div class="ad-prog"><i style="width:'+pct+'%"></i></div>'+
+    '<div class="ad-now">'+(subject?esc(subject.name):'—')+' <span class="mut" style="color:#9AA3B2;font-size:12px;font-weight:400">'+pos+' of '+total+'</span></div>'+
+    '<div class="ad-num">'+(subject?esc(subject.phone):'')+(showNext?' · up next':'')+'</div>'+
+    '<div class="ad-stat">'+stat+'</div>'+
+    '<div class="ad-btns">'+btns+'</div>';
+}
+let _adListName='';
+function adListName(){return _adListName;}
 /* ================= MY LEADS (marketing tracker) ================= */
 function leadStatus(c){
   const ds=S.deals.filter(x=>x.clientId===c.id);
@@ -4578,6 +4701,7 @@ async function browserCallNum(num){
 window.addEventListener('message',function(e){var d=e.data;if(!d||d.rl!=='voice'||!d.event)return;
   if(d.event==='need-playbook'){ if(d.clientId){try{window.parent.postMessage({rl:'voice',action:'playbook',clientId:d.clientId,html:playbookHtml(d.clientId)},'*');}catch(_e){}} }
   else if(d.event==='note-saved'){ try{pullAll(false).then(function(){ if(page==='client'&&pageArg===d.clientId)refresh(); });}catch(_e){} }
+  else if(d.event==='ended'){ try{adOnEnded();}catch(_e){} }
 });
 function wireCall(call){
   if(!call)return;
