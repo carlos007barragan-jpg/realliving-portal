@@ -1284,9 +1284,16 @@ function bellLastSeen(){try{return localStorage.getItem(bellSeenKey())||'1970-01
 function bellFeed(){
   const meId=me.id==='admin'?realUid():me.id;
   const cutoff=NOW().getTime()-14*864e5;
-  let items=S.clients.filter(c=>!c.archived&&c.createdAt&&new Date(c.createdAt).getTime()>=cutoff).map(c=>{
+  let items=S.clients.filter(c=>{
+    if(c.archived)return false;
+    const created=c.createdAt&&new Date(c.createdAt).getTime()>=cutoff;
+    const assigned=c.assignedAt&&new Date(c.assignedAt).getTime()>=cutoff;
+    return created||assigned;
+  }).map(c=>{
     const dl=S.deals.filter(d=>d.clientId===c.id).sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''))[0];
-    return {id:c.id,name:c.name,source:c.source,assignee:dl?dl.agentId:c.genBy,ts:c.createdAt,pipe:dl?dl.pipe:null};
+    const assignee=c.assignedTo||(dl?dl.agentId:c.genBy);
+    const assignedNew=c.assignedAt&&new Date(c.assignedAt).getTime()>=cutoff&&(!c.createdAt||c.assignedAt>c.createdAt);
+    return {id:c.id,name:c.name,source:c.source,assignee:assignee,ts:(assignedNew?c.assignedAt:c.createdAt),pipe:dl?dl.pipe:null,assignedNew:assignedNew};
   });
   if(me.role==='agent'||me.role==='va'){items=items.filter(x=>x.assignee===meId);}
   else if(me.role==='marketing'){items=items.filter(x=>{const c=C(x.id);return x.assignee===meId||(c&&c.genBy===meId);});}
@@ -1306,7 +1313,7 @@ function bellPanelHtml(feed,seen){
       const open=x.id?"bellOpen('"+x.id+"')":"(function(){var p=document.getElementById('bellpanel');if(p)p.style.display='none';go('comms');})()";
       return '<div class="bitem'+(un?' unread':'')+'" onclick="'+open+'"><b>\u260e Missed call \u2014 '+esc(x.name)+'</b><small>'+fmtPhone(x.from)+(x.vm?' \u00b7 left a voicemail':'')+' \u00b7 '+(ag?esc(ag.name):'unassigned')+' \u00b7 '+callbackRelTime(x.ts)+' \u2014 no callback yet</small></div>';
     }
-    return '<div class="bitem'+(un?' unread':'')+'" onclick="bellOpen(\''+x.id+'\')"><b>'+esc(x.name)+'</b><small>'+esc(x.source||'lead')+' \u00b7 assigned to '+esc(ag?ag.name:'unassigned')+' \u00b7 '+fdate(x.ts)+'</small></div>';
+    return '<div class="bitem'+(un?' unread':'')+'" onclick="bellOpen(\''+x.id+'\')"><b>'+(x.assignedNew?'\ud83d\udce5 Lead assigned \u2014 ':'')+esc(x.name)+'</b><small>'+esc(x.source||'lead')+' \u00b7 '+(x.assignedNew&&ag?'to '+esc(ag.name):'assigned to '+esc(ag?ag.name:'unassigned'))+' \u00b7 '+fdate(x.ts)+'</small></div>';
   }).join('');
   return h;
 }
@@ -1410,6 +1417,48 @@ function vMyDay(){
     return '<div class="kpirow"><span class="sdot" style="background:'+BIZCOLOR[a.biz||'RL']+'"></span><span class="lab" style="flex:1">'+esc(a.type)+' — '+(c?esc(c.name):'')+
     '<small>'+new Date(a.dt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+' · '+BIZ[a.biz||'RL']+'</small></span>'+
     '<button class="btn ghost small" onclick="apptDone(\''+a.id+'\')">Done</button></div>'}).join('');
+  return h+'</div>';
+}
+/* An agent's work queue — only what they actually work: leads handed to them that nobody
+   has touched, missed calls to return, the tasks they set, and today's appointments. No
+   auto-generated plan/playbook steps (those carry a `plan` tag and get filtered out). */
+function vAgentDay(){
+  const mid=me.id==='admin'?realUid():me.id;
+  const today=NOW().toISOString().slice(0,10);
+  const mineLeads=S.clients.filter(c=>!c.archived&&(c.assignedTo===mid||c.genBy===mid));
+  const untouched=mineLeads.filter(c=>!isDormant(c)&&!S.touches.some(t=>t.clientId===c.id))
+    .sort((a,b)=>String(b.assignedAt||b.createdAt||'').localeCompare(String(a.assignedAt||a.createdAt||'')));
+  let calls=[]; try{calls=callbackItems().filter(t=>!t.agentId||t.agentId===mid);}catch(_e){}
+  const myTasks=S.tasks.filter(t=>!t.done&&t.agentId===mid&&!t.plan&&t.due<=today).sort((a,b)=>a.due.localeCompare(b.due));
+  const myA=S.appts.filter(a=>!a.done&&a.agentId===mid&&a.dt.slice(0,10)===today).sort((a,b)=>a.dt.localeCompare(b.dt));
+  let h='<div class="card" style="margin-bottom:16px"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:19px">My day</h2><span class="cnt">'+untouched.length+' new · '+calls.length+' callbacks · '+myTasks.length+' tasks · '+myA.length+' appts</span></div>';
+  if(!untouched.length&&!calls.length&&!myTasks.length&&!myA.length)h+='<div class="allclear"><span class="sdot g"></span>All caught up — no new leads, callbacks, or tasks waiting.</div>';
+  if(calls.length){
+    h+='<div class="eyebrow" style="margin:8px 0 4px;color:#C0392B">Missed calls to return · '+calls.length+'</div>';
+    h+=calls.slice(0,6).map(t=>{const c=t.clientId?C(t.clientId):null;const nm=c?c.name:'Unknown number';
+      return '<div class="kpirow"><span class="lab" style="flex:1">'+esc(nm)+'<small>'+fmtPhone(t.from||(c&&c.phone)||'')+(t.outcome==='voicemail'?' · voicemail':'')+' · '+callbackRelTime(t.ts)+'</small></span>'+
+      (c?'<button class="btn call small" onclick="browserCall(\''+c.id+'\')">Call back</button>':'<button class="btn call small" onclick="browserCallNum(\''+esc(t.from||'')+'\')">Call back</button>')+
+      '<button class="btn ghost small" onclick="markCalledBack(\''+t.id+'\')">Done</button></div>';}).join('');
+  }
+  if(untouched.length){
+    h+='<div class="eyebrow" style="margin:12px 0 4px;color:var(--gold2)">New leads to work · '+untouched.length+'</div>';
+    h+=untouched.slice(0,6).map(c=>'<div class="kpirow"><span class="lab" style="flex:1"><span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+c.id+'\')">'+esc(c.name)+'</span>'+tempBadge(c)+'<small>'+esc(c.source||'lead')+' · '+(c.phone?esc(fmtPhone(c.phone)):'no number')+'</small></span>'+
+      (c.phone?'<button class="btn call small" onclick="browserCall(\''+c.id+'\')">Call</button>':'')+'</div>').join('');
+    if(untouched.length>6)h+='<div class="mut" style="font-size:12px;margin-top:4px">+ '+(untouched.length-6)+' more — <span style="cursor:pointer;color:var(--gold2)" onclick="go(\'leads\')">see all</span></div>';
+  }
+  if(myTasks.length){
+    h+='<div class="eyebrow" style="margin:12px 0 4px">My tasks · '+myTasks.length+'</div>';
+    h+=myTasks.slice(0,8).map(t=>{const c=t.clientId?C(t.clientId):null;
+      return '<div class="kpirow"><input type="checkbox" onchange="toggleTask(\''+t.id+'\')" style="width:auto;margin:0 4px 0 0">'+
+      '<span class="lab" style="flex:1">'+taskLabel(t)+'<small>'+(c?'<span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+t.clientId+'\')">'+esc(c.name)+'</span> · ':'')+(t.due<today?'<b style="color:var(--red)">overdue</b>':'due today')+'</small></span></div>';}).join('');
+  }
+  if(myA.length){
+    h+='<div class="eyebrow" style="margin:12px 0 4px">Today’s appointments · '+myA.length+'</div>';
+    h+=myA.map(a=>{const c=C(a.clientId);
+      return '<div class="kpirow"><span class="sdot" style="background:'+BIZCOLOR[a.biz||'RL']+'"></span><span class="lab" style="flex:1">'+esc(a.type)+' — '+(c?esc(c.name):'')+
+      '<small>'+new Date(a.dt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+' · '+BIZ[a.biz||'RL']+'</small></span>'+
+      '<button class="btn ghost small" onclick="apptDone(\''+a.id+'\')">Done</button></div>'}).join('');
+  }
   return h+'</div>';
 }
 function vDash(){
@@ -1532,39 +1581,22 @@ function vDash(){
         h+='<div class="two sect">'+vApptList('team')+vClosingTimeline('team')+'</div>';
   }
   if(me.role==='agent'){
-    h+=vMyDay();
-    const mine=S.deals.filter(d=>d.agentId===me.id);
-    const open=mine.filter(d=>!isFinal(d));
-    const myAppts=S.appts.filter(a=>a.agentId===me.id&&inThisWeek(a.dt)).length;
-    const myClosings=mine.filter(d=>isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d))).length;
-    /* Agents see their OWN realized commission only — nothing populates until a deal is closed.
-       Revenue is the business's internal number and is never shown here as the agent's earnings. */
-    const wonMine=mine.filter(d=>isWon(d)&&closedDate(d));
-    const myCommMo=wonMine.filter(d=>inThisMonth(closedDate(d))).reduce((a,d)=>a+agentPay(d),0);
-    const myCommYtd=wonMine.filter(d=>inThisYear(closedDate(d))).reduce((a,d)=>a+agentPay(d),0);
-    const myClosedYtd=wonMine.filter(d=>inThisYear(closedDate(d))).length;
-    const myCommAll=wonMine.reduce((a,d)=>a+agentPay(d),0);
-    h+='<div class="grid cards4">'+
-       '<div class="card"><div class="eyebrow">Commission \u2014 this month</div><div class="big">'+money(myCommMo)+'</div><div class="sub">on deals I have closed</div></div>'+
-       '<div class="card"><div class="eyebrow">Commission \u2014 YTD</div><div class="big">'+money(myCommYtd)+'</div><div class="sub">earned '+NOW().getFullYear()+'</div></div>'+
-       '<div class="card"><div class="eyebrow">Deals closed \u2014 YTD</div><div class="big">'+myClosedYtd+'</div><div class="sub">'+wonMine.length+' all-time</div></div>'+
-       '<div class="card"><div class="eyebrow">Active deals</div><div class="big">'+open.length+'</div><div class="sub">in progress</div></div></div>';
-    h+='<div class="mut" style="font-size:12.5px;margin:8px 2px 0">Lifetime with us: <b style="color:var(--ink)">'+money(myCommAll)+'</b> earned across <b style="color:var(--ink)">'+wonMine.length+'</b> closed deal'+(wonMine.length===1?'':'s')+'.</div>';
-    h+='<div class="sect"><div class="sect-head"><h2>My scoreboard</h2></div><div class="card" style="padding:6px 20px">'+
-      '<div class="kpirow"><span class="lab">Appointments<small>this week</small></span>'+dotStrip(myAppts,T.agentApptsWk)+'<span class="val">'+myAppts+' / '+T.agentApptsWk+'</span></div>'+
-      '<div class="kpirow"><span class="lab">Closings<small>this month</small></span>'+dotStrip(myClosings,T.agentClosingsMo)+'<span class="val">'+myClosings+' / '+T.agentClosingsMo+'</span></div></div></div>';
-    {const today=NOW().toISOString().slice(0,10);
-     const isTod=ts=>(ts||'').slice(0,10)===today;
-     const myTT=S.touches.filter(t=>t.agentId===me.id&&isTod(t.ts));
-     const fups=myTT.length;
-     const invT=myTT.filter(t=>{const cc=t.clientId?C(t.clientId):null;return cc&&getCtypes(cc).some(x=>/investor/i.test(x));}).length;
-     const apptsSet=S.acts.filter(a=>a.by===me.id&&isTod(a.ts)&&/appointment (booked|set)/i.test(a.text||'')).length;
-     const fT=T.agTouchesDay||10,iT=T.agInvestorDay||3,aT=T.agApptDay||1;
-     h+='<div class="sect"><div class="sect-head"><h2>Win the day</h2><span class="cnt">daily targets</span></div><div class="card" style="padding:6px 20px">'+
-       '<div class="kpirow"><span class="lab">Follow-up touches<small>today</small></span>'+dotStrip(fups,fT)+'<span class="val">'+fups+' / '+fT+'</span></div>'+
-       '<div class="kpirow"><span class="lab">Investor touches<small>today</small></span>'+dotStrip(invT,iT)+'<span class="val">'+invT+' / '+iT+'</span></div>'+
-       '<div class="kpirow"><span class="lab">Appointments set<small>today</small></span>'+dotStrip(apptsSet,aT)+'<span class="val">'+apptsSet+' / '+aT+'</span></div></div></div>';}
-        h+='<div class="two sect">'+vApptList(me.id)+vClosingTimeline(me.id)+'</div>';
+    const mid=me.id==='admin'?realUid():me.id;
+    h+=vAgentDay();
+    const mineLeads=S.clients.filter(c=>!c.archived&&(c.assignedTo===mid||c.genBy===mid));
+    const working=mineLeads.filter(c=>!isDormant(c));
+    const newLeads=mineLeads.filter(c=>inThisMonth(c.createdAt)||(c.assignedAt&&inThisMonth(c.assignedAt))).length;
+    const untouched=working.filter(c=>!S.touches.some(t=>t.clientId===c.id)).length;
+    const callsMo=S.touches.filter(t=>t.agentId===mid&&(t.kind==='call_out'||t.kind==='call_in')&&inThisMonth(t.ts)).length;
+    const callsAll=S.touches.filter(t=>t.agentId===mid&&(t.kind==='call_out'||t.kind==='call_in')).length;
+    const appts7=upcomingAppts(mid,7).length;
+    h+='<div class="grid sect" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">'+
+      '<div class="card"><div class="eyebrow">Appointments</div><div class="big">'+appts7+'</div><div class="sub">next 7 days</div></div>'+
+      '<div class="card"><div class="eyebrow">Calls — this month</div><div class="big">'+callsMo+'</div><div class="sub">'+callsAll+' all-time</div></div>'+
+      '<div class="card"><div class="eyebrow">New leads</div><div class="big">'+newLeads+'</div><div class="sub">assigned this month</div></div>'+
+      '<div class="card"><div class="eyebrow">My leads</div><div class="big">'+working.length+'</div><div class="sub">being worked</div></div>'+
+      '<div class="card"><div class="eyebrow"'+(untouched?' style="color:var(--red)"':'')+'>Untouched</div><div class="big"'+(untouched?' style="color:var(--red)"':'')+'>'+untouched+'</div><div class="sub">no call yet</div></div></div>';
+    h+='<div class="grid sect" style="grid-template-columns:340px 1fr;align-items:start"><div style="display:grid;gap:14px">'+vMiniCal()+'</div>'+vApptList(mid)+'</div>';
   }
   if(me.role==='marketing'){
     h+=vMyDay();
@@ -3181,7 +3213,7 @@ function applyWrap(p){
     var prev=c.assignedTo||c.genBy;
     c.assignedTo=p.agentId; c.genBy=p.agentId;
     if(c.dormant&&p.temp!=='Not interested')c.dormant=false;
-    if(p.agentId!==prev)acts.push('Assigned to '+U(p.agentId).name+' — now in their leads.');
+    if(p.agentId!==prev){c.assignedAt=new Date().toISOString();acts.push('Assigned to '+U(p.agentId).name+' — now in their leads.');}
   }
   if(p.task){
     var who=p.agentId||meId();
@@ -4094,7 +4126,7 @@ function mEditClient(id){mAddClient(id)}
 function saveClient(edit){
   const g=x=>document.getElementById(x).value.trim();
   if(!g('mc-name')){toast('Name is required');return}
-  if(edit){const c=C(edit);Object.assign(c,{name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail')});const _ag=document.getElementById('mc-agent');if(_ag&&_ag.value)c.assignedTo=_ag.value;c.ctypes=ctSel();delete c.ctype;
+  if(edit){const c=C(edit);Object.assign(c,{name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail')});const _ag=document.getElementById('mc-agent');if(_ag&&_ag.value){if(_ag.value!==c.assignedTo)c.assignedAt=new Date().toISOString();c.assignedTo=_ag.value;}c.ctypes=ctSel();delete c.ctype;
     save();closeAll();go('client',edit);toast('Client updated');return}
   const c={id:uid('c'),name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail'),source:g('mc-src'),ctypes:ctSel(),genBy:me.id,createdAt:new Date().toISOString(),docs:[],interests:[]};
   S.clients.unshift(c);logAct(null,c.id,'Client created — source '+c.source+'.');startLeadPlan(c,null,myPipes()[0]);
