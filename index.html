@@ -1209,6 +1209,16 @@ function renderDashboard(){
 .dialer .dl-notes{display:none;margin-top:12px;padding-top:11px;border-top:1px solid #2A2F4D}
 .dialer .dl-notes textarea{width:100%;min-height:62px;resize:vertical;background:#0F1324;border:1px solid #2A2F4D;border-radius:9px;color:#F1E6C8;font-size:12.5px;padding:8px 10px;font-family:inherit;outline:none;margin-top:5px}
 .dialer .dl-notes textarea:focus{border-color:#D8B65A}
+.dialer .dl-auto{background:#0F1324;border:1px solid #2A2F4D;border-radius:11px;padding:10px 12px;margin-bottom:10px}
+.dialer .dl-auto .da-h{display:flex;align-items:center;gap:6px;font-weight:700;font-size:12px;color:#E6C76A;letter-spacing:.2px}
+.dialer .dl-auto .da-h .da-x{margin-left:auto;cursor:pointer;opacity:.55;font-size:15px;line-height:1}
+.dialer .dl-auto .da-prog{height:5px;border-radius:4px;background:#2A2F4C;margin:8px 0 7px;overflow:hidden}
+.dialer .dl-auto .da-prog i{display:block;height:100%;background:#B8873A;transition:width .3s}
+.dialer .dl-auto .da-now{font-weight:600;font-size:13.5px;color:#fff}
+.dialer .dl-auto .da-stat{font-size:11.5px;color:#D8B65A;margin-top:3px;min-height:15px}
+.dialer .dl-auto .da-btns{display:flex;gap:6px;margin-top:9px}
+.dialer .dl-auto .da-btns button{flex:1;border:none;border-radius:8px;padding:8px 4px;font-size:11.5px;font-weight:600;cursor:pointer;background:#232741;color:#fff}
+.dialer .dl-auto .da-btns button.go{background:#2E9E5B}.dialer .dl-auto .da-btns button.stop{background:#C0392B}
 </style>
 <script>
 /* ===================== Suite-wide phone =====================
@@ -1218,7 +1228,7 @@ function renderDashboard(){
    lead's checklist; notes typed here save to the lead's activity timeline on hang up. */
 (function(){
   let dev=null, ready=false, call=null, incoming=null, incCid=null, incName=null, tmr=null, secs=0, muted=false;
-  let activeCid=null, seat=null, _idx=null, _idxAt=0;
+  let activeCid=null, seat=null, _idx=null, _idxAt=0, autoState=null;
   const $v=id=>document.getElementById(id);
   async function vlog(kind,msg){
     if(!sb)return;
@@ -1254,7 +1264,8 @@ function renderDashboard(){
     if($v('suiteDialer'))return;
     const keys=['1','2','3','4','5','6','7','8','9','*','0','#'].map(k=>'<button onclick="suiteVoice.digit(\''+k+'\')">'+k+'</button>').join('');
     const d=document.createElement('div');d.id='suiteDialer';d.className='dialer';d.style.display='none';
-    d.innerHTML='<div class="dl-head"><div><div class="dl-name" id="svName">—</div><div class="dl-num" id="svNum"></div></div><div class="dl-status" id="svStatus"></div></div>'+
+    d.innerHTML='<div class="dl-auto" id="svAuto" style="display:none"></div>'+
+      '<div class="dl-head"><div><div class="dl-name" id="svName">—</div><div class="dl-num" id="svNum"></div></div><div class="dl-status" id="svStatus"></div></div>'+
       '<div class="dl-timer" id="svTimer" style="display:none">00:00</div>'+
       '<div class="dl-keys" id="svKeys" style="display:none">'+keys+'</div>'+
       '<div class="dl-actions" id="svActions"><button onclick="suiteVoice.toggleKeys()">⌨ Keypad</button><button id="svMute" onclick="suiteVoice.mute()">Mute</button><button class="danger" onclick="suiteVoice.hangup()">Hang up</button></div>'+
@@ -1303,7 +1314,7 @@ function renderDashboard(){
     stopTimer();setStatus('Call ended');muted=false;const b=$v('svMute');if(b){b.textContent='Mute';b.classList.remove('on');}
     const cid=activeCid; saveNotes(cid);
     call=null;incCid=null;incName=null;activeCid=null;emit('ended',cid);
-    setTimeout(()=>{hide();setPlaybook('');showNotes(false);},1400);
+    setTimeout(()=>{ if(!(autoState&&autoState.active)) hide(); setPlaybook(''); showNotes(false); },1400);
   }
   async function saveNotes(cid){
     const el=$v('svNotes'); const txt=el?el.value.trim():''; if(el)el.value='';
@@ -1350,7 +1361,36 @@ function renderDashboard(){
     else if(d.action==='hangup')hangup();
     else if(d.action==='playbook'){ if(d.clientId&&d.clientId===activeCid) setPlaybook(d.html||''); }
   });
-  window.suiteVoice={init:init,answer:answer,decline:decline,mute:mute,hangup:hangup,digit:digit,toggleKeys:toggleKeys,ready:function(){return ready;}};
+  /* the auto-dialer's engine runs in the CRM; its controls live here, inside the phone
+     box. The CRM posts session state, and these buttons post commands back to it. */
+  function esc2(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function renderAuto(st){
+    build();const el=$v('svAuto');if(!el)return;
+    if(!st||!st.active){el.style.display='none';el.innerHTML='';if(!call)setTimeout(()=>{if(!(autoState&&autoState.active)&&!call)hide();},200);return;}
+    const total=st.total||0, pos=st.pos||0, pct=Math.round(pos/Math.max(1,total)*100);
+    let stat;
+    if(st.phase==='paused')stat='Paused';
+    else if(st.phase==='gap')stat='Next call in '+st.gapLeft+'s';
+    else if(st.phase==='oncall')stat='On call — hang up to move on';
+    else stat='Dialing…';
+    const btns = st.phase==='paused'
+      ? '<button class="go" onclick="suiteVoice.ad(\'resume\')">Resume</button><button onclick="suiteVoice.ad(\'skip\')">Skip</button><button class="stop" onclick="suiteVoice.ad(\'stop\')">Stop</button>'
+      : (st.phase==='gap'
+          ? '<button class="go" onclick="suiteVoice.ad(\'callnow\')">Call now</button><button onclick="suiteVoice.ad(\'pause\')">Pause</button><button class="stop" onclick="suiteVoice.ad(\'stop\')">Stop</button>'
+          : '<button onclick="suiteVoice.ad(\'pause\')">Pause</button><button onclick="suiteVoice.ad(\'skip\')">Skip</button><button class="stop" onclick="suiteVoice.ad(\'stop\')">Stop</button>');
+    el.innerHTML='<div class="da-h">⚡ Auto-dial<span style="color:#9AA3B2;font-weight:600;margin-left:4px">'+esc2(st.listName)+'</span><span class="da-x" onclick="suiteVoice.ad(\'stop\')">×</span></div>'+
+      '<div class="da-prog"><i style="width:'+pct+'%"></i></div>'+
+      '<div class="da-now">'+esc2(st.name)+' <span style="color:#9AA3B2;font-size:11.5px;font-weight:400">'+pos+' of '+total+(st.showNext?' · up next':'')+'</span></div>'+
+      '<div class="da-stat">'+stat+'</div>'+
+      '<div class="da-btns">'+btns+'</div>';
+    el.style.display='block';
+    show();
+  }
+  window.addEventListener('message',e=>{const d=e.data;if(!d||d.rl!=='autodial')return;
+    if(d.event==='state'){ autoState=d.state||null; renderAuto(autoState); }
+  });
+  window.suiteVoice={init:init,answer:answer,decline:decline,mute:mute,hangup:hangup,digit:digit,toggleKeys:toggleKeys,ready:function(){return ready;},
+    ad:function(cmd){try{const f=$v('appFrame');if(f&&f.contentWindow)f.contentWindow.postMessage({rl:'autodial',cmd:cmd},'*');}catch(_e){}}};
 })();
 </script>
 </body>

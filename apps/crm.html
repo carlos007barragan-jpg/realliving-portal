@@ -3131,55 +3131,29 @@ function adFinish(){
   adActive=false;adClearGap();adOnCall=false;adRender();
   toast('Auto-dial done — '+adQueue.length+' contact'+(adQueue.length===1?'':'s')+' called');
 }
-function adEnsure(){
-  if(document.getElementById('autoDialer'))return document.getElementById('autoDialer');
-  if(!document.getElementById('adStyle')){
-    const st=document.createElement('style');st.id='adStyle';
-    st.textContent='.autodialer{position:fixed;left:18px;bottom:18px;z-index:3800;width:280px;background:#14172A;color:#F1E6C8;border-radius:15px;box-shadow:0 16px 46px rgba(0,0,0,.44);padding:14px 16px;font-size:13.5px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}'+
-      '.autodialer .ad-h{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;color:#E6C76A;letter-spacing:.2px}'+
-      '.autodialer .ad-h .ad-x{margin-left:auto;cursor:pointer;opacity:.6;font-size:16px;line-height:1}'+
-      '.autodialer .ad-prog{height:5px;border-radius:4px;background:#2A2F4C;margin:9px 0 8px;overflow:hidden}'+
-      '.autodialer .ad-prog i{display:block;height:100%;background:#B8873A;transition:width .3s}'+
-      '.autodialer .ad-now{font-weight:600;font-size:15px;color:#fff;margin-bottom:1px}'+
-      '.autodialer .ad-num{font-size:12px;color:#9AA3B2}'+
-      '.autodialer .ad-stat{font-size:12px;margin-top:6px;color:#D8B65A;min-height:16px}'+
-      '.autodialer .ad-btns{display:flex;gap:6px;margin-top:11px}'+
-      '.autodialer .ad-btns button{flex:1;border:none;border-radius:9px;padding:9px 4px;font-size:12px;font-weight:600;cursor:pointer;background:#232741;color:#fff}'+
-      '.autodialer .ad-btns button.go{background:#2E9E5B}.autodialer .ad-btns button.stop{background:#C0392B}';
-    document.head.appendChild(st);
-  }
-  const d=document.createElement('div');d.id='autoDialer';d.className='autodialer';document.body.appendChild(d);
-  return d;
-}
+let _adListName='';
+/* The controls now live inside the Suite phone box. We just publish session state up
+   to the shell, which renders the ⚡ Auto-dial section and sends control taps back. */
 function adRender(){
-  const w=document.getElementById('autoDialer');
-  if(!adActive){ if(w)w.remove(); return; }
-  const d=adEnsure();
   const total=adQueue.length;
   const pos=Math.min(adIdx+1,total);
-  /* who the status line is about: the one on the phone now, or the one coming up */
   const gap=adGapLeft>0, showNext=(gap||adPaused)&&!adOnCall;
-  const subject=showNext?adQueue[Math.min(adIdx+1,total-1)]:adQueue[adIdx];
-  let stat;
-  if(adPaused) stat='Paused';
-  else if(gap) stat='Next call in '+adGapLeft+'s';
-  else if(adOnCall) stat='On call — hang up to move on';
-  else stat='Dialing…';
-  const pct=Math.round(pos/Math.max(1,total)*100);
-  const btns = adPaused
-    ? '<button class="go" onclick="adResume()">Resume</button><button onclick="adSkip()">Skip</button><button class="stop" onclick="adStop()">Stop</button>'
-    : (gap
-        ? '<button class="go" onclick="adCallNow()">Call now</button><button onclick="adPause()">Pause</button><button class="stop" onclick="adStop()">Stop</button>'
-        : '<button onclick="adPause()">Pause</button><button onclick="adSkip()">Skip</button><button class="stop" onclick="adStop()">Stop</button>');
-  d.innerHTML='<div class="ad-h">⚡ Auto-dial<span class="mut" style="color:#9AA3B2;font-weight:600;margin-left:4px">'+esc(adListName())+'</span><span class="ad-x" onclick="adStop()">×</span></div>'+
-    '<div class="ad-prog"><i style="width:'+pct+'%"></i></div>'+
-    '<div class="ad-now">'+(subject?esc(subject.name):'—')+' <span class="mut" style="color:#9AA3B2;font-size:12px;font-weight:400">'+pos+' of '+total+'</span></div>'+
-    '<div class="ad-num">'+(subject?esc(subject.phone):'')+(showNext?' · up next':'')+'</div>'+
-    '<div class="ad-stat">'+stat+'</div>'+
-    '<div class="ad-btns">'+btns+'</div>';
+  const subject=adActive?(showNext?adQueue[Math.min(adIdx+1,total-1)]:adQueue[adIdx]):null;
+  const phase=adPaused?'paused':(gap?'gap':(adOnCall?'oncall':'dialing'));
+  const st={active:adActive,total:total,pos:pos,gapLeft:adGapLeft,phase:phase,showNext:showNext,
+    listName:_adListName,name:subject?subject.name:'',phone:subject?subject.phone:''};
+  try{if(window.parent&&window.parent!==window)window.parent.postMessage({rl:'autodial',event:'state',state:st},'*');}catch(_e){}
 }
-let _adListName='';
-function adListName(){return _adListName;}
+/* control taps come back from the phone box */
+window.addEventListener('message',function(e){var d=e.data;if(!d||d.rl!=='autodial'||!d.cmd)return;
+  try{
+    if(d.cmd==='pause')adPause();
+    else if(d.cmd==='resume')adResume();
+    else if(d.cmd==='skip')adSkip();
+    else if(d.cmd==='stop')adStop();
+    else if(d.cmd==='callnow')adCallNow();
+  }catch(_e){}
+});
 /* ================= MY LEADS (marketing tracker) ================= */
 function leadStatus(c){
   const ds=S.deals.filter(x=>x.clientId===c.id);
