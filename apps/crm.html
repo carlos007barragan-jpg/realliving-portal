@@ -1202,6 +1202,11 @@ function realUid(){return SEAT_ID||(me&&me.id!=='admin'?me.id:'u1')}
 const hideMoney=()=>me.role==='marketing'||me.role==='va'||me.role==='agent';
 const moneyEntryHidden=()=>me.role==='marketing'||me.role==='va';
 const dealMoneyHidden=d=>hideMoney()||(me.role==='agent'&&d.agentId!==me.id);
+/* Numbers the softphone must never dial: our own Twilio business line (a call to it just
+   loops back and fails) and ownership's own cells. Dialing any of these gets a clean
+   message instead of a Twilio "failed". Add any other in-house line here. */
+const NO_DIAL=['9135132656','9135650997'];
+function isOwnLine(num){return NO_DIAL.includes(digits10(num));}
 /* inventory archive: sold or explicitly archived files live in Archive (owners/managers only) */
 const propArchived=p=>p.archived===true||/^\s*sold\s*$/i.test(p.status||'');
 const propAvailable=p=>!propArchived(p)&&/marketed/i.test(p.status||'');
@@ -4185,7 +4190,11 @@ function saveNewDeal(){
   /* a new deal on a parked or past client puts them back in play automatically */
   if(d.clientId){const cc=C(d.clientId);
     if(cc&&cc.dormant){cc.dormant=false;logAct(null,d.clientId,'Reheated automatically — new deal opened.');}}
-  save();closeAll();pipeSel=pipe;go('biz',PIPES[pipe].biz);toast('Deal opened in '+PIPES[pipe].stages[0]);
+  save();closeAll();pipeSel=pipe;
+  /* land back on the client's profile — that's where you were and where the new deal now shows.
+     Only an H2M acquisition (no client) drops you on the pipeline board instead. */
+  if(d.clientId)go('client',d.clientId); else go('biz',PIPES[pipe].biz);
+  toast('Deal opened in '+PIPES[pipe].stages[0]);
 }
 const PCATS=['Residential','Wholesale','Commercial','Multifamily','On-market'];
 /* ARV, rehab and spread are investor math — they only mean something on a deal we're wholesaling
@@ -4753,6 +4762,7 @@ function callViaShell(to,cid,name,playbook){
 async function browserCall(cid){
   const c=(typeof C==='function')?C(cid):null; if(!c){toast&&toast('Contact not found');return;}
   if(!c.phone){toast&&toast('No phone number on file');return;}
+  if(isOwnLine(c.phone)){toast&&toast('That’s one of our own lines — the phone can’t call itself');return;}
   if(!CLOUD||!sb){ if(typeof mLogTouch==='function')mLogTouch(cid,'call'); toast&&toast('Offline preview — the call is logged but not placed'); return; }
   if(!SEAT_ID){ toast&&toast(DEV?'Preview only — calling goes live when the agent signs in on their own account':'No phone seat on this account yet — an owner can map one in Settings → Team so you can call'); return; }
   if(!callViaShell(c.phone,cid,c.name,playbookHtml(cid))) toast&&toast('Open the CRM from the Business Suite to make calls');
@@ -4760,6 +4770,7 @@ async function browserCall(cid){
 async function browserCallNum(num){
   const digits=String(num||'').replace(/[^\d+]/g,'');
   if(!digits){toast&&toast('No number to call');return;}
+  if(isOwnLine(num)){toast&&toast('That’s one of our own lines — the phone can’t call itself');return;}
   if(!CLOUD||!sb){toast&&toast('Offline preview — calling isn’t available here');return;}
   if(!SEAT_ID){ toast&&toast(DEV?'Preview only — calling goes live when the agent signs in on their own account':'No phone seat on this account yet — an owner can map one in Settings → Team so you can call'); return; }
   if(!callViaShell(num,null,fmtPhone(num),'')) toast&&toast('Open the CRM from the Business Suite to make calls');
