@@ -1202,10 +1202,9 @@ function realUid(){return SEAT_ID||(me&&me.id!=='admin'?me.id:'u1')}
 const hideMoney=()=>me.role==='marketing'||me.role==='va'||me.role==='agent';
 const moneyEntryHidden=()=>me.role==='marketing'||me.role==='va';
 const dealMoneyHidden=d=>hideMoney()||(me.role==='agent'&&d.agentId!==me.id);
-/* Numbers the softphone must never dial: our own Twilio business line (a call to it just
-   loops back and fails) and ownership's own cells. Dialing any of these gets a clean
-   message instead of a Twilio "failed". Add any other in-house line here. */
-const NO_DIAL=['9135132656','9135650997'];
+/* Only our own Twilio line truly can't be dialed (a call from it to itself loops and fails).
+   Everything else — including personal cells used for test calls — is allowed. */
+const NO_DIAL=['9135132656'];
 function isOwnLine(num){return NO_DIAL.includes(digits10(num));}
 /* inventory archive: sold or explicitly archived files live in Archive (owners/managers only) */
 const propArchived=p=>p.archived===true||/^\s*sold\s*$/i.test(p.status||'');
