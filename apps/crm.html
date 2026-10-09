@@ -1099,6 +1099,9 @@ async function cloudEnter(userId,emailFallback){
   me=(prof.role==='owner')?ADMIN:(seat||{id:SEAT_ID,name:prof.full_name||emailFallback,role:prof.role,business:prof.business});
   REAL_OWNER=(prof.role==='owner');REAL_NAME=prof.full_name||emailFallback||'';
   if(prof.role==='owner')sessionStorage.setItem('rl_adm','1');
+  /* a real sign-in always lands on your true identity — drop any stale View-As preview
+     so a refresh never resurrects it (this was the "shows Karely, then admin" flash) */
+  sessionStorage.removeItem('rl_view');
   enter();startSync();
 }
 async function cloudLogin(email,pw){
@@ -5235,8 +5238,10 @@ if(CLOUD){
 
 load();
 if(sessionStorage.getItem('rl_adm')==='1'){
-  const v=sessionStorage.getItem('rl_view');
-  me=v?(S.users.find(x=>x.id===v)||ADMIN):ADMIN;
+  /* Optimistic instant render for a returning owner: always your OWN (admin) identity.
+     A leftover "View As" seat must never flash here before auth resolves — stepping into
+     another seat is a deliberate action, re-entered after you're signed in, not on boot. */
+  me=ADMIN;
   enter();
 }
 /* live dashboard: re-render every 45s so pulse, charts, and KPIs stay current */
