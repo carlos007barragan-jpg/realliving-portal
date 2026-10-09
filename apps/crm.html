@@ -4753,14 +4753,16 @@ function callViaShell(to,cid,name,playbook){
 async function browserCall(cid){
   const c=(typeof C==='function')?C(cid):null; if(!c){toast&&toast('Contact not found');return;}
   if(!c.phone){toast&&toast('No phone number on file');return;}
-  if(!CLOUD||!sb||!SEAT_ID){ if(typeof mLogTouch==='function')mLogTouch(cid,'call'); return; }
-  if(!callViaShell(c.phone,cid,c.name,playbookHtml(cid))) toast&&toast('Open the CRM from the Suite to make calls');
+  if(!CLOUD||!sb){ if(typeof mLogTouch==='function')mLogTouch(cid,'call'); toast&&toast('Offline preview — the call is logged but not placed'); return; }
+  if(!SEAT_ID){ toast&&toast(DEV?'Preview only — calling goes live when the agent signs in on their own account':'No phone seat on this account yet — an owner can map one in Settings → Team so you can call'); return; }
+  if(!callViaShell(c.phone,cid,c.name,playbookHtml(cid))) toast&&toast('Open the CRM from the Business Suite to make calls');
 }
 async function browserCallNum(num){
   const digits=String(num||'').replace(/[^\d+]/g,'');
   if(!digits){toast&&toast('No number to call');return;}
-  if(!CLOUD||!sb||!SEAT_ID){toast&&toast('Calling not ready');return;}
-  if(!callViaShell(num,null,fmtPhone(num),'')) toast&&toast('Open the CRM from the Suite to make calls');
+  if(!CLOUD||!sb){toast&&toast('Offline preview — calling isn’t available here');return;}
+  if(!SEAT_ID){ toast&&toast(DEV?'Preview only — calling goes live when the agent signs in on their own account':'No phone seat on this account yet — an owner can map one in Settings → Team so you can call'); return; }
+  if(!callViaShell(num,null,fmtPhone(num),'')) toast&&toast('Open the CRM from the Business Suite to make calls');
 }
 /* talk to the Suite shell's phone: hand it a checklist when asked, and refresh when a
    call note it saved lands in the activity timeline */
