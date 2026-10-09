@@ -508,11 +508,14 @@ select.tfilter{padding:7px 9px}
 <div id="login">
   <div class="login-card">
     <div class="wordmark">Real Living<span>Companies · CRM</span></div>
-    <div id="li-cloud" style="display:none"><label>Email</label><input id="li-email" type="email" placeholder="you@realliving.com"></div>
-    <label id="li-pw-label">Admin password</label><input id="li-pass" type="password" placeholder="••••">
-    <div class="login-err" id="li-err"></div>
-    <button class="btn" style="width:100%" onclick="doLogin()">Sign in</button>
-    <div class="login-hint" id="li-hint">Team logins and access walls are handled by the Business Suite. This is the admin door.</div>
+    <div id="li-boot" style="display:none;font-size:13px;color:#9AA0B8;margin-top:12px">Signing you in…</div>
+    <div id="li-form">
+      <div id="li-cloud" style="display:none"><label>Email</label><input id="li-email" type="email" placeholder="you@realliving.com"></div>
+      <label id="li-pw-label">Admin password</label><input id="li-pass" type="password" placeholder="••••">
+      <div class="login-err" id="li-err"></div>
+      <button class="btn" style="width:100%" onclick="doLogin()">Sign in</button>
+      <div class="login-hint" id="li-hint">Team logins and access walls are handled by the Business Suite. This is the admin door.</div>
+    </div>
   </div>
 </div>
 
@@ -581,7 +584,6 @@ let REAL_OWNER=false, REAL_NAME='';
 const LS='rl_crm_v3';
 const BIZ={ASAP:'ASAP Lending',H2M:'H2M',RL:'RL Licensed Team',TC:'Transaction Coordination'};
 const BIZCOLOR={ASAP:'#B08A36',H2M:'#5F8A47',RL:'#3F7089',TC:'#9A5B74'};
-const BIZSHORT={ASAP:'ASAP Lending',H2M:'Real Living H2M',RL:'RL Licensed Team',TC:'Transaction Coord.'};
 const BIZICON={ASAP:'M12 3v18M16 6.5c-.8-1-2.2-1.6-4-1.6-2.2 0-4 1.1-4 2.7s1.6 2.3 4 2.9 4 1.3 4 2.9-1.8 2.7-4 2.7c-1.8 0-3.2-.6-4-1.6',H2M:'M3 11l9-7 9 7M5 9v11h14V9M9 20v-6h6v6',RL:'M16 14a4 4 0 10-8 0M12 10a3 3 0 100-6 3 3 0 000 6zM4 20c0-3 4-4 8-4s8 1 8 4',TC:'M7 3h7l5 5v13H7zM14 3v5h5M10 12h6M10 16h4'};
 const PIPES={
   asap:{biz:'ASAP',name:'ASAP Lending',stages:['New Lead','Application','Underwriting','Term Sheet','Approved','Funded'],types:['Fix & Flip Funding','Bridge Loan','Rental / DSCR','Other Funding']},
@@ -1138,11 +1140,16 @@ async function cloudResume(){
   try{
     if(!sb||DEV||SEAT_ID)return;
     const {data:{session}}=await sb.auth.getSession();
-    if(!session)return;
+    if(!session){revealLogin();return;}
     await cloudEnter(session.user.id,session.user.email);
-  }catch(e){console.error('[sso resume]',e);}
+  }catch(e){console.error('[sso resume]',e);revealLogin();}
 }
-if(typeof window!=='undefined')setTimeout(()=>{cloudResume()},50);
+/* The CRM is opened from the hub, which already signed the person in on the same domain
+   and Supabase project. So we don't show a login form up front — we show a quiet loader,
+   resume that session, and walk straight in. The form is only revealed if there is genuinely
+   no session (someone opened the CRM directly, outside the hub). */
+function revealLogin(){try{const f=document.getElementById('li-form'),b=document.getElementById('li-boot');if(b)b.style.display='none';if(f)f.style.display='';}catch(_e){}}
+if(typeof window!=='undefined')setTimeout(()=>{cloudResume()},0);
 /* ===== Auto-update ==========================================================
    Service worker is network-first, so a fresh load always gets newest code. The
    gap is a tab left open for hours that never reloads — exactly how the upload
@@ -1227,7 +1234,6 @@ function isOwnLine(num){return NO_DIAL.includes(digits10(num));}
 /* inventory archive: sold or explicitly archived files live in Archive (owners/managers only) */
 const propArchived=p=>p.archived===true||/^\s*sold\s*$/i.test(p.status||'');
 const propAvailable=p=>!propArchived(p)&&/marketed/i.test(p.status||'');
-const canSeeArchive=()=>me.role==='owner'||me.role==='manager'||me.id==='admin';
 /* only ownership sets what a closed file was worth — everyone else records the sale itself */
 const canSetNumbers=()=>me.role==='owner'||me.id==='admin';
 /* what this user is allowed to see at all in inventory */
@@ -1254,7 +1260,6 @@ function visibleDeals(pipe){
   if(me.role==='agent')ds=ds.filter(d=>d.agentId===me.id);
   return ds;
 }
-function navBizList(){const set=new Set(myPipes().map(p=>PIPES[p].biz));return Object.keys(BIZ).filter(b=>set.has(b));}
 const PIPELABEL={asap:'ASAP Pipeline',h2m_acq:'Acquisitions',h2m_dispo:'Dispositions',h2m_ws:'Wholesale Pipeline',h2m_of:'Owner Finance',rl_buy:'Buy Side',rl_list:'List Side',tc:'TC Dashboard'};
 const I={dash:'M3 12l9-8 9 8M5 10v10h14V10',search:'M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-5-5',
   contacts:'M16 14a4 4 0 10-8 0M12 10a3 3 0 100-6 3 3 0 000 6zM4 20c0-3 4-4 8-4s8 1 8 4',
@@ -1312,7 +1317,6 @@ function renderNav(){
 /* ================= SHELL ================= *//* ================= SHELL ================= *//* ================= SHELL ================= */
 let page='dash', propTab='avail', propCat='', profFull=false, histFull=false, dormView=false, pageArg=null, pipeSel=null, bizSel=null, boardFilter='', dashFilter='ALL', scAg='ALL', scDays=7, velPipe='h2m_dispo', repTab='perf', trendRange='M', profTab='all', taskFull=false, calMode='month', calOff=0, calWOff=0, calBiz='ALL', setTab='general', fuDone=false, commKind='ALL';
 function refresh(){go(page,pageArg)}
-(function(){const _go=null})();
 function bellSeenKey(){return 'rl_bell_'+(me.id==='admin'?realUid():me.id);}
 function bellLastSeen(){try{return localStorage.getItem(bellSeenKey())||'1970-01-01T00:00:00.000Z';}catch(e){return '1970-01-01T00:00:00.000Z';}}
 function bellFeed(){
@@ -1393,7 +1397,7 @@ function enter(){
   let _start='dash',_startArg;
   try{const h=(location.hash||'').replace(/^#/,'');if(h){const i=h.indexOf('/');const pg=i>-1?h.slice(0,i):h;if(_OKPAGES[pg]){_start=pg;_startArg=i>-1?decodeURIComponent(h.slice(i+1)):undefined;}}}catch(_e){}
   page='dash';pipeSel=myPipes()[0]||null;
-  renderNav();go(_start,_startArg);startRingWatch();initVoice();
+  renderNav();go(_start,_startArg);
 }
 /* tell the portal shell which page we're on, so refresh can restore it */
 function reportNav(k,arg){
@@ -3339,23 +3343,6 @@ function calScope(){
   else if(calBiz!=='ALL')list=list.filter(a=>(a.biz||'RL')===calBiz);
   return list;
 }
-function vCalendarOld(){
-  const scopeA=me.role==='agent'?me.id:null;
-  let list=upcomingAppts(scopeA,30);
-  if(me.role==='manager')list=list.filter(a=>U(a.agentId).business===me.business);
-  let h='<div class="sect-head" style="margin-top:4px"><h2>Calendar</h2><span class="cnt">next 30 days'+(me.role==='agent'?' · yours':'')+'</span><span class="spacer"></span><button class="btn small" onclick="mAddAppt()">+ New appointment</button></div>';
-  if(!list.length)return h+'<div class="empty">Nothing booked — add the first appointment.</div>';
-  const byDay={};list.forEach(a=>{const k=a.dt.slice(0,10);(byDay[k]=byDay[k]||[]).push(a)});
-  h+=Object.keys(byDay).sort().map(k=>{
-    const t=new Date(k+'T12:00');
-    return '<div class="sect" style="margin-top:18px"><div class="eyebrow" style="margin-bottom:8px">'+t.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})+'</div><div class="card" style="padding:4px 18px">'+
-      byDay[k].map(a=>{const tt=new Date(a.dt);const c=C(a.clientId);
-        return '<div class="appt"><span class="when"><b>'+tt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+'</b>'+esc(a.type)+'</span>'+
-        '<span class="who"><span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+a.clientId+'\')">'+esc(c?c.name:'—')+'</span><small>with '+esc(U(a.agentId).name)+'</small></span>'+
-        '<button class="btn ghost small" onclick="apptDone(\''+a.id+'\')">Done</button></div>'}).join('')+'</div></div>';
-  }).join('');
-  return h;
-}
 function vCalendar(){
   const base=new Date(NOW().getFullYear(),NOW().getMonth()+calOff,1);
   const moName=base.toLocaleDateString('en-US',{month:'long',year:'numeric'});
@@ -4629,136 +4616,6 @@ async function doSendText(cid){
     btn.disabled=false;btn.textContent='Send text';
   }
 }
-function mCall(cid){
-  const c=C(cid);
-  if(!CLOUD||!sb||!SEAT_ID){mLogTouch(cid,'call');return}
-  const seat=S.users.find(u=>u.id===realUid());
-  modal('<h2>Call '+esc(c.name)+'</h2>'+
-  '<div class="mut" style="font-size:12.5px;margin-bottom:8px">We ring your phone first, then connect you to '+esc(c.phone)+'. The call logs itself — duration fills in when you hang up.</div>'+
-  '<label>Your phone</label><input id="tw-agent" value="'+esc((seat&&seat.phone)||'')+'" placeholder="+1 816 555 0100">'+
-  '<div class="login-err" id="tw-err"></div>'+
-  '<button class="btn" id="tw-go" style="margin-top:14px" onclick="doCall(\''+cid+'\')">Call now</button>'+
-  '<div class="mut" style="font-size:11.5px;margin-top:10px;cursor:pointer;text-decoration:underline" onclick="closeAll();mLogTouch(\''+cid+'\',\'call\')">Or log a call you made from your own phone</div>');
-}
-async function doCall(cid){
-  const c=C(cid);const ap=document.getElementById('tw-agent').value.trim();
-  if(!ap){document.getElementById('tw-err').textContent='Enter your phone number.';return}
-  const btn=document.getElementById('tw-go');btn.disabled=true;btn.textContent='Ringing your phone…';
-  try{
-    const seat=S.users.find(u=>u.id===realUid());
-    if(seat&&seat.phone!==ap){seat.phone=ap;save();}
-    await twilioAction({action:'call',to:c.phone,agentPhone:ap,clientId:cid,record:S.targets.callRecord===true});
-    closeAll();refresh();toast('Calling — pick up your phone');
-  }catch(e){
-    document.getElementById('tw-err').textContent=String(e.message||e);
-    btn.disabled=false;btn.textContent='Call now';
-  }
-}
-/* ---------- sms conversation thread ---------- */
-function smsBody(t){
-  if(t.body)return t.body;
-  const a=S.acts.find(x=>x.id==='a'+t.id);
-  if(a){const m=/"([\s\S]*)"\s*$/.exec(a.text);if(m)return m[1];}
-  return t.kind==='text_in'?'(incoming text)':'(text sent)';
-}
-function smsThread(c){
-  const msgs=S.touches.filter(t=>t.clientId===c.id&&(t.kind==='text_in'||t.kind==='text_out')).sort((a,b)=>a.ts.localeCompare(b.ts));
-  let h='<div class="smswrap" id="smswrap">'+(msgs.length?msgs.map(t=>
-    '<div class="bub '+(t.kind==='text_in'?'in':'out')+'">'+esc(smsBody(t))+'<small>'+(t.kind==='text_in'?esc(c.name.split(' ')[0]):esc(U(t.agentId).name))+' · '+fdate(t.ts)+'</small></div>').join('')
-    :'<div class="empty">No texts yet — the conversation starts here.</div>')+'</div>';
-  if(CLOUD&&sb&&SEAT_ID&&c.phone){
-    h+='<div style="display:flex;gap:8px;margin-top:10px"><input id="th-in" placeholder="Text '+esc(c.name.split(' ')[0])+' at '+esc(c.phone)+'…" onkeydown="if(event.key===\'Enter\')sendThreadText(\''+c.id+'\')">'+
-       '<button class="btn small" onclick="sendThreadText(\''+c.id+'\')">Send</button></div>';
-  }else{
-    h+='<div class="mut" style="font-size:12px;margin-top:10px">Live texting turns on with the company Twilio line'+(CLOUD?'':' (cloud mode)')+'. <span style="text-decoration:underline;cursor:pointer" onclick="mLogTouch(\''+c.id+'\',\'text\')">Log a text you sent from your phone</span></div>';
-  }
-  return h;
-}
-async function sendThreadText(cid){
-  const el=document.getElementById('th-in');const body=(el.value||'').trim();
-  if(!body)return;
-  el.disabled=true;
-  try{
-    await twilioAction({action:'sms',to:C(cid).phone,body,clientId:cid});
-    refresh();
-  }catch(e){toast(String(e.message||e));el.disabled=false;}
-}
-/* ---------- transcript viewer ---------- */
-function mTranscript(tid){
-  const t=S.touches.find(x=>x.id===tid);if(!t||(!t.tx&&!t.txEn&&!t.rec))return;
-  const c=t.clientId?C(t.clientId):null;
-  const isForeign=t.txLang&&t.txLang!=='english'&&t.txLang!=='en';
-  const langCap=t.txLang?(t.txLang.charAt(0).toUpperCase()+t.txLang.slice(1)):'';
-  modal('<h2>Call'+(c?' — '+esc(c.name):'')+'</h2>'+
-  (t.ai?'<div class="card" style="padding:12px 16px;margin-bottom:12px;border-color:var(--line2)"><div class="eyebrow" style="margin-bottom:4px">AI notes</div><div style="font-size:13.5px;line-height:1.6">'+esc(t.ai)+'</div></div>':'')+
-  (t.rec?'<div style="margin-bottom:14px"><audio controls preload="none" style="width:100%;height:40px" src="'+esc(t.rec)+'"></audio></div>':'')+
-  (t.txEn?'<div class="eyebrow" style="margin-bottom:4px">English translation</div><div class="mut" style="font-size:13px;white-space:pre-wrap;max-height:220px;overflow:auto;line-height:1.7;margin-bottom:14px">'+esc(t.txEn)+'</div>':'')+
-  (t.tx?'<div class="eyebrow" style="margin-bottom:4px">Transcript'+(isForeign?' <span class="mut" style="text-transform:none;letter-spacing:0">('+esc(langCap)+')</span>':'')+'</div><div class="mut" style="font-size:12.5px;white-space:pre-wrap;max-height:300px;overflow:auto;line-height:1.7">'+esc(t.tx)+'</div>':(t.rec&&!t.txEn?'<div class="mut" style="font-size:12.5px">Transcript appears here about a minute after the call ends.</div>':'')));
-}
-/* ================= BROWSER SOFTPHONE (Twilio Voice SDK) ================= */
-let voiceDevice=null,voiceReady=false,voiceCall=null,voiceIncoming=null,voiceIncCid=null,_vt=null,_vsecs=0,_vmuted=false;
-async function voiceToken(){
-  const {data:{session}}=await sb.auth.getSession(); if(!session)throw new Error('Not signed in');
-  const r=await fetch(SUPABASE_URL+'/functions/v1/voice',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'token'})});
-  const o=await r.json(); if(!r.ok||!o.token)throw new Error(o.error||'Could not start the phone'); return o.token;
-}
-async function initVoice(){
-  /* The phone now lives in the Suite shell (index.html) so a call survives switching
-     apps. The CRM no longer registers its own Twilio device — two devices on the same
-     identity would conflict. Calls route to the shell via postMessage (see browserCall). */
-  return;
-  /* eslint-disable no-unreachable */
-  if(!CLOUD||!sb||!SEAT_ID||voiceDevice||typeof Twilio==='undefined'||!Twilio.Device)return;
-  try{
-    const token=await voiceToken();
-    voiceDevice=new Twilio.Device(token,{codecPreferences:['opus','pcmu'],logLevel:'error'});
-    voiceDevice.on('registered',()=>{voiceReady=true;});
-    voiceDevice.on('unregistered',()=>{voiceReady=false;});
-    voiceDevice.on('error',e=>{console.warn('[voice]',e&&e.message);});
-    voiceDevice.on('tokenWillExpire',async()=>{try{voiceDevice.updateToken(await voiceToken());}catch(_){}});
-    voiceDevice.on('incoming',call=>{voiceIncoming=call;showIncoming(call);call.on('cancel',()=>{voiceIncoming=null;hideDialer();});call.on('disconnect',endCall);call.on('reject',()=>{voiceIncoming=null;hideDialer();});});
-    await voiceDevice.register();
-  }catch(e){console.warn('[voice init]',e&&e.message);}
-}
-async function ensureVoice(){ if(!voiceDevice)await initVoice(); return !!voiceDevice; }
-function ensureDialer(){
-  if(document.getElementById('dialerWidget'))return;
-  const keys=['1','2','3','4','5','6','7','8','9','*','0','#'].map(k=>'<button onclick="voiceDigit(\''+k+'\')">'+k+'</button>').join('');
-  const d=document.createElement('div');d.id='dialerWidget';d.className='dialer';d.style.display='none';
-  d.innerHTML='<div class="dl-head"><div><div class="dl-name" id="dlName">\u2014</div><div class="dl-num" id="dlNum"></div></div><div class="dl-status" id="dlStatus"></div></div>'+
-    '<div class="dl-timer" id="dlTimer" style="display:none">00:00</div>'+
-    '<div class="dl-keys" id="dlKeys" style="display:none">'+keys+'</div>'+
-    '<div class="dl-actions" id="dlActions"><button id="dlKeypadBtn" onclick="toggleKeys()">\u2328 Keypad</button><button id="dlMuteBtn" onclick="voiceMute()">Mute</button><button class="danger" onclick="voiceHangup()">Hang up</button></div>'+
-    '<div class="dl-inc" id="dlInc" style="display:none"><button class="ans" onclick="voiceAnswer()">Answer</button><button class="dec" onclick="voiceDecline()">Decline</button></div>'+
-    '<div class="dl-script" id="dlScript"></div>';
-  document.body.appendChild(d);
-}
-function fillDialerScript(cid){
-  ensureDialer();const el=document.getElementById('dlScript');if(!el)return;
-  const c=(typeof C==='function')?C(cid):null;
-  if(!c){el.style.display='none';el.innerHTML='';return;}
-  let open=[];try{open=(S&&S.deals?S.deals.filter(d=>d.clientId===cid):[]).filter(d=>!isFinal(d));}catch(_){ }
-  const key=pbKeyFor(c,open);const sc=SCRIPTS[key];
-  if(!sc){el.style.display='none';el.innerHTML='';return;}
-  let stage='New';try{if(open&&open.length&&PIPES[open[0].pipe])stage=PIPES[open[0].pipe].stages[open[0].stage];}catch(_){ }
-  const qs=sc.q.map(x=>'<li onclick="this.classList.toggle(\'done\')"><span class="qck"></span><span>'+esc(x)+'</span></li>').join('');
-  el.innerHTML='<div class="dls-h">Playbook — '+esc(sc.name)+' <span class="dls-stage">'+esc(stage)+'</span></div>'+
-    '<div class="dls-lab">Ask — tap to check off</div><ul class="dls-q">'+qs+'</ul>'+
-    '<div class="dls-sig"><b style="color:#3FBF6B">Green</b>'+esc(sc.g)+'</div>'+
-    '<div class="dls-sig"><b style="color:#E0A93B">Yellow</b>'+esc(sc.y)+'</div>'+
-    '<div class="dls-sig"><b style="color:#D9654A">Red</b>'+esc(sc.r)+'</div>'+
-    '<div class="dls-next"><div class="dls-lab">Convert — the next step</div>'+esc(sc.next)+'</div>';
-  el.style.display='block';
-}
-function clearDialerScript(){const el=document.getElementById('dlScript');if(el){el.style.display='none';el.innerHTML='';}}
-function showDialer(){ensureDialer();document.getElementById('dialerWidget').style.display='block';}
-function hideDialer(){const d=document.getElementById('dialerWidget');if(d)d.style.display='none';stopTimer();clearDialerScript();}
-function dlSet(name,num,status){ensureDialer();document.getElementById('dlName').textContent=name||'\u2014';document.getElementById('dlNum').textContent=num||'';document.getElementById('dlStatus').textContent=status||'';}
-function setStatus(x){const el=document.getElementById('dlStatus');if(el)el.textContent=x;}
-function startTimer(){stopTimer();_vsecs=0;const t=document.getElementById('dlTimer');if(!t)return;t.style.display='block';t.textContent='00:00';_vt=setInterval(()=>{_vsecs++;const m=String(Math.floor(_vsecs/60)).padStart(2,'0'),s=String(_vsecs%60).padStart(2,'0');t.textContent=m+':'+s;},1000);}
-function stopTimer(){if(_vt){clearInterval(_vt);_vt=null;}}
-function toggleKeys(){const k=document.getElementById('dlKeys');if(k)k.style.display=(k.style.display==='none'?'grid':'none');}
-function _dialMode(){document.getElementById('dlInc').style.display='none';document.getElementById('dlActions').style.display='flex';document.getElementById('dlKeys').style.display='none';}
 /* The phone + call box (dialpad, checklist, notes) live in the Suite shell so the whole
    block follows you across apps. The CRM hands the shell the number and this lead's
    checklist, and answers the shell's request for a checklist on an inbound call. */
@@ -4813,93 +4670,6 @@ window.addEventListener('message',function(e){var d=e.data;if(!d||d.rl!=='voice'
     }catch(_e){ try{adOnEnded();}catch(_e2){} }
   }
 });
-function wireCall(call){
-  if(!call)return;
-  call.on('ringing',()=>setStatus('Ringing\u2026'));
-  call.on('accept',()=>{setStatus('On call');startTimer();});
-  call.on('disconnect',endCall);
-  call.on('cancel',endCall);
-  call.on('error',()=>setStatus('Error'));
-}
-function voiceMute(){if(!voiceCall)return;_vmuted=!_vmuted;try{voiceCall.mute(_vmuted);}catch(_){}const b=document.getElementById('dlMuteBtn');if(b){b.textContent=_vmuted?'Unmute':'Mute';b.classList.toggle('on',_vmuted);}}
-function voiceHangup(){try{if(voiceCall)voiceCall.disconnect();}catch(_){}endCall();}
-function voiceDigit(d){try{if(voiceCall)voiceCall.sendDigits(String(d));}catch(_){}}
-function endCall(){stopTimer();setStatus('Call ended');_vmuted=false;const b=document.getElementById('dlMuteBtn');if(b){b.textContent='Mute';b.classList.remove('on');}voiceCall=null;setTimeout(hideDialer,1200);}
-function showIncoming(call){
-  ensureDialer();showDialer();
-  const from=(call&&call.parameters&&call.parameters.From)||'';
-  const d10=String(from).replace(/\D/g,'').slice(-10);
-  const c=((S&&S.clients)||[]).find(x=>String(x.phone||'').replace(/\D/g,'').slice(-10)===d10);
-  voiceIncCid=c?c.id:null;
-  dlSet(c?c.name:'Incoming call',c?c.phone:(from||'Unknown'),'Incoming\u2026');
-  document.getElementById('dlActions').style.display='none';
-  document.getElementById('dlKeys').style.display='none';
-  document.getElementById('dlInc').style.display='flex';
-  if(voiceIncCid)fillDialerScript(voiceIncCid);else clearDialerScript();
-}
-function voiceAnswer(){
-  if(!voiceIncoming)return;
-  try{voiceIncoming.accept();}catch(_){}
-  voiceCall=voiceIncoming;voiceIncoming=null;
-  document.getElementById('dlInc').style.display='none';
-  document.getElementById('dlActions').style.display='flex';
-  setStatus('On call');startTimer();wireCall(voiceCall);
-  if(voiceIncCid&&typeof go==='function')go('client',voiceIncCid);
-}
-function voiceDecline(){try{if(voiceIncoming)voiceIncoming.reject();}catch(_){}voiceIncoming=null;hideDialer();}
-/* ---------- incoming call ringing (CRM-first answer) ---------- */
-let _ringTimer=null,_ringIgnored={},_ringShown=null;
-function startRingWatch(){
-  /* Inbound calls now ring the Suite shell's phone directly, anywhere in the suite,
-     so the CRM's cell-fallback ring-watch is no longer needed. */
-  return;
-}
-async function checkRings(){
-  try{
-    const since=new Date(Date.now()-90e3).toISOString();
-    const {data}=await sb.from('records').select('*').eq('collection','rings').gt('updated_at',since);
-    const live=(data||[]).map(r=>r.data).filter(r=>r.status==='ringing'&&!_ringIgnored[r.sid]);
-    renderRing(live[0]||null);
-  }catch(e){}
-}
-function renderRing(r){
-  if(typeof voiceReady!=='undefined'&&voiceReady){const _b=document.getElementById('ringbar');if(_b)_b.remove();return;}
-  let bar=document.getElementById('ringbar');
-  if(!r){if(bar)bar.remove();_ringShown=null;return}
-  if(_ringShown===r.sid)return;
-  _ringShown=r.sid;
-  if(bar)bar.remove();
-  bar=document.createElement('div');bar.id='ringbar';
-  const isNew=!r.clientId;
-  bar.className='ringbar'+(isNew?' newlead':'');
-  if(isNew){
-    bar.innerHTML='<span class="rdot"></span><b>★ NEW LEAD OPPORTUNITY</b> — '+esc(r.from||'Unknown number')+' <span style="opacity:.85">not in your database yet</span>'+
-      '<span class="spacer"></span>'+
-      '<button class="btn small" style="background:#14172A;border-color:#14172A" onclick="claimRing(\''+r.sid+'\')">Answer &amp; create lead</button>'+
-      '<button class="btn ghost small" style="border-color:rgba(255,255,255,.5);color:#fff" onclick="_ringIgnored[\''+r.sid+'\']=1;renderRing(null)">Ignore</button>';
-  }else{
-    bar.innerHTML='<span class="rdot"></span><b>Incoming call</b> — '+esc(r.clientName)+
-      ' <span style="cursor:pointer;text-decoration:underline" onclick="go(\'client\',\''+r.clientId+'\')">open profile</span>'+
-      '<span class="spacer"></span>'+
-      '<button class="btn small" onclick="claimRing(\''+r.sid+'\')">Answer — ring my cell</button>'+
-      '<button class="btn ghost small" onclick="_ringIgnored[\''+r.sid+'\']=1;renderRing(null)">Ignore</button>';
-  }
-  document.body.appendChild(bar);
-}
-async function claimRing(sid){
-  const seat=S.users.find(u=>u.id===realUid());
-  let ph=seat&&seat.phone;
-  if(!ph){ph=prompt('Your cell number (we ring it to connect you):')||'';if(!ph)return;if(seat){seat.phone=ph;save();}}
-  try{
-    const {data:{session}}=await sb.auth.getSession();
-    const res=await fetch(TWILIO_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-      body:JSON.stringify({action:'claim',sid,phone:ph})});
-    const out=await res.json();
-    if(!res.ok||out.error)throw new Error(out.error||'Claim failed');
-    renderRing(null);toast('Claimed — your cell rings in a few seconds');
-    if(out.clientId){await pullAll(false);go('client',out.clientId);}
-  }catch(e){toast(String(e.message||e));}
-}
 /* ---------- email ---------- */
 const EMAIL_FN=SUPABASE_URL+'/functions/v1/email';
 function mSendEmail(cid){
@@ -5253,7 +5023,11 @@ if(CLOUD){
   document.getElementById('li-cloud').style.display='block';
   document.getElementById('li-pw-label').textContent='Password';
   document.getElementById('li-hint').textContent='Sign in with your Real Living team account.';
-  setSyncDot('a','Cloud connected — sign in to sync');
+  /* assume the hub already signed us in: show the loader, not the form. cloudResume()
+     reveals the form only if there's no session to resume. */
+  const _lf=document.getElementById('li-form'),_lb=document.getElementById('li-boot');
+  if(_lf)_lf.style.display='none'; if(_lb)_lb.style.display='block';
+  setSyncDot('a','Cloud connected — signing in…');
 }
 
 load();
