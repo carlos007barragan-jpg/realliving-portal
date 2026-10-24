@@ -1122,14 +1122,22 @@ function refreshAutoFields(){
     const amt=e('rehab-bal-amt');if(amt){amt.textContent=(remPos?'+':'−')+fmt(Math.abs(C.rehabRemaining));amt.style.color=remPos?'var(--green)':'var(--red)';}
     const note=e('rehab-bal-note');if(note)note.textContent=remPos?'The lender holdback covers the full rehab with this amount left over. No additional borrower funds needed for rehab.':'The rehab cost exceeds the lender holdback. The borrower must cover this shortfall out of pocket.';
   }
-  // Refresh the analysis output section in place (doesn't touch the form inputs above it)
+  // Refresh the analysis output section in place. The Refi/Compare tabs put their INPUT
+  // fields inside this region, so rebuilding it would drop their event handlers and steal
+  // focus mid-keystroke (that's why Refi appeared to "not change anything"). We remember the
+  // field being edited + caret, rebuild, re-wire the inputs, then restore focus and caret.
   const ao=e('analysis-output');
   if(ao){
+    const act=document.activeElement;
+    const inAo=act&&ao.contains(act)&&act.dataset?act.dataset.k:null;
+    let caret=null; try{ if(inAo&&typeof act.selectionStart==='number') caret=[act.selectionStart,act.selectionEnd]; }catch(_){}
     ao.innerHTML='';
     if(analysisTab==='sell') renderSell(ao,C);
     else if(analysisTab==='refi') renderRefi(ao,C);
     else renderCompare(ao,C);
     renderBreakdown(ao,C);
+    wireInputs(ao);                 // rebind handlers on the freshly-rendered inputs
+    if(inAo){ const ni=ao.querySelector('input[data-k="'+inAo+'"]'); if(ni){ ni.focus(); try{ if(caret) ni.setSelectionRange(caret[0],caret[1]); }catch(_){} } }
   }
 }
 
