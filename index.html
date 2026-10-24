@@ -379,6 +379,11 @@ const CARDS = [
     id:"team", url:"apps/team.html", name:"Team & Access", type:"app", tile:"t-slate", icon:"users",
     ownerOnly:true,
     desc:"Who has signed what, where each person is in training, and what they still owe."
+  },
+  {
+    id:"qrcodes", url:"apps/qrcodes.html", name:"QR Codes", type:"app", tile:"t-purple", icon:"qr",
+    ownerOnly:true,
+    desc:"Every QR code in one place — Submit a Deal, Deal Analyzer, affiliate sign-up, and event check-ins. Copy, download, or print a poster."
   }
 ];
 
@@ -418,6 +423,9 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     </symbol>
     <symbol id="i-dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
       <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+    </symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3"/><path d="M21 14v7h-7"/><path d="M17 21v-1"/>
     </symbol>
     <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
