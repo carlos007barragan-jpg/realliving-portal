@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Event Check-In · Real Living</title>
+<style>
+  :root{
+    --ink:#1a1d29; --mut:#6b6456; --line:#e7e1d6; --panel:#fffdf9; --bg:#f4f1ea;
+    --gold:#b7892e; --gold2:#8a6a24; --green:#2f7d4f; --red:#c0392b;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.5;padding:0 16px env(safe-area-inset-bottom)}
+  .wrap{max-width:460px;margin:0 auto;padding:26px 0 48px}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .brand{font-family:"Georgia",serif;font-weight:600;font-size:17px;letter-spacing:.01em}
+  .brand span{color:var(--gold2)}
+  .lang{display:flex;gap:4px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px}
+  .lang button{border:0;background:transparent;font-size:12.5px;font-weight:600;color:var(--mut);
+    padding:5px 11px;border-radius:999px;cursor:pointer}
+  .lang button.on{background:var(--ink);color:#fff}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    padding:22px 20px;box-shadow:0 10px 30px rgba(50,38,14,.07)}
+  .evt{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700;margin-bottom:4px}
+  h1{font-family:"Georgia",serif;font-size:25px;line-height:1.2;margin:0 0 6px}
+  .lede{color:var(--mut);font-size:14px;margin:0 0 20px}
+  .person{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;background:#fff;position:relative}
+  .person .tag{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:9px;display:block}
+  .rm{position:absolute;top:10px;right:10px;border:0;background:#f4efe6;color:var(--mut);
+    width:26px;height:26px;border-radius:50%;font-size:15px;cursor:pointer;line-height:1}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin:10px 0 5px}
+  label:first-child{margin-top:0}
+  input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:11px;font-size:16px;background:#fff;color:var(--ink)}
+  input:focus{outline:none;border-color:var(--gold)}
+  .add{width:100%;padding:13px;border:1.5px dashed var(--line);background:#fff;border-radius:12px;
+    color:var(--gold2);font-weight:600;font-size:14px;cursor:pointer;margin-bottom:14px}
+  .go{width:100%;padding:16px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 100%);
+    color:#fff;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 6px 16px rgba(138,106,36,.3)}
+  .go:disabled{opacity:.6}
+  .err{color:var(--red);font-size:13px;margin-top:10px;display:none}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+  .foot{text-align:center;color:var(--mut);font-size:11.5px;margin-top:18px;line-height:1.5}
+  /* success */
+  .done{text-align:center;padding:14px 4px}
+  .check{width:68px;height:68px;border-radius:50%;background:rgba(47,125,79,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+  .check svg{width:34px;height:34px;stroke:var(--green);fill:none;stroke-width:3}
+  .done h2{font-family:"Georgia",serif;font-size:23px;margin:0 0 6px}
+  .done p{color:var(--mut);font-size:14px;margin:0 0 20px}
+  .again{display:inline-block;padding:12px 22px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--ink);font-weight:600;font-size:14px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">Real Living<span> · Event</span></div>
+    <div class="lang"><button id="l-en" class="on" onclick="setLang('en')">EN</button><button id="l-es" onclick="setLang('es')">ES</button></div>
+  </div>
+
+  <div class="card" id="formCard">
+    <div class="evt" id="evtKicker">Check-In</div>
+    <h1 id="evtName">Event Check-In</h1>
+    <p class="lede" id="lede">Add your info to check in. Bringing people with you? Add them too.</p>
+
+    <form id="f" autocomplete="on" novalidate>
+      <div id="people"></div>
+      <button type="button" class="add" id="addBtn" onclick="addPerson()">+ Add another person</button>
+      <input class="hp" id="company" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" placeholder="Company">
+      <button type="submit" class="go" id="go">Check in</button>
+      <div class="err" id="err"></div>
+    </form>
+    <div class="foot" id="foot">Your information is kept private by Real Living Companies.</div>
+  </div>
+
+  <div class="card done" id="doneCard" style="display:none">
+    <div class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <h2 id="doneH">You're checked in!</h2>
+    <p id="doneP">Thanks for coming. Enjoy the event.</p>
+    <button class="again" id="againBtn" onclick="reset()">Check in someone else</button>
+  </div>
+</div>
+
+<script>
+const FN='https://zfflgvjnkcjnbwydurlp.supabase.co/functions/v1/event-intake';
+const qs=new URLSearchParams(location.search);
+const EVENT_ID=(qs.get('e')||qs.get('eventId')||'').trim();
+const EVENT_NAME=(qs.get('n')||qs.get('name')||'').trim();
+let lang='en', count=0;
+
+const T={
+  en:{kicker:'Check-In',fallback:'Event Check-In',
+     lede:'Add your info to check in. Bringing people with you? Add them too.',
+     p1:'You',guest:'Guest',name:'Full name',phone:'Phone number',email:'Email (optional)',
+     add:'+ Add another person',go:'Check in',going:'Checking in…',
+     foot:'Your information is kept private by Real Living Companies.',
+     doneH:"You're checked in!",doneP:'Thanks for coming. Enjoy the event.',
+     again:'Check in someone else',
+     eName:'Enter a name for everyone.',ePhone:'Enter a valid 10-digit phone number.',
+     noEvent:'This check-in link is missing its event. Ask a team member for the right QR code.',
+     err:'Something went wrong. Please try again.'},
+  es:{kicker:'Registro',fallback:'Registro del Evento',
+     lede:'Agrega tu información para registrarte. ¿Vienes acompañado? Agrégalos también.',
+     p1:'Tú',guest:'Invitado',name:'Nombre completo',phone:'Número de teléfono',email:'Correo (opcional)',
+     add:'+ Agregar otra persona',go:'Registrarme',going:'Registrando…',
+     foot:'Tu información es privada y protegida por Real Living Companies.',
+     doneH:'¡Registrado!',doneP:'Gracias por venir. Disfruta el evento.',
+     again:'Registrar a otra persona',
+     eName:'Escribe un nombre para cada persona.',ePhone:'Escribe un teléfono válido de 10 dígitos.',
+     noEvent:'A este enlace le falta el evento. Pide a un miembro del equipo el código QR correcto.',
+     err:'Algo salió mal. Inténtalo de nuevo.'}
+};
+const $=id=>document.getElementById(id);
+
+function setLang(l){lang=l;$('l-en').classList.toggle('on',l==='en');$('l-es').classList.toggle('on',l==='es');paint();}
+function paint(){
+  const t=T[lang];
+  document.documentElement.lang=l_(lang);
+  $('evtKicker').textContent=t.kicker;
+  $('evtName').textContent=EVENT_NAME||t.fallback;
+  $('lede').textContent=t.lede;
+  $('addBtn').textContent=t.add;
+  $('go').textContent=t.go;
+  $('foot').textContent=t.foot;
+  $('doneH').textContent=t.doneH;
+  $('againBtn').textContent=t.again;
+  // relabel existing person cards
+  [...document.querySelectorAll('.person')].forEach((el,i)=>relabel(el,i));
+}
+function l_(x){return x==='es'?'es':'en';}
+function relabel(el,i){
+  const t=T[lang];
+  el.querySelector('.tag').textContent=i===0?t.p1:(t.guest+' '+i);
+  const ls=el.querySelectorAll('label');
+  ls[0].textContent=t.name; ls[1].textContent=t.phone; ls[2].textContent=t.email;
+  const rm=el.querySelector('.rm'); if(rm)rm.style.display=i===0?'none':'block';
+}
+function personTpl(i){
+  const t=T[lang];
+  const d=document.createElement('div');d.className='person';
+  d.innerHTML=
+    '<span class="tag"></span>'+
+    '<button type="button" class="rm" title="Remove" onclick="this.parentNode.remove();renumber()">&times;</button>'+
+    '<label></label><input class="p-name" type="text" autocomplete="name" placeholder="">'+
+    '<label></label><input class="p-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(816) 555-0100">'+
+    '<label></label><input class="p-email" type="email" autocomplete="email" placeholder="">';
+  return d;
+}
+function addPerson(){
+  if(document.querySelectorAll('.person').length>=12)return;
+  const el=personTpl();$('people').appendChild(el);renumber();
+  el.querySelector('.p-name').focus();
+}
+function renumber(){[...document.querySelectorAll('.person')].forEach((el,i)=>relabel(el,i));}
+
+function reset(){
+  $('people').innerHTML='';addPerson();
+  $('doneCard').style.display='none';$('formCard').style.display='';
+  window.scrollTo(0,0);
+}
+
+$('f').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const t=T[lang],err=$('err');err.style.display='none';
+  if(!EVENT_ID){err.textContent=t.noEvent;err.style.display='block';return;}
+  const people=[];
+  for(const el of document.querySelectorAll('.person')){
+    const name=el.querySelector('.p-name').value.trim();
+    const phone=el.querySelector('.p-phone').value.trim();
+    const email=el.querySelector('.p-email').value.trim();
+    if(!name&&!phone)continue; // skip a blank extra card
+    if(name.length<2){err.textContent=t.eName;err.style.display='block';el.querySelector('.p-name').focus();return;}
+    if(phone.replace(/\D/g,'').length<10){err.textContent=t.ePhone;err.style.display='block';el.querySelector('.p-phone').focus();return;}
+    people.push({name,phone,email});
+  }
+  if(!people.length){err.textContent=t.eName;err.style.display='block';return;}
+  const go=$('go');go.disabled=true;go.textContent=t.going;
+  try{
+    const r=await fetch(FN,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({eventId:EVENT_ID,people,company:$('company').value,lang})});
+    const o=await r.json();
+    if(!r.ok||!o.ok)throw new Error(o&&o.error||'server');
+    count=(o.added?o.added.length:0)+(o.duplicates?o.duplicates.length:0);
+    const dp=lang==='es'
+      ? (count>1?('¡'+count+' personas registradas! Gracias por venir.'):'Gracias por venir. Disfruta el evento.')
+      : (count>1?(count+" people checked in! Thanks for coming."):'Thanks for coming. Enjoy the event.');
+    $('doneP').textContent=dp;
+    $('formCard').style.display='none';$('doneCard').style.display='';window.scrollTo(0,0);
+  }catch(ex){
+    err.textContent=t.err;err.style.display='block';
+    go.disabled=false;go.textContent=t.go;
+  }
+});
+
+// init
+addPerson();
+paint();
+</script>
+</body>
+</html>

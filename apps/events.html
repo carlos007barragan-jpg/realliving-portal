@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event Tracker · Real Living</title>
+<style>
+  :root{
+    --ink:#211d13;--mut:#6b6456;--line:#e7e1d6;--line2:#d8d0c2;--panel:#fffdf9;--panel2:#f6f2ea;--bg:#f4f1ea;
+    --gold:#b7892e;--gold2:#8a6a24;--green:#2f7d4f;--red:#c0392b;--amber:#b4700a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.5}
+  .wrap{max-width:1040px;margin:0 auto;padding:26px 20px 70px}
+  h1{font-family:Georgia,serif;font-size:26px;margin:0}
+  .sub{color:var(--mut);font-size:13.5px;margin-top:3px}
+  .row{display:flex;align-items:center;gap:12px}
+  .spacer{flex:1}
+  .btn{border:0;border-radius:11px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff;
+    font-weight:650;font-size:14px;padding:11px 16px;cursor:pointer;box-shadow:0 4px 12px rgba(138,106,36,.25)}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:none;font-weight:600}
+  .btn.small{padding:7px 12px;font-size:12.5px;border-radius:9px}
+  .btn.link{background:none;box-shadow:none;color:var(--gold2);padding:0;font-weight:600;cursor:pointer}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 6px 20px rgba(50,38,14,.05)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:18px}
+  .ev{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 17px;cursor:pointer;transition:border-color .15s,transform .15s}
+  .ev:hover{border-color:var(--gold);transform:translateY(-1px)}
+  .ev .nm{font-family:Georgia,serif;font-size:18px;margin-bottom:3px}
+  .ev .dt{color:var(--mut);font-size:12.5px}
+  .ev .ct{margin-top:12px;display:flex;align-items:baseline;gap:6px}
+  .ev .ct b{font-size:24px;font-family:Georgia,serif}
+  .ev .ct span{font-size:12px;color:var(--mut)}
+  .pill{display:inline-block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
+    padding:3px 9px;border-radius:999px;background:var(--panel2);color:var(--gold2)}
+  .pill.past{color:var(--mut)}
+  .empty{color:var(--mut);text-align:center;padding:40px 10px;font-size:14px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{text-align:left;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);padding:9px 10px;border-bottom:1px solid var(--line2)}
+  td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  .guest{font-size:11px;color:var(--amber);font-weight:600}
+  .mut{color:var(--mut)}
+  .qrbox{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+  .qrcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center}
+  #qr{width:200px;height:200px;margin:0 auto}
+  #qr img,#qr canvas{width:200px!important;height:200px!important}
+  .linkrow{display:flex;gap:8px;margin-top:10px}
+  .linkrow input{flex:1;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:12px;background:#fff;color:var(--mut)}
+  .back{color:var(--gold2);font-weight:600;cursor:pointer;font-size:13px;margin-bottom:12px;display:inline-block}
+  .search{padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13.5px;background:#fff;min-width:200px}
+  /* modal */
+  #ovl{position:fixed;inset:0;background:rgba(40,32,16,.34);display:none;z-index:50;align-items:center;justify-content:center;padding:18px}
+  #ovl.on{display:flex}
+  .modal{background:var(--panel);border-radius:16px;max-width:400px;width:100%;padding:22px;box-shadow:0 20px 50px rgba(40,30,10,.25)}
+  .modal h2{font-family:Georgia,serif;font-size:20px;margin:0 0 14px}
+  .modal label{display:block;font-size:12.5px;font-weight:600;margin:12px 0 5px}
+  .modal input{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff}
+  .modal .acts{display:flex;gap:10px;margin-top:18px}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--mut)}
+  .tag.in{color:var(--green);border-color:var(--green)}
+  #gate{display:none;max-width:420px;margin:80px auto;text-align:center}
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;
+    padding:11px 18px;border-radius:11px;font-size:13.5px;opacity:0;transition:.25s;z-index:60;pointer-events:none}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="gate"><div class="card"><h1>Event Tracker</h1><p class="sub" id="gate-msg">Open this from the Business Suite so you're signed in.</p></div></div>
+
+<div class="wrap" id="app" style="display:none">
+  <!-- LIST VIEW -->
+  <div id="listView">
+    <div class="row">
+      <div><h1>Event Tracker</h1><div class="sub" id="who"></div></div>
+      <span class="spacer"></span>
+      <button class="btn" onclick="openNew()">+ New event</button>
+    </div>
+    <div id="eventGrid" class="grid"></div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div id="detailView" style="display:none">
+    <span class="back" onclick="showList()">&larr; All events</span>
+    <div class="row" style="margin-bottom:16px">
+      <div><h1 id="dName"></h1><div class="sub" id="dMeta"></div></div>
+      <span class="spacer"></span>
+      <button class="btn ghost small" onclick="exportCsv()">Export CSV</button>
+      <button class="btn ghost small" onclick="archiveEvent()" id="archBtn">Archive</button>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="qrbox">
+        <div class="qrcard">
+          <div id="qr"></div>
+          <button class="btn small" style="margin-top:12px" onclick="downloadQr()">Download QR</button>
+        </div>
+        <div style="flex:1;min-width:220px">
+          <div style="font-family:Georgia,serif;font-size:17px;margin-bottom:4px">Door check-in QR</div>
+          <div class="mut" style="font-size:13px">Print this or show it on a screen at the door. People scan it, add themselves and any guests, and they drop into the roster below — no app or login needed.</div>
+          <div class="linkrow"><input id="dLink" readonly><button class="btn ghost small" onclick="copyLink()">Copy</button></div>
+          <div class="mut" style="font-size:12px;margin-top:8px">Tip: one person can add their whole group in a single scan.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:12px">
+        <div><span style="font-family:Georgia,serif;font-size:18px">Checked in</span> <span class="pill" id="dCount" style="margin-left:6px"></span></div>
+        <span class="spacer"></span>
+        <input class="search" id="rSearch" placeholder="Search name or phone…" oninput="drawRoster()">
+      </div>
+      <div id="rosterWrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- new-event modal -->
+<div id="ovl"><div class="modal">
+  <h2 id="mTitle">New event</h2>
+  <label>Event name</label><input id="mName" placeholder="e.g. First-Time Homebuyer Workshop">
+  <label>Date</label><input id="mDate" type="date">
+  <label>Location <span class="mut" style="font-weight:400">(optional)</span></label><input id="mLoc" placeholder="e.g. Kansas City, KS">
+  <div class="acts"><button class="btn" onclick="saveEvent()" id="mSave">Create event</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>
+</div></div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const sb=window.supabase.createClient('https://zfflgvjnkcjnbwydurlp.supabase.co','sb_publishable_j6aQ477N29Dx1aH-mMkiKw_PBV6CCyf');
+let ME=null, EVENTS=[], SIGNUPS=[], CUR=null, EDIT=null;
+const $=id=>document.getElementById(id);
+const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2400);}
+function fmtPhone(p){const d=String(p||'').replace(/\D/g,'').slice(-10);return d.length===10?'('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6):esc(p||'');}
+function fmtDate(s){if(!s)return '';const d=new Date(s.length<=10?s+'T12:00':s);return isNaN(d)?esc(s):d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});}
+function fmtTime(s){const d=new Date(s);return isNaN(d)?'':d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
+
+/* public check-in URL: repo root event.html, derived from this app's own location */
+function baseUrl(){const path=location.pathname.replace(/\/apps\/[^/]*$/,'/');return location.origin+path;}
+function checkinUrl(ev){return baseUrl()+'event.html?e='+encodeURIComponent(ev.id)+'&n='+encodeURIComponent(ev.name||'');}
+
+function signupsFor(id){return SIGNUPS.filter(s=>s.eventId===id);}
+
+/* ---------- list view ---------- */
+function showList(){CUR=null;$('detailView').style.display='none';$('listView').style.display='';drawList();}
+function drawList(){
+  const live=EVENTS.filter(e=>!e.archived).sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')));
+  if(!live.length){$('eventGrid').innerHTML='<div class="empty">No events yet. Create one, print its QR, and put it at the door.</div>';return;}
+  const today=new Date().toISOString().slice(0,10);
+  $('eventGrid').innerHTML=live.map(e=>{
+    const n=signupsFor(e.id).length;const past=(e.date||'')<today;
+    return '<div class="ev" onclick="openEvent(\''+e.id+'\')">'+
+      '<span class="pill'+(past?' past':'')+'">'+(past?'Past':'Upcoming / Live')+'</span>'+
+      '<div class="nm" style="margin-top:10px">'+esc(e.name)+'</div>'+
+      '<div class="dt">'+fmtDate(e.date)+(e.location?' · '+esc(e.location):'')+'</div>'+
+      '<div class="ct"><b>'+n+'</b><span>checked in</span></div></div>';
+  }).join('');
+}
+
+/* ---------- detail view ---------- */
+function openEvent(id){
+  CUR=EVENTS.find(e=>e.id===id);if(!CUR)return;
+  $('listView').style.display='none';$('detailView').style.display='';
+  $('dName').textContent=CUR.name;
+  $('dMeta').textContent=fmtDate(CUR.date)+(CUR.location?' · '+CUR.location:'');
+  $('archBtn').textContent=CUR.archived?'Unarchive':'Archive';
+  const url=checkinUrl(CUR);$('dLink').value=url;
+  $('qr').innerHTML='';
+  try{new QRCode($('qr'),{text:url,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});}
+  catch(e){$('qr').innerHTML='<div class="mut" style="font-size:12px">QR unavailable — use the link.</div>';}
+  drawRoster();
+}
+function drawRoster(){
+  const list=signupsFor(CUR.id).slice().sort((a,b)=>String(b.checkedInAt||'').localeCompare(String(a.checkedInAt||'')));
+  $('dCount').textContent=list.length+(list.length===1?' person':' people');
+  const q=($('rSearch').value||'').toLowerCase().trim();
+  const shown=q?list.filter(s=>(s.name||'').toLowerCase().includes(q)||String(s.phone||'').includes(q)):list;
+  if(!shown.length){$('rosterWrap').innerHTML='<div class="empty">'+(list.length?'No match.':'Nobody has checked in yet. The roster fills as people scan the QR.')+'</div>';return;}
+  $('rosterWrap').innerHTML='<div style="overflow-x:auto"><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Checked in</th><th></th></tr>'+
+    shown.map(s=>'<tr><td><b style="font-weight:600">'+esc(s.name)+'</b>'+(s.guestOf?'<div class="guest">guest of '+esc(s.guestOf)+'</div>':'')+'</td>'+
+      '<td class="mut">'+fmtPhone(s.phone)+'</td>'+
+      '<td class="mut">'+esc(s.email||'—')+'</td>'+
+      '<td class="mut">'+fmtTime(s.checkedInAt)+'</td>'+
+      '<td style="text-align:right">'+(s.inCrm?'<span class="tag in">In CRM</span>':'<button class="btn link" onclick="toCrm(\''+s.id+'\')">Add to CRM</button>')+'</td></tr>').join('')+
+    '</table></div>';
+}
+
+/* ---------- promote one attendee into the CRM as a lead (manual, on click) ---------- */
+async function toCrm(sid){
+  const s=SIGNUPS.find(x=>x.id===sid);if(!s)return;
+  if(s.inCrm){toast('Already in the CRM');return;}
+  if(!confirm('Add '+s.name+' to the CRM as a new lead?'))return;
+  try{
+    let cid='';
+    try{const {data}=await sb.rpc('next_rec_id',{p_collection:'clients',p_prefix:'c',p_count:1});
+      cid=(data&&data[0]&&(typeof data[0]==='string'?data[0]:data[0].next_rec_id))||'';}catch(e){}
+    if(!cid)cid='c'+Date.now();
+    const now=new Date().toISOString();
+    const client={id:cid,name:s.name,phone:s.phone,email:s.email||'',address:'',area:'',
+      source:'Event — '+(s.eventName||CUR.name),genBy:ME.seatId||'',assignedTo:ME.seatId||'',
+      interests:[s.eventName||CUR.name],notes:'Promoted from Event Tracker ('+(s.eventName||CUR.name)+').',
+      dormant:false,archived:false,docs:[],createdAt:now};
+    const {error}=await sb.from('records').upsert([{collection:'clients',id:cid,data:client,updated_at:now,deleted:false}]);
+    if(error)throw error;
+    s.inCrm=true;s.crmClientId=cid;
+    await sb.from('records').upsert([{collection:'event_signups',id:s.id,data:s,updated_at:now,deleted:false}]);
+    toast(s.name+' added to the CRM');drawRoster();
+  }catch(e){toast('Could not add: '+(e.message||e));}
+}
+
+function exportCsv(){
+  const list=signupsFor(CUR.id);
+  const rows=[['Name','Phone','Email','Guest of','Checked in','In CRM']].concat(
+    list.map(s=>[s.name||'',fmtPhone(s.phone),s.email||'',s.guestOf||'',fmtTime(s.checkedInAt),s.inCrm?'yes':'no']));
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=(CUR.name||'event').replace(/[^a-z0-9]+/gi,'_')+'_checkins.csv';a.click();
+}
+function downloadQr(){
+  const cv=$('qr').querySelector('canvas');const img=$('qr').querySelector('img');
+  const src=cv?cv.toDataURL('image/png'):(img?img.src:'');
+  if(!src){toast('QR not ready');return;}
+  const a=document.createElement('a');a.href=src;a.download=(CUR.name||'event').replace(/[^a-z0-9]+/gi,'_')+'_QR.png';a.click();
+}
+function copyLink(){try{navigator.clipboard.writeText($('dLink').value);toast('Link copied');}catch(e){toast($('dLink').value);}}
+async function archiveEvent(){
+  CUR.archived=!CUR.archived;
+  const now=new Date().toISOString();
+  await sb.from('records').upsert([{collection:'events',id:CUR.id,data:CUR,updated_at:now,deleted:false}]);
+  toast(CUR.archived?'Event archived':'Event restored');
+  if(CUR.archived)showList();else $('archBtn').textContent='Archive';
+}
+
+/* ---------- create event ---------- */
+function openNew(){EDIT=null;$('mTitle').textContent='New event';$('mName').value='';$('mDate').value=new Date().toISOString().slice(0,10);$('mLoc').value='';$('ovl').classList.add('on');$('mName').focus();}
+function closeModal(){$('ovl').classList.remove('on');}
+async function saveEvent(){
+  const name=$('mName').value.trim();if(name.length<2){toast('Give the event a name');return;}
+  const date=$('mDate').value||new Date().toISOString().slice(0,10);
+  const loc=$('mLoc').value.trim();
+  const now=new Date().toISOString();
+  const id='ev'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const ev={id,name,date,location:loc,archived:false,createdAt:now,createdBy:ME.seatId||ME.email||''};
+  $('mSave').disabled=true;
+  try{
+    const {error}=await sb.from('records').upsert([{collection:'events',id,data:ev,updated_at:now,deleted:false}]);
+    if(error)throw error;
+    EVENTS.push(ev);closeModal();openEvent(id);toast('Event created — QR ready');
+  }catch(e){toast('Could not save: '+(e.message||e));}
+  $('mSave').disabled=false;
+}
+
+/* ---------- boot ---------- */
+async function loadAll(){
+  const [{data:evs},{data:sus}]=await Promise.all([
+    sb.from('records').select('id,data').eq('collection','events').eq('deleted',false),
+    sb.from('records').select('id,data').eq('collection','event_signups').eq('deleted',false),
+  ]);
+  EVENTS=(evs||[]).map(r=>r.data);
+  SIGNUPS=(sus||[]).map(r=>r.data);
+}
+(async()=>{
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session){$('gate').style.display='block';return;}
+    try{
+      const {data:prof}=await sb.from('profiles').select('full_name,seat_id,role').eq('id',session.user.id).single();
+      ME={email:session.user.email,name:prof?prof.full_name:session.user.email,seatId:prof&&prof.seat_id,role:prof&&prof.role};
+    }catch(e){ME={email:session.user.email,name:session.user.email};}
+    $('who').textContent='Signed in as '+(ME.name||ME.email);
+    $('app').style.display='block';
+    await loadAll();
+    showList();
+    // live refresh so the roster fills as people scan at the door
+    setInterval(async()=>{try{await loadAll();if(CUR){const open=CUR.id;drawRoster();}else drawList();}catch(e){}},15000);
+  }catch(e){
+    $('gate').style.display='block';$('gate-msg').textContent='Could not load: '+(e.message||e);
+  }
+})();
+</script>
+</body>
+</html>
