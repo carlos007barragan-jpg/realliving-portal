@@ -382,7 +382,7 @@ const CARDS = [
   },
   {
     id:"qrcodes", url:"apps/qrcodes.html", name:"QR Codes", type:"app", tile:"t-purple", icon:"qr",
-    ownerOnly:true,
+    ownerOnly:true, allowEmails:["ggiuliana0607@gmail.com"],
     desc:"Every QR code in one place — Submit a Deal, Deal Analyzer, affiliate sign-up, and event check-ins. Copy, download, or print a poster."
   }
 ];
@@ -602,7 +602,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     const {data:prof}=await sb.from('profiles').select('*').eq('id',userId).single();
     const name=(prof&&prof.full_name)||email;
     const role=prof?(prof.role.charAt(0).toUpperCase()+prof.role.slice(1)):'Member';
-    return {name,role,initial:(name[0]||'?').toUpperCase()};
+    return {name,role,initial:(name[0]||'?').toUpperCase(),email:String(email||'').toLowerCase()};
   }
   function showShell(){
     $("loginView").classList.add("off");
@@ -712,7 +712,11 @@ function renderDashboard(){
 
     /* ownership tools stay out of everyone else's dashboard entirely */
     const isOwner = String(CU.role||'').toLowerCase()==='owner' || String(CU.role||'').toLowerCase()==='admin';
-    $("cardGrid").innerHTML = CARDS.filter(c => !c.ownerOnly || isOwner).map(c => {
+    const myEmail = String(CU.email||'').toLowerCase();
+    /* an owner-only card can still be opened up to specific people by email (e.g. the marketing
+       lead who runs the QR codes) without changing their CRM role or lead routing */
+    const canSeeCard = c => !c.ownerOnly || isOwner || (Array.isArray(c.allowEmails) && c.allowEmails.includes(myEmail));
+    $("cardGrid").innerHTML = CARDS.filter(canSeeCard).map(c => {
       /* an ownership tool is never gated behind that owner's own onboarding */
       const lock = c.ownerOnly ? '' : lockReason(c.id);
       return `
