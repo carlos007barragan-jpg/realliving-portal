@@ -781,14 +781,32 @@ function renderDealForm(wrap){
   });
   wrap.appendChild(tabs);
 
-  // Analysis output wrapped in a container we can refresh in place
+  // Analysis region split into two stable children: #an-inputs (the fields the user types in,
+  // built once and never torn down) and #an-results (the computed cards, rebuilt live on every
+  // keystroke). Keeping inputs out of the rebuilt region is what lets you type a full number —
+  // and decimals like a 7.5% DSCR rate — without the caret jumping to the front each keystroke.
   const analysisWrap=document.createElement('div'); analysisWrap.id='analysis-output';
   wrap.appendChild(analysisWrap);
+  const anIn=document.createElement('div'); anIn.id='an-inputs'; analysisWrap.appendChild(anIn);
+  const anRes=document.createElement('div'); anRes.id='an-results'; analysisWrap.appendChild(anRes);
   const C2=calcDeal(currentDeal,holdMo);
-  if(analysisTab==='sell') renderSell(analysisWrap,C2);
-  else if(analysisTab==='refi') renderRefi(analysisWrap,C2);
-  else renderCompare(analysisWrap,C2);
-  renderBreakdown(analysisWrap,C2);
+  renderAnalysisInputs(anIn);
+  renderAnalysisResults(anRes,C2);
+}
+
+// Inputs that live in the analysis region (only the Refi/DSCR tab has any). Built once per
+// editor render and left untouched while the user types — refreshAutoFields never rebuilds this.
+function renderAnalysisInputs(wrap){
+  if(analysisTab==='refi') renderRefiInputs(wrap);
+  // Sell and Compare tabs have no inputs in the analysis region.
+}
+// The computed output cards for whichever tab is active. Safe to rebuild on every keystroke
+// because it contains no input fields.
+function renderAnalysisResults(wrap,C){
+  if(analysisTab==='sell') renderSell(wrap,C);
+  else if(analysisTab==='refi') renderRefiResults(wrap,C);
+  else renderCompare(wrap,C);
+  renderBreakdown(wrap,C);
 }
 
 function buildSellerChk(container){
@@ -842,8 +860,10 @@ function renderSell(wrap,C){
 function GC(n){return n==='green'?'var(--green)':n==='gold'?'var(--gold)':'var(--red)';}
 
 // ── REFI TAB ───────────────────────────────────────────────────────
-function renderRefi(wrap,C){
-  const d=currentDeal; const loan=d.arv*(d.ltv/100);
+// Refi/DSCR INPUTS — the fields the user types in. Rendered into #an-inputs once per editor
+// render; never rebuilt on keystroke, so the caret and in-progress decimals are preserved.
+function renderRefiInputs(wrap){
+  const d=currentDeal;
   appendCard(wrap,'DSCR refinance',`
     <div class="g4" style="margin-bottom:9px">
       <div class="ig"><label>DSCR rate (%)</label><input data-k="refiRate" type="number" value="${d.refiRate}" step="0.25"></div>
@@ -856,6 +876,27 @@ function renderRefi(wrap,C){
       <div class="ig"><label>Mid appraisal ($)</label><input data-k="apprM" type="number" value="${d.apprM}" step="1000"></div>
       <div class="ig"><label>Worst appraisal ($)</label><input data-k="apprW" type="number" value="${d.apprW}" step="1000"></div>
     </div>`);
+  // CFD toggle
+  const cftog=document.createElement('div');
+  cftog.style.cssText='background:var(--gl);border:1px solid rgba(184,151,42,.3);border-radius:var(--r);padding:10px 13px;cursor:pointer;display:flex;align-items:center;gap:9px;margin-bottom:9px';
+  const cbox=document.createElement('div'); cbox.className='chk-box'+(cfdOpen?' on':''); cbox.innerHTML=cfdOpen?'<svg width="9" height="9"><polyline points="1.5,4.5 3.5,7 7.5,2" fill="none" stroke="white" stroke-width="1.8"/></svg>':'';
+  const ctxt=document.createElement('div'); ctxt.innerHTML='<div style="font-size:.78rem;font-weight:500;color:var(--gd)">Contract for Deed (CFD) after Refi</div><div style="font-size:.7rem;color:var(--gray)">Toggle to see both closings + monthly cash flow</div>';
+  cftog.appendChild(cbox); cftog.appendChild(ctxt); cftog.onclick=()=>{cfdOpen=!cfdOpen;renderEditor();};
+  wrap.appendChild(cftog);
+  if(cfdOpen){
+    appendCard(wrap,'CFD terms',`
+      <div class="g4">
+        <div class="ig"><label>CFD sale price ($)</label><input data-k="cfdPrice" type="number" value="${d.cfdPrice}" step="1000"></div>
+        <div class="ig"><label>Down from buyer ($)</label><input data-k="cfdDown" type="number" value="${d.cfdDown}" step="500"></div>
+        <div class="ig"><label>CFD interest rate (%)</label><input data-k="cfdRate" type="number" value="${d.cfdRate}" step="0.1"></div>
+        <div class="ig"><label>Closing from buyer ($)</label><input data-k="cfdClose" type="number" value="${d.cfdClose}" step="500"></div>
+      </div>`);
+  }
+}
+
+// Refi/DSCR RESULTS — pure computed output (no input fields), rebuilt live on every keystroke.
+function renderRefiResults(wrap,C){
+  const d=currentDeal; const loan=d.arv*(d.ltv/100);
   const sc=document.createElement('div'); sc.className='sc3';
   [{appr:d.apprB,lbl:'▲ Best',col:GC('green')},{appr:d.apprM,lbl:'► Mid',col:GC('gold')},{appr:d.apprW,lbl:'▼ Worst',col:GC('red')}].forEach(({appr,lbl,col})=>{
     const rl=appr*(d.refiLtv/100),co=rl-loan-C.sp-d.refiCost,pi=pmt(rl,d.refiRate,d.refiAmort)+d.ins+d.tax,np=co-C.ctc;
@@ -874,24 +915,11 @@ function renderRefi(wrap,C){
     sc.appendChild(card);
   });
   wrap.appendChild(sc);
-  // CFD toggle
-  const cftog=document.createElement('div');
-  cftog.style.cssText='background:var(--gl);border:1px solid rgba(184,151,42,.3);border-radius:var(--r);padding:10px 13px;cursor:pointer;display:flex;align-items:center;gap:9px;margin-bottom:9px';
-  const cbox=document.createElement('div'); cbox.className='chk-box'+(cfdOpen?' on':''); cbox.innerHTML=cfdOpen?'<svg width="9" height="9"><polyline points="1.5,4.5 3.5,7 7.5,2" fill="none" stroke="white" stroke-width="1.8"/></svg>':'';
-  const ctxt=document.createElement('div'); ctxt.innerHTML='<div style="font-size:.78rem;font-weight:500;color:var(--gd)">Contract for Deed (CFD) after Refi</div><div style="font-size:.7rem;color:var(--gray)">Toggle to see both closings + monthly cash flow</div>';
-  cftog.appendChild(cbox); cftog.appendChild(ctxt); cftog.onclick=()=>{cfdOpen=!cfdOpen;renderEditor();};
-  wrap.appendChild(cftog);
   if(cfdOpen){
     const mid=d.apprM*(d.refiLtv/100),co1=mid-loan-C.sp-d.refiCost;
     const fin=d.cfdPrice-d.cfdDown,bp=pmt(fin,d.cfdRate,30);
     const piti=pmt(mid,d.refiRate,d.refiAmort)+d.ins+d.tax,cf=bp-piti,ci2=d.cfdDown+d.cfdClose,np=(co1+ci2)-C.ctc;
-    appendCard(wrap,'CFD terms',`
-      <div class="g4" style="margin-bottom:9px">
-        <div class="ig"><label>CFD sale price ($)</label><input data-k="cfdPrice" type="number" value="${d.cfdPrice}" step="1000"></div>
-        <div class="ig"><label>Down from buyer ($)</label><input data-k="cfdDown" type="number" value="${d.cfdDown}" step="500"></div>
-        <div class="ig"><label>CFD interest rate (%)</label><input data-k="cfdRate" type="number" value="${d.cfdRate}" step="0.1"></div>
-        <div class="ig"><label>Closing from buyer ($)</label><input data-k="cfdClose" type="number" value="${d.cfdClose}" step="500"></div>
-      </div>
+    appendCard(wrap,'CFD projection',`
       <div class="g4" style="margin-bottom:12px">
         <div class="ig"><label><span>Buyer finances</span><span class="at">AUTO</span></label><input class="auto" readonly value="${fmt(fin)}"></div>
         <div class="ig"><label><span>Buyer pmt/mo</span><span class="at">AUTO</span></label><input class="auto" readonly value="${fmt(bp)}/mo" style="color:var(--green)"></div>
@@ -1186,22 +1214,13 @@ function refreshAutoFields(){
     const amt=e('rehab-bal-amt');if(amt){amt.textContent=(remPos?'+':'−')+fmt(Math.abs(C.rehabRemaining));amt.style.color=remPos?'var(--green)':'var(--red)';}
     const note=e('rehab-bal-note');if(note)note.textContent=remPos?'The lender holdback covers the full rehab with this amount left over. No additional borrower funds needed for rehab.':'The rehab cost exceeds the lender holdback. The borrower must cover this shortfall out of pocket.';
   }
-  // Refresh the analysis output section in place. The Refi/Compare tabs put their INPUT
-  // fields inside this region, so rebuilding it would drop their event handlers and steal
-  // focus mid-keystroke (that's why Refi appeared to "not change anything"). We remember the
-  // field being edited + caret, rebuild, re-wire the inputs, then restore focus and caret.
-  const ao=e('analysis-output');
-  if(ao){
-    const act=document.activeElement;
-    const inAo=act&&ao.contains(act)&&act.dataset?act.dataset.k:null;
-    let caret=null; try{ if(inAo&&typeof act.selectionStart==='number') caret=[act.selectionStart,act.selectionEnd]; }catch(_){}
-    ao.innerHTML='';
-    if(analysisTab==='sell') renderSell(ao,C);
-    else if(analysisTab==='refi') renderRefi(ao,C);
-    else renderCompare(ao,C);
-    renderBreakdown(ao,C);
-    wireInputs(ao);                 // rebind handlers on the freshly-rendered inputs
-    if(inAo){ const ni=ao.querySelector('input[data-k="'+inAo+'"]'); if(ni){ ni.focus(); try{ if(caret) ni.setSelectionRange(caret[0],caret[1]); }catch(_){} } }
+  // Rebuild only the computed results. The input fields live in a separate #an-inputs container
+  // that is never torn down here, so the field being typed in keeps its focus, caret and any
+  // in-progress decimal — no capture/restore needed.
+  const anRes=e('an-results');
+  if(anRes){
+    anRes.innerHTML='';
+    renderAnalysisResults(anRes,C);
   }
 }
 
