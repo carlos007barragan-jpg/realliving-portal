@@ -233,6 +233,7 @@ function downloadQr(){
 }
 function copyLink(){try{navigator.clipboard.writeText($('dLink').value);toast('Link copied');}catch(e){toast($('dLink').value);}}
 async function archiveEvent(){
+  if(!CUR.archived && !confirm('Archive "'+CUR.name+'"? It will leave the events list and its check-in QR will stop working. You can restore it later. Check-ins are kept either way.'))return;
   CUR.archived=!CUR.archived;
   const now=new Date().toISOString();
   await sb.from('records').upsert([{collection:'events',id:CUR.id,data:CUR,updated_at:now,deleted:false}]);
