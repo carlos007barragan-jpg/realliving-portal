@@ -33,8 +33,9 @@
     width:26px;height:26px;border-radius:50%;font-size:15px;cursor:pointer;line-height:1}
   label{display:block;font-size:12.5px;font-weight:600;color:var(--ink);margin:10px 0 5px}
   label:first-child{margin-top:0}
-  input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:11px;font-size:16px;background:#fff;color:var(--ink)}
-  input:focus{outline:none;border-color:var(--gold)}
+  input,select{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:11px;font-size:16px;background:#fff;color:var(--ink);appearance:none;-webkit-appearance:none}
+  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a6a24' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
+  input:focus,select:focus{outline:none;border-color:var(--gold)}
   .add{width:100%;padding:13px;border:1.5px dashed var(--line);background:#fff;border-radius:12px;
     color:var(--gold2);font-weight:600;font-size:14px;cursor:pointer;margin-bottom:14px}
   .go{width:100%;padding:16px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 100%);
@@ -93,23 +94,29 @@ const T={
   en:{kicker:'Check-In',fallback:'Event Check-In',
      lede:'Add your info to check in. Bringing people with you? Add them too.',
      p1:'You',guest:'Guest',name:'Full name',phone:'Phone number',email:'Email (optional)',
+     role:'What do you do? (optional)',roleOther:'Tell us your trade',exp:'Investing experience (optional)',
      add:'+ Add another person',go:'Check in',going:'Checking in…',
      foot:'Your information is kept private by Real Living Companies.',
      doneH:"You're checked in!",doneP:'Thanks for coming. Enjoy the event.',
      again:'Check in someone else',
      eName:'Enter a name for everyone.',ePhone:'Enter a valid 10-digit phone number.',
      noEvent:'This check-in link is missing its event. Ask a team member for the right QR code.',
-     err:'Something went wrong. Please try again.'},
+     err:'Something went wrong. Please try again.',
+     roles:[['','—'],['realtor','Realtor'],['contractor','Contractor'],['investor','Investor'],['plumber','Plumber'],['electrician','Electrician'],['lender','Lender / loan officer'],['wholesaler','Wholesaler'],['homebuyer','Homebuyer'],['other','Other']],
+     exps:[['','—'],['new','New to investing'],['mid','Some experience'],['veteran','Very experienced']]},
   es:{kicker:'Registro',fallback:'Registro del Evento',
      lede:'Agrega tu información para registrarte. ¿Vienes acompañado? Agrégalos también.',
      p1:'Tú',guest:'Invitado',name:'Nombre completo',phone:'Número de teléfono',email:'Correo (opcional)',
+     role:'¿A qué te dedicas? (opcional)',roleOther:'Dinos tu oficio',exp:'Experiencia invirtiendo (opcional)',
      add:'+ Agregar otra persona',go:'Registrarme',going:'Registrando…',
      foot:'Tu información es privada y protegida por Real Living Companies.',
      doneH:'¡Registrado!',doneP:'Gracias por venir. Disfruta el evento.',
      again:'Registrar a otra persona',
      eName:'Escribe un nombre para cada persona.',ePhone:'Escribe un teléfono válido de 10 dígitos.',
      noEvent:'A este enlace le falta el evento. Pide a un miembro del equipo el código QR correcto.',
-     err:'Algo salió mal. Inténtalo de nuevo.'}
+     err:'Algo salió mal. Inténtalo de nuevo.',
+     roles:[['','—'],['realtor','Agente de bienes raíces'],['contractor','Contratista'],['investor','Inversionista'],['plumber','Plomero'],['electrician','Electricista'],['lender','Prestamista'],['wholesaler','Mayorista'],['homebuyer','Comprador de vivienda'],['other','Otro']],
+     exps:[['','—'],['new','Nuevo en inversiones'],['mid','Algo de experiencia'],['veteran','Muy experimentado']]}
 };
 const $=id=>document.getElementById(id);
 
@@ -129,11 +136,19 @@ function paint(){
   [...document.querySelectorAll('.person')].forEach((el,i)=>relabel(el,i));
 }
 function l_(x){return x==='es'?'es':'en';}
+function optsHtml(pairs){return pairs.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join('');}
 function relabel(el,i){
   const t=T[lang];
   el.querySelector('.tag').textContent=i===0?t.p1:(t.guest+' '+i);
-  const ls=el.querySelectorAll('label');
-  ls[0].textContent=t.name; ls[1].textContent=t.phone; ls[2].textContent=t.email;
+  el.querySelector('[data-l=name]').textContent=t.name;
+  el.querySelector('[data-l=phone]').textContent=t.phone;
+  el.querySelector('[data-l=email]').textContent=t.email;
+  el.querySelector('[data-l=role]').textContent=t.role;
+  el.querySelector('[data-l=exp]').textContent=t.exp;
+  // keep the chosen value while swapping option labels to the current language
+  const rs=el.querySelector('.p-role');const rv=rs.value;rs.innerHTML=optsHtml(t.roles);rs.value=rv;
+  const xs=el.querySelector('.p-exp');const xv=xs.value;xs.innerHTML=optsHtml(t.exps);xs.value=xv;
+  el.querySelector('.p-roleother').placeholder=t.roleOther;
   const rm=el.querySelector('.rm'); if(rm)rm.style.display=i===0?'none':'block';
 }
 function personTpl(i){
@@ -142,9 +157,12 @@ function personTpl(i){
   d.innerHTML=
     '<span class="tag"></span>'+
     '<button type="button" class="rm" title="Remove" onclick="this.parentNode.remove();renumber()">&times;</button>'+
-    '<label></label><input class="p-name" type="text" autocomplete="name" placeholder="">'+
-    '<label></label><input class="p-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(816) 555-0100">'+
-    '<label></label><input class="p-email" type="email" autocomplete="email" placeholder="">';
+    '<label data-l="name"></label><input class="p-name" type="text" autocomplete="name" placeholder="">'+
+    '<label data-l="phone"></label><input class="p-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(816) 555-0100">'+
+    '<label data-l="email"></label><input class="p-email" type="email" autocomplete="email" placeholder="">'+
+    '<label data-l="role"></label><select class="p-role" onchange="this.parentNode.querySelector(\'.p-roleother\').style.display=this.value===\'other\'?\'block\':\'none\'">'+optsHtml(t.roles)+'</select>'+
+    '<input class="p-roleother" type="text" placeholder="" style="display:none;margin-top:8px">'+
+    '<label data-l="exp"></label><select class="p-exp">'+optsHtml(t.exps)+'</select>';
   return d;
 }
 function addPerson(){
@@ -172,7 +190,10 @@ $('f').addEventListener('submit',async(e)=>{
     if(!name&&!phone)continue; // skip a blank extra card
     if(name.length<2){err.textContent=t.eName;err.style.display='block';el.querySelector('.p-name').focus();return;}
     if(phone.replace(/\D/g,'').length<10){err.textContent=t.ePhone;err.style.display='block';el.querySelector('.p-phone').focus();return;}
-    people.push({name,phone,email});
+    const roleSel=el.querySelector('.p-role').value;
+    const role=roleSel==='other'?(el.querySelector('.p-roleother').value.trim()||'other'):roleSel;
+    const experience=el.querySelector('.p-exp').value;
+    people.push({name,phone,email,role,experience});
   }
   if(!people.length){err.textContent=t.eName;err.style.display='block';return;}
   const go=$('go');go.disabled=true;go.textContent=t.going;

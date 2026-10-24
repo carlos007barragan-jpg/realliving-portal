@@ -143,6 +143,10 @@ function baseUrl(){const path=location.pathname.replace(/\/apps\/[^/]*$/,'/');re
 function checkinUrl(ev){return baseUrl()+'event.html?e='+encodeURIComponent(ev.id)+'&n='+encodeURIComponent(ev.name||'');}
 
 function signupsFor(id){return SIGNUPS.filter(s=>s.eventId===id);}
+const ROLE_EN={realtor:'Realtor',contractor:'Contractor',investor:'Investor',plumber:'Plumber',electrician:'Electrician',lender:'Lender',wholesaler:'Wholesaler',homebuyer:'Homebuyer',other:'Other'};
+const EXP_EN={new:'New to investing',mid:'Some experience',veteran:'Very experienced'};
+function roleLabel(v){if(!v)return '';return ROLE_EN[v]||(v.charAt(0).toUpperCase()+v.slice(1));}
+function expLabel(v){return v?(EXP_EN[v]||v):'';}
 
 /* ---------- list view ---------- */
 function showList(){CUR=null;$('detailView').style.display='none';$('listView').style.display='';drawList();}
@@ -179,8 +183,10 @@ function drawRoster(){
   const q=($('rSearch').value||'').toLowerCase().trim();
   const shown=q?list.filter(s=>(s.name||'').toLowerCase().includes(q)||String(s.phone||'').includes(q)):list;
   if(!shown.length){$('rosterWrap').innerHTML='<div class="empty">'+(list.length?'No match.':'Nobody has checked in yet. The roster fills as people scan the QR.')+'</div>';return;}
-  $('rosterWrap').innerHTML='<div style="overflow-x:auto"><table><tr><th>Name</th><th>Phone</th><th>Email</th><th>Checked in</th><th></th></tr>'+
+  $('rosterWrap').innerHTML='<div style="overflow-x:auto"><table><tr><th>Name</th><th>Role</th><th>Investing</th><th>Phone</th><th>Email</th><th>Checked in</th><th></th></tr>'+
     shown.map(s=>'<tr><td><b style="font-weight:600">'+esc(s.name)+'</b>'+(s.guestOf?'<div class="guest">guest of '+esc(s.guestOf)+'</div>':'')+'</td>'+
+      '<td class="mut">'+(roleLabel(s.role)?esc(roleLabel(s.role)):'—')+'</td>'+
+      '<td class="mut">'+(expLabel(s.experience)?esc(expLabel(s.experience)):'—')+'</td>'+
       '<td class="mut">'+fmtPhone(s.phone)+'</td>'+
       '<td class="mut">'+esc(s.email||'—')+'</td>'+
       '<td class="mut">'+fmtTime(s.checkedInAt)+'</td>'+
@@ -201,7 +207,7 @@ async function toCrm(sid){
     const now=new Date().toISOString();
     const client={id:cid,name:s.name,phone:s.phone,email:s.email||'',address:'',area:'',
       source:'Event — '+(s.eventName||CUR.name),genBy:ME.seatId||'',assignedTo:ME.seatId||'',
-      interests:[s.eventName||CUR.name],notes:'Promoted from Event Tracker ('+(s.eventName||CUR.name)+').',
+      interests:[s.eventName||CUR.name],notes:'Promoted from Event Tracker ('+(s.eventName||CUR.name)+').'+(roleLabel(s.role)?' Role: '+roleLabel(s.role)+'.':'')+(expLabel(s.experience)?' Investing: '+expLabel(s.experience)+'.':''),
       dormant:false,archived:false,docs:[],createdAt:now};
     const {error}=await sb.from('records').upsert([{collection:'clients',id:cid,data:client,updated_at:now,deleted:false}]);
     if(error)throw error;
@@ -213,8 +219,8 @@ async function toCrm(sid){
 
 function exportCsv(){
   const list=signupsFor(CUR.id);
-  const rows=[['Name','Phone','Email','Guest of','Checked in','In CRM']].concat(
-    list.map(s=>[s.name||'',fmtPhone(s.phone),s.email||'',s.guestOf||'',fmtTime(s.checkedInAt),s.inCrm?'yes':'no']));
+  const rows=[['Name','Role','Investing experience','Phone','Email','Guest of','Checked in','In CRM']].concat(
+    list.map(s=>[s.name||'',roleLabel(s.role),expLabel(s.experience),fmtPhone(s.phone),s.email||'',s.guestOf||'',fmtTime(s.checkedInAt),s.inCrm?'yes':'no']));
   const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download=(CUR.name||'event').replace(/[^a-z0-9]+/gi,'_')+'_checkins.csv';a.click();
