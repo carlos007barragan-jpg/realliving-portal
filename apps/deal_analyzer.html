@@ -334,6 +334,17 @@ const DEFS={addr1:'',addr2:'Kansas City, MO',beds:'',borrower:'H2M Group LLC',pu
 const DEF_SCOPE=[{id:1,cat:'Demo',desc:'Demo & haul-off',qty:1,unit:'LS',cost:1500,type:'material'},{id:2,cat:'Drywall',desc:'Drywall repair & texture',qty:1,unit:'LS',cost:3200,type:'material'},{id:3,cat:'Flooring',desc:'LVP flooring',qty:900,unit:'SF',cost:2.5,type:'material'},{id:4,cat:'Paint',desc:'Interior paint',qty:1,unit:'LS',cost:3500,type:'material'},{id:5,cat:'Kitchen/Cabinets',desc:'Kitchen cabinets & counters',qty:1,unit:'LS',cost:6000,type:'material'},{id:6,cat:'Bathrooms',desc:'Primary bath remodel',qty:1,unit:'LS',cost:4200,type:'material'},{id:7,cat:'Electrical',desc:'Electrical panel & updates',qty:1,unit:'LS',cost:3800,type:'material'},{id:8,cat:'Plumbing',desc:'Plumbing updates',qty:1,unit:'LS',cost:2800,type:'material'},{id:9,cat:'HVAC',desc:'HVAC service',qty:1,unit:'LS',cost:3500,type:'material'},{id:10,cat:'Roofing',desc:'Roof repair',qty:1,unit:'LS',cost:2500,type:'material'},{id:11,cat:'Windows/Doors',desc:'Exterior doors',qty:2,unit:'EA',cost:600,type:'material'},{id:12,cat:'Landscaping',desc:'Curb appeal',qty:1,unit:'LS',cost:1800,type:'material'},{id:13,cat:'Labor',desc:'General labor crew',qty:80,unit:'HR',cost:35,type:'labor'},{id:14,cat:'Labor',desc:'Skilled trades labor',qty:1,unit:'LS',cost:4000,type:'labor'},{id:15,cat:'Other',desc:'Contingency',qty:1,unit:'LS',cost:3650,type:'material'}];
 
 let currentUser=null, users=[...DEF_USERS], deals=[], currentDeal={...DEFS}, scope=DEF_SCOPE.map(x=>({...x})), currentId=null, analysisTab='sell', section='deal', holdMo=6, arvLocked={B:false,M:false,W:false}, cfdOpen=false, shareUrl='';
+/* PUBLIC tool mode (?tool=1): the investor-facing calculator handed out by QR at seminars.
+   Same engine, no login, no CRM — nothing is saved or shared anywhere. */
+const PUBLIC=(new URLSearchParams(location.search).get('tool')==='1');
+function startPublic(){
+  currentUser={id:'guest',uid:'',name:'',role:'guest'};
+  const lv=e('loginView'); if(lv)lv.style.display='none';
+  const cs=e('clientSheet'); if(cs)cs.style.display='none';
+  const av=e('adminView'); if(av)av.style.display='block';
+  document.body.classList.add('public-tool');
+  newDeal();   // start from a blank deal so they enter their own numbers
+}
 
 // ── STORAGE ────────────────────────────────────────────────────────
 const db={};
@@ -422,6 +433,11 @@ function doLogout(){currentUser=null;try{localStorage.removeItem('rl_session');}
 function renderBar(inEditor){
   const acts=e('barActions'); acts.innerHTML='';
   const tag=e('barTag');
+  if(PUBLIC){
+    tag.textContent='Deal Analyzer';
+    btn('↻ Start over',()=>{ if(confirm('Clear everything and start a new analysis?')) newDeal(); },'ghost',acts);
+    return;
+  }
   if(inEditor){
     tag.textContent='Deal Analysis';
     btn('← Deals',()=>{renderDashboard();tag.textContent='Deal Analyzer';},'ghost',acts);
@@ -1189,7 +1205,8 @@ function loadFromURL(){
 // ── INIT ───────────────────────────────────────────────────────────
 try {
   initStorage();
-  loadFromURL();
+  if(PUBLIC){ startPublic(); }
+  else { loadFromURL(); }
 } catch(err) {
   // If anything goes wrong on load (e.g. a corrupted saved deal), recover gracefully
   // instead of white-screening. Show the login and log the issue for debugging.
@@ -1210,6 +1227,7 @@ try {
 /* Portal SSO bridge: the only way in. Reads the Business Suite session and sets identity
    and role. No session → send them to the Suite to sign in once. */
 (async()=>{
+  if(typeof PUBLIC!=='undefined'&&PUBLIC)return;   // public tool mode: no CRM/session bridge
   /* Safety net: if the session check somehow hangs, don't strand the person on a blank
      screen — reveal the sign-in card after a few seconds. Cleared the moment we resolve. */
   const _safety=setTimeout(()=>{const lv=document.getElementById('loginView');if(lv&&!lv.classList.contains('show')&&document.getElementById('adminView').style.display!=='block')lv.classList.add('show');},5000);
