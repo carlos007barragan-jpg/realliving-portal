@@ -86,7 +86,7 @@
       <div><h1 id="dName"></h1><div class="sub" id="dMeta"></div></div>
       <span class="spacer"></span>
       <button class="btn ghost small" onclick="exportCsv()">Export CSV</button>
-      <button class="btn ghost small" onclick="archiveEvent()" id="archBtn">Archive</button>
+      <button class="btn ghost small" style="color:var(--red);border-color:var(--red)" onclick="deleteEvent()">Delete event</button>
     </div>
 
     <div class="card" style="margin-bottom:16px">
@@ -170,7 +170,6 @@ function openEvent(id){
   $('listView').style.display='none';$('detailView').style.display='';
   $('dName').textContent=CUR.name;
   $('dMeta').textContent=fmtDate(CUR.date)+(CUR.location?' · '+CUR.location:'');
-  $('archBtn').textContent=CUR.archived?'Unarchive':'Archive';
   const url=checkinUrl(CUR);$('dLink').value=url;
   $('qr').innerHTML='';
   try{new QRCode($('qr'),{text:url,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});}
@@ -232,13 +231,19 @@ function downloadQr(){
   const a=document.createElement('a');a.href=src;a.download=(CUR.name||'event').replace(/[^a-z0-9]+/gi,'_')+'_QR.png';a.click();
 }
 function copyLink(){try{navigator.clipboard.writeText($('dLink').value);toast('Link copied');}catch(e){toast($('dLink').value);}}
-async function archiveEvent(){
-  if(!CUR.archived && !confirm('Archive "'+CUR.name+'"? It will leave the events list and its check-in QR will stop working. You can restore it later. Check-ins are kept either way.'))return;
-  CUR.archived=!CUR.archived;
+async function deleteEvent(){
+  const n=signupsFor(CUR.id).length;
+  if(!confirm('Delete "'+CUR.name+'"?'+(n?' This also removes its '+n+' check-in'+(n===1?'':'s')+'.':'')+' This cannot be undone.'))return;
   const now=new Date().toISOString();
-  await sb.from('records').upsert([{collection:'events',id:CUR.id,data:CUR,updated_at:now,deleted:false}]);
-  toast(CUR.archived?'Event archived':'Event restored');
-  if(CUR.archived)showList();else $('archBtn').textContent='Archive';
+  const rows=[{collection:'events',id:CUR.id,data:CUR,updated_at:now,deleted:true}];
+  for(const s of signupsFor(CUR.id)) rows.push({collection:'event_signups',id:s.id,data:s,updated_at:now,deleted:true});
+  try{
+    const {error}=await sb.from('records').upsert(rows);
+    if(error)throw error;
+    EVENTS=EVENTS.filter(e=>e.id!==CUR.id);
+    SIGNUPS=SIGNUPS.filter(s=>s.eventId!==CUR.id);
+    toast('Event deleted');showList();
+  }catch(e){toast('Could not delete: '+(e.message||e));}
 }
 
 /* ---------- create event ---------- */
