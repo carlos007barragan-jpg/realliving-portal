@@ -72,7 +72,7 @@
       <button type="submit" class="go" id="go">Check in</button>
       <div class="err" id="err"></div>
     </form>
-    <div class="foot" id="foot">Your information is kept private by Real Living Companies.</div>
+    <div class="foot" id="foot">Your information is kept private by Real Living.</div>
   </div>
 
   <div class="card done" id="doneCard" style="display:none">
@@ -95,8 +95,9 @@ const T={
      lede:'Add your info to check in. Bringing people with you? Add them too.',
      p1:'You',guest:'Guest',name:'Full name',phone:'Phone number',email:'Email (optional)',
      role:'What do you do? (optional)',roleOther:'Tell us your trade',exp:'Investing experience (optional)',
+     langLbl:'Language preference',
      add:'+ Add another person',go:'Check in',going:'Checking in…',
-     foot:'Your information is kept private by Real Living Companies.',
+     foot:'Your information is kept private by Real Living.',
      doneH:"You're checked in!",doneP:'Thanks for coming. Enjoy the event.',
      again:'Check in someone else',
      eName:'Enter a name for everyone.',ePhone:'Enter a valid 10-digit phone number.',
@@ -108,8 +109,9 @@ const T={
      lede:'Agrega tu información para registrarte. ¿Vienes acompañado? Agrégalos también.',
      p1:'Tú',guest:'Invitado',name:'Nombre completo',phone:'Número de teléfono',email:'Correo (opcional)',
      role:'¿A qué te dedicas? (opcional)',roleOther:'Dinos tu oficio',exp:'Experiencia invirtiendo (opcional)',
+     langLbl:'Idioma preferido',
      add:'+ Agregar otra persona',go:'Registrarme',going:'Registrando…',
-     foot:'Tu información es privada y protegida por Real Living Companies.',
+     foot:'Tu información es privada y protegida por Real Living.',
      doneH:'¡Registrado!',doneP:'Gracias por venir. Disfruta el evento.',
      again:'Registrar a otra persona',
      eName:'Escribe un nombre para cada persona.',ePhone:'Escribe un teléfono válido de 10 dígitos.',
@@ -143,8 +145,11 @@ function relabel(el,i){
   el.querySelector('[data-l=name]').textContent=t.name;
   el.querySelector('[data-l=phone]').textContent=t.phone;
   el.querySelector('[data-l=email]').textContent=t.email;
+  el.querySelector('[data-l=lang]').textContent=t.langLbl;
   el.querySelector('[data-l=role]').textContent=t.role;
   el.querySelector('[data-l=exp]').textContent=t.exp;
+  // each person's language preference defaults to the page language until they set it themselves
+  const lgs=el.querySelector('.p-lang'); if(lgs && !lgs.dataset.touched) lgs.value=lang;
   // keep the chosen value while swapping option labels to the current language
   const rs=el.querySelector('.p-role');const rv=rs.value;rs.innerHTML=optsHtml(t.roles);rs.value=rv;
   const xs=el.querySelector('.p-exp');const xv=xs.value;xs.innerHTML=optsHtml(t.exps);xs.value=xv;
@@ -160,6 +165,7 @@ function personTpl(i){
     '<label data-l="name"></label><input class="p-name" type="text" autocomplete="name" placeholder="">'+
     '<label data-l="phone"></label><input class="p-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(816) 555-0100">'+
     '<label data-l="email"></label><input class="p-email" type="email" autocomplete="email" placeholder="">'+
+    '<label data-l="lang"></label><select class="p-lang" onchange="this.dataset.touched=1"><option value="en">English</option><option value="es">Español</option></select>'+
     '<label data-l="role"></label><select class="p-role" onchange="this.parentNode.querySelector(\'.p-roleother\').style.display=this.value===\'other\'?\'block\':\'none\'">'+optsHtml(t.roles)+'</select>'+
     '<input class="p-roleother" type="text" placeholder="" style="display:none;margin-top:8px">'+
     '<label data-l="exp"></label><select class="p-exp">'+optsHtml(t.exps)+'</select>';
@@ -193,7 +199,8 @@ $('f').addEventListener('submit',async(e)=>{
     const roleSel=el.querySelector('.p-role').value;
     const role=roleSel==='other'?(el.querySelector('.p-roleother').value.trim()||'other'):roleSel;
     const experience=el.querySelector('.p-exp').value;
-    people.push({name,phone,email,role,experience});
+    const plang=el.querySelector('.p-lang').value;
+    people.push({name,phone,email,role,experience,lang:plang});
   }
   if(!people.length){err.textContent=t.eName;err.style.display='block';return;}
   const go=$('go');go.disabled=true;go.textContent=t.going;
