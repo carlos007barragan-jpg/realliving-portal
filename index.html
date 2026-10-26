@@ -473,6 +473,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
       <input id="lpass" type="password" autocomplete="current-password" placeholder="••••••••">
     </div>
     <button class="lbtn" id="lbtn">Sign in</button>
+    <button type="button" id="lforgot" style="display:block;margin:12px auto 0;background:none;border:0;color:var(--brand);font-size:13px;font-weight:600;cursor:pointer">Forgot password?</button>
     <div class="login-hint">Use your Real Living account — the same sign-in works in every app here.</div>
   </div>
 </div>
@@ -617,7 +618,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
   }
   function showFirstPassword(){
     const card=document.querySelector('.login-card');
-    card.querySelectorAll('.lf,.login-hint,#lbtn').forEach(el=>el.style.display='none');
+    card.querySelectorAll('.lf,.login-hint,#lbtn,#lforgot').forEach(el=>el.style.display='none');
     let box=$("fpBox");
     if(!box){
       box=document.createElement('div');box.id='fpBox';
@@ -638,12 +639,73 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
           const {data:{session}}=await sb.auth.getSession();
           CU=await profileToCU(session.user.id,session.user.email);
           box.remove();
-          card.querySelectorAll('.lf,.login-hint,#lbtn').forEach(el=>el.style.display='');
+          card.querySelectorAll('.lf,.login-hint,#lbtn,#lforgot').forEach(el=>el.style.display='');
           showShell();
         }catch(e){err.textContent=String(e.message||e);err.style.display='block';$("fpgo").disabled=false;$("fpgo").textContent='Set password & continue';}
       });
     }
     box.style.display='block';
+  }
+  const AUTH_RESET_FN='https://zfflgvjnkcjnbwydurlp.supabase.co/functions/v1/auth-reset';
+  function hideLoginFields(){document.querySelector('.login-card').querySelectorAll('.lf,.login-hint,#lbtn,#lforgot').forEach(el=>el.style.display='none');}
+  function restoreLoginFields(){const card=document.querySelector('.login-card');const b=$("resetBox");if(b)b.remove();card.querySelectorAll('.lf,.login-hint,#lbtn,#lforgot').forEach(el=>el.style.display='');$("lerr").classList.remove('show');}
+  const _inp='width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;font-size:14px';
+  const _btn='width:100%;padding:13px;background:var(--brand);color:#fff;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;border:0';
+  const _lnk='display:block;margin:12px auto 0;background:none;border:0;color:var(--brand);font-size:13px;font-weight:600;cursor:pointer';
+  /* "Forgot password?" — ask for the email, send a reset link through our own email service. */
+  function showForgot(){
+    hideLoginFields();
+    const card=document.querySelector('.login-card');
+    let box=$("resetBox"); if(box)box.remove();
+    box=document.createElement('div'); box.id='resetBox';
+    box.innerHTML='<div style="font-size:13px;color:var(--muted);margin:2px 0 14px">Enter your account email and we’ll send you a link to set a new password.</div>'+
+      '<input id="rq-email" type="email" autocomplete="username" placeholder="you@realliving.com" style="'+_inp+'">'+
+      '<div id="rq-msg" style="display:none;font-size:13px;margin-bottom:10px"></div>'+
+      '<button id="rq-go" style="'+_btn+'">Send reset link</button>'+
+      '<button type="button" id="rq-back" style="'+_lnk+'">Back to sign in</button>';
+    card.appendChild(box);
+    const pre=$("lemail").value.trim(); if(pre)$("rq-email").value=pre;
+    $("rq-back").onclick=restoreLoginFields;
+    $("rq-go").onclick=async()=>{
+      const email=$("rq-email").value.trim().toLowerCase(), msg=$("rq-msg");
+      if(!/.+@.+\..+/.test(email)){msg.style.color='#DC2626';msg.textContent='Enter a valid email.';msg.style.display='block';return;}
+      $("rq-go").disabled=true;$("rq-go").textContent='Sending…';
+      try{await fetch(AUTH_RESET_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'request',email})});}catch(e){}
+      msg.style.color='var(--muted)';
+      msg.innerHTML='If <b>'+email.replace(/[<>&]/g,'')+'</b> is on the team, a reset link is on its way — check your inbox (and spam). The link works for 15 minutes.';
+      msg.style.display='block';
+      $("rq-go").style.display='none';$("rq-email").disabled=true;
+    };
+    $("rq-email").addEventListener('keydown',e=>{if(e.key==='Enter')$("rq-go").click();});
+  }
+  /* Landing from the reset link (?pwreset=TOKEN&email=…) — set the new password. */
+  function showResetForm(token,email){
+    hideLoginFields();
+    const card=document.querySelector('.login-card');
+    let box=$("resetBox"); if(box)box.remove();
+    box=document.createElement('div'); box.id='resetBox';
+    box.innerHTML='<div style="font-size:13px;color:var(--muted);margin:2px 0 14px">Set a new password for <b>'+String(email).replace(/[<>&]/g,'')+'</b>.</div>'+
+      '<input id="rs1" type="password" autocomplete="new-password" placeholder="New password (8+ characters)" style="'+_inp+'">'+
+      '<input id="rs2" type="password" autocomplete="new-password" placeholder="Type it again" style="'+_inp+'">'+
+      '<div id="rs-err" style="display:none;color:#DC2626;font-size:13px;margin-bottom:10px"></div>'+
+      '<button id="rs-go" style="'+_btn+'">Update password</button>'+
+      '<button type="button" id="rs-back" style="'+_lnk+'">Back to sign in</button>';
+    card.appendChild(box);
+    const clearParam=()=>{try{history.replaceState(null,'',location.pathname);}catch(e){}};
+    $("rs-back").onclick=()=>{clearParam();restoreLoginFields();};
+    $("rs-go").onclick=async()=>{
+      const a=$("rs1").value,b2=$("rs2").value,err=$("rs-err");
+      if(a.length<8){err.textContent='Use at least 8 characters.';err.style.display='block';return;}
+      if(a!==b2){err.textContent="Those don't match.";err.style.display='block';return;}
+      $("rs-go").disabled=true;$("rs-go").textContent='Updating…';err.style.display='none';
+      try{
+        const r=await fetch(AUTH_RESET_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'confirm',email,token,password:a})});
+        const o=await r.json(); if(!r.ok||!o.ok)throw new Error((o&&o.error)||'Could not update password.');
+        clearParam(); restoreLoginFields();
+        $("lemail").value=email; $("lerr").textContent='Password updated — sign in with your new password.'; $("lerr").style.color='var(--brand)'; $("lerr").classList.add('show');
+        const lp=$("lpass"); if(lp)lp.focus();
+      }catch(e){err.textContent=String(e.message||e);err.style.display='block';$("rs-go").disabled=false;$("rs-go").textContent='Update password';}
+    };
   }
   async function attemptLogin(){
     const email = $("lemail").value.trim().toLowerCase();
@@ -665,6 +727,7 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
   (async()=>{
     try{
       if(!sb)return;
+      if(new URLSearchParams(location.search).get('pwreset'))return;  /* let the reset form take over */
       const {data:{session}}=await sb.auth.getSession();
       if(!session)return;
       if(await needsFirstPassword()){showFirstPassword();return}
@@ -673,7 +736,10 @@ const APP_SOURCES = {}; /* apps now load by URL from /apps — drop new app file
     }catch(e){console.error('[resume]',e);}
   })();
   $("lbtn").addEventListener("click", attemptLogin);
+  $("lforgot").addEventListener("click", showForgot);
   ["lemail","lpass"].forEach(id => $(id).addEventListener("keydown", e => { if(e.key==="Enter") attemptLogin(); }));
+  /* Arriving from a reset email: show the set-new-password form instead of the normal sign-in. */
+  (function(){try{const q=new URLSearchParams(location.search);const tok=q.get('pwreset'),em=q.get('email');if(tok&&em){showResetForm(tok,em.toLowerCase());}}catch(e){}})();
 
   /* Which app is open, mirrored into the URL hash so a browser refresh reopens the
      same app (and, for apps that report it, the same inner page) instead of bouncing
