@@ -104,6 +104,8 @@ details.pb .pb-body{padding:2px 20px 18px}
 .wordmark{font-family:var(--disp);font-size:30px;color:var(--gold2);line-height:1.05}
 .wordmark span{display:block;font-size:12px;font-family:var(--body);font-weight:400;letter-spacing:.34em;text-transform:uppercase;color:var(--mut);margin-top:7px}
 .login-err{color:var(--red);font-size:13px;margin-top:10px;min-height:18px}
+#li-spin{display:none;width:30px;height:30px;border:3px solid rgba(150,150,170,.25);border-top-color:var(--gold2);border-radius:50%;animation:li-spin .8s linear infinite}
+@keyframes li-spin{to{transform:rotate(360deg)}}
 .login-hint{margin-top:18px;border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--mut);line-height:1.7}
 .login-hint b{color:var(--gold2);font-weight:500}
 /* ---------- shell ---------- */
@@ -517,6 +519,7 @@ select.tfilter{padding:7px 9px}
       <div class="login-hint" id="li-hint">Team logins and access walls are handled by the Business Suite. This is the admin door.</div>
     </div>
   </div>
+  <div id="li-spin"></div>
 </div>
 
 <div id="app">
@@ -1148,7 +1151,7 @@ async function cloudResume(){
    and Supabase project. So we don't show a login form up front — we show a quiet loader,
    resume that session, and walk straight in. The form is only revealed if there is genuinely
    no session (someone opened the CRM directly, outside the hub). */
-function revealLogin(){try{const f=document.getElementById('li-form'),b=document.getElementById('li-boot');if(b)b.style.display='none';if(f)f.style.display='';}catch(_e){}}
+function revealLogin(){try{const sp=document.getElementById('li-spin');if(sp)sp.style.display='none';const card=document.querySelector('#login .login-card');if(card)card.style.display='';const f=document.getElementById('li-form'),b=document.getElementById('li-boot');if(b)b.style.display='none';if(f)f.style.display='';}catch(_e){}}
 if(typeof window!=='undefined')setTimeout(()=>{cloudResume()},0);
 /* ===== Auto-update ==========================================================
    Service worker is network-first, so a fresh load always gets newest code. The
@@ -5034,10 +5037,14 @@ if(CLOUD){
   document.getElementById('li-cloud').style.display='block';
   document.getElementById('li-pw-label').textContent='Password';
   document.getElementById('li-hint').textContent='Sign in with your Real Living team account.';
-  /* assume the hub already signed us in: show the loader, not the form. cloudResume()
-     reveals the form only if there's no session to resume. */
+  /* Opened from the hub, which already signed this person in on the same domain + project.
+     Show nothing that looks like a sign-in — just a bare loader on the brand backdrop — and
+     walk straight in. cloudResume() reveals the real login card only if there's genuinely no
+     session (someone opened the CRM directly, outside the hub). */
   const _lf=document.getElementById('li-form'),_lb=document.getElementById('li-boot');
-  if(_lf)_lf.style.display='none'; if(_lb)_lb.style.display='block';
+  if(_lf)_lf.style.display='none'; if(_lb)_lb.style.display='none';
+  const _card=document.querySelector('#login .login-card'); if(_card)_card.style.display='none';
+  const _sp=document.getElementById('li-spin'); if(_sp)_sp.style.display='block';
   setSyncDot('a','Cloud connected — signing in…');
 }
 
