@@ -593,12 +593,17 @@ const PIPES={
   h2m_acq:{biz:'H2M',name:'H2M · Acquisitions',stages:['Off-Market Lead','Under Contract','Due Diligence','Closed / Acquired'],types:['Acquisition']},
   h2m_dispo:{biz:'H2M',name:'H2M · Dispositions',stages:['In Inventory','Marketed','Buyer Identified','Under Contract','Closed'],types:['Owner Finance (CFD)','Cash Sale','Retail Sale']},
   h2m_ws:{biz:'H2M',name:'H2M · Wholesale',stages:['New Lead','Under Contract','Marketed to Buyers','Buyer Found','Assigned / Closed'],types:['Assignment','Double Close']},
-  h2m_of:{biz:'H2M',name:'H2M · Owner Finance',stages:['New Lead','Buyer Pre-Qualified','Property Matched','Terms Agreed','Under Contract','Closed / Servicing'],types:['Contract for Deed','Lease Option','Note Sale']},
+  h2m_of:{biz:'H2M',name:'H2M · Owner Finance — Buyers',stages:['New number (no contact)','Appointment scheduled','No show','Showing houses / Consult done','Found house / terms / negotiations','LOI / EMD / Under contract','Closed','Post close'],types:['Contract for Deed','Lease Option','Note Sale']},
+  h2m_of_sell:{biz:'H2M',name:'H2M · Owner Finance — Sellers',stages:['Inquiry / new leads','Numbers / paperwork','Photos / access','Marketing','Showings','LOI / negotiations','Under contract / EMD','Closing','Post close'],types:['Contract for Deed','Lease Option','Note Sale']},
   rl_buy:{biz:'RL',name:'RL Team · Buy Side',stages:['Lead','Consult','Pre-Approved','Showing','Under Contract','Closed'],types:['Buyer Representation']},
   rl_list:{biz:'RL',name:'RL Team · List Side',stages:['Lead','Listing Appt','Listed','Under Contract','Closed'],types:['Listing']},
   tc:{biz:'TC',name:'Transaction Coordination',stages:['File Opened','Contract Executed','Contingencies','Clear to Close','Closed','Fee Collected'],types:['In-House File','Outside Agent File']}
 };
-const BIZPIPES={ASAP:['asap'],H2M:['h2m_acq','h2m_dispo','h2m_ws','h2m_of'],RL:['rl_buy','rl_list','tc']};
+/* Owner Finance now has two sibling pipelines — buyers (h2m_of) and sellers (h2m_of_sell).
+   Both are grouped under the "Owner Finance" nav section and are kept OUT of the core H2M board. */
+const OF_PIPES=['h2m_of','h2m_of_sell'];
+const isOF=p=>OF_PIPES.indexOf(p)>-1;
+const BIZPIPES={ASAP:['asap'],H2M:['h2m_acq','h2m_dispo','h2m_ws','h2m_of','h2m_of_sell'],RL:['rl_buy','rl_list','tc']};
 const SOURCES=['Facebook Ads','Google Ads','Zillow','Realtor.com','Referral','Sign Call','Cold Call','Direct Mail','Website','Open House','Past Client','Other'];
 /* How we classify a contact — who we bought from / sold to, and how. Shown as a badge. */
 const CRM_BUILD='0816-crmbell';
@@ -615,7 +620,7 @@ function seed(){
     {id:'sl2',name:'New this week',q:{createdWithin:7}},
     {id:'sl3',name:'No active deal',q:{activity:'none'}}
   ],
-  splits:{asap:50,h2m_dispo:10,h2m_ws:10,h2m_of:10,rl_buy:70,rl_list:70,tc:0},
+  splits:{asap:50,h2m_dispo:10,h2m_ws:10,h2m_of:10,h2m_of_sell:10,rl_buy:70,rl_list:70,tc:0},
   tasks:[
     {id:'t1',title:'Call back about rate lock',clientId:'c2',agentId:'u5',due:d(1).slice(0,10),done:false,createdAt:d(3),by:'u5'},
     {id:'t2',title:'Send comps for Waldo listings',clientId:'c5',agentId:'u4',due:new Date(now+1*864e5).toISOString().slice(0,10),done:false,createdAt:d(1),by:'u4'},
@@ -759,6 +764,7 @@ function load(){try{S=JSON.parse(localStorage.getItem(LS))}catch(e){S=null} if(!
   if(!S.smartlists){S.smartlists=fresh.smartlists;dirty=true}
   if(!S.splits){S.splits=fresh.splits;dirty=true}
   if(S.splits&&S.splits.h2m_of==null){S.splits.h2m_of=10;dirty=true}
+  if(S.splits&&S.splits.h2m_of_sell==null){S.splits.h2m_of_sell=10;dirty=true}
   if(!S.playbooks){S.playbooks=JSON.parse(JSON.stringify(PLAYBOOKS));dirty=true}
   S.users.forEach((u,i)=>{if(!u.ext){u.ext=String(101+i);dirty=true}});
   S.clients.forEach(c=>{if(!c.interests){c.interests=[];dirty=true}});
@@ -1263,7 +1269,7 @@ function visibleDeals(pipe){
   if(me.role==='agent')ds=ds.filter(d=>d.agentId===me.id);
   return ds;
 }
-const PIPELABEL={asap:'ASAP Pipeline',h2m_acq:'Acquisitions',h2m_dispo:'Dispositions',h2m_ws:'Wholesale Pipeline',h2m_of:'Owner Finance',rl_buy:'Buy Side',rl_list:'List Side',tc:'TC Dashboard'};
+const PIPELABEL={asap:'ASAP Pipeline',h2m_acq:'Acquisitions',h2m_dispo:'Dispositions',h2m_ws:'Wholesale Pipeline',h2m_of:'Owner Finance — Buyers',h2m_of_sell:'Owner Finance — Sellers',rl_buy:'Buy Side',rl_list:'List Side',tc:'TC Dashboard'};
 const I={dash:'M3 12l9-8 9 8M5 10v10h14V10',search:'M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-5-5',
   contacts:'M16 14a4 4 0 10-8 0M12 10a3 3 0 100-6 3 3 0 000 6zM4 20c0-3 4-4 8-4s8 1 8 4',
   props:'M3 21h18M5 21V8l7-5 7 5v13M9 21v-5h6v5',cal:'M8 3v3M16 3v3M4 8h16M5 5h14v15H5z',
@@ -1289,7 +1295,11 @@ function pagesFor(){
     out.push({sec:'H2M'},{k:'biz',arg:'H2M',pipe:h2mCore[0],label:'H2M Pipeline',icon:BIZICON.H2M});
     if(me.role!=='agent')out.push({k:'reports',rep:'team',label:'Team KPIs',icon:I.team});
   }
-  if(P.includes('h2m_of'))out.push({sec:'Owner Finance'},{k:'biz',arg:'H2M',pipe:'h2m_of',grp:'of',label:'Owner Finance Pipeline',icon:BIZICON.H2M});
+  if(P.includes('h2m_of')||P.includes('h2m_of_sell')){
+    out.push({sec:'Owner Finance'});
+    if(P.includes('h2m_of'))out.push({k:'biz',arg:'H2M',pipe:'h2m_of',grp:'of',label:'Buyers',icon:BIZICON.H2M});
+    if(P.includes('h2m_of_sell'))out.push({k:'biz',arg:'H2M',pipe:'h2m_of_sell',grp:'of',label:'Sellers',icon:BIZICON.RL});
+  }
   const rlCore=['rl_buy','rl_list'].filter(p=>P.includes(p));
   if(rlCore.length)out.push({sec:'Real Living Licensed'},{k:'biz',arg:'RL',pipe:rlCore[0],label:'RL Pipeline',icon:BIZICON.RL});
   out.push({sec:'Shared'});
@@ -1311,7 +1321,7 @@ function renderNav(){
     if(it.sec)return '<div class="nav-sec">'+it.sec+'</div>';
     let on=false,click='';
     if(it.k==='portal'){click="location.href='business-suite.html'";}
-    else if(it.k==='biz'){on=page==='biz'&&bizSel===it.arg&&(it.arg!=='H2M'||((it.grp==='of')===(pipeSel==='h2m_of')));click="pipeSel='"+it.pipe+"';go('biz','"+it.arg+"')";}
+    else if(it.k==='biz'){on=page==='biz'&&bizSel===it.arg&&(it.arg!=='H2M'||(it.grp==='of'?pipeSel===it.pipe:!isOF(pipeSel)));click="pipeSel='"+it.pipe+"';go('biz','"+it.arg+"')";}
     else if(it.k==='reports'){on=page==='reports'&&(it.rep==='team'?repTab==='team':repTab!=='team');click="repTab='"+it.rep+"';go('reports')";}
     else{on=page===it.k;click="go('"+it.k+"')";}
     return '<div class="nav-item'+(on?' on':'')+'" onclick="'+click+'"><svg viewBox="0 0 24 24"><path d="'+it.icon+'"/></svg>'+it.label+'</div>';
@@ -1819,7 +1829,7 @@ function saveTask(){
   if(g('mt-client'))logAct(null,g('mt-client'),'Task created — '+g('mt-title').trim()+' (due '+fdate(g('mt-due'))+')'+(assignee!==meId?' · assigned to '+esc(U(assignee).name):'')+'.');
   save();closeAll();refresh();toast(assignee!==meId?'Task added for '+U(assignee).name:'Task added');
 }
-const LEAD_TARGETS={asap:'ASAP Lending — funding lead',rl_buy:'RL Team — buyer lead',rl_list:'RL Team — seller / listing lead',h2m_ws:'H2M — wholesale seller lead',h2m_dispo:'H2M — investor buyer lead',h2m_of:'H2M — owner finance buyer'};
+const LEAD_TARGETS={asap:'ASAP Lending — funding lead',rl_buy:'RL Team — buyer lead',rl_list:'RL Team — seller / listing lead',h2m_ws:'H2M — wholesale seller lead',h2m_dispo:'H2M — investor buyer lead',h2m_of:'H2M — owner finance buyer',h2m_of_sell:'H2M — owner finance seller'};
 /* ================= GUIDED INTAKE ================= */
 const INTAKE_OPPS=[
   {pipe:'rl_buy',label:'Buying a home',money:true},
@@ -1827,7 +1837,8 @@ const INTAKE_OPPS=[
   {pipe:'asap',label:'Mortgage / financing',money:true},
   {pipe:'h2m_ws',label:'Sell off-market for cash',money:false},
   {pipe:'h2m_dispo',label:'Investor looking to buy',money:true},
-  {pipe:'h2m_of',label:'Buy with owner financing',money:true}
+  {pipe:'h2m_of',label:'Buy with owner financing',money:true},
+  {pipe:'h2m_of_sell',label:'Sell my house on owner finance',money:false}
 ];
 let IT={};
 function mIntake(){
@@ -2091,9 +2102,9 @@ function vLinked(){
 /* ================= BUSINESS VERTICALS / KANBAN ================= */
 function vBiz(b){
   let pipes=myPipes().filter(p=>PIPES[p].biz===b);
-  const ofMode=b==='H2M'&&pipeSel==='h2m_of';
-  if(b==='H2M')pipes=pipes.filter(p=>ofMode?p==='h2m_of':p!=='h2m_of');
-  if(!pipes.length)return '<div class="sect-head" style="margin-top:4px"><h2>'+(ofMode?'H2M Owner Finance':BIZ[b])+'</h2></div>'+
+  const ofMode=b==='H2M'&&isOF(pipeSel);
+  if(b==='H2M')pipes=pipes.filter(p=>ofMode?p===pipeSel:!isOF(p));
+  if(!pipes.length)return '<div class="sect-head" style="margin-top:4px"><h2>'+(ofMode?PIPELABEL[pipeSel]:BIZ[b])+'</h2></div>'+
     '<div class="card"><div class="allclear"><span class="sdot a"></span>Your seat doesn\'t include '+BIZ[b]+' — ask ownership if you need access.</div></div>';
   if(!pipes.includes(pipeSel))pipeSel=pipes[0];
   let open=0,openN=0,closed=0,closedN=0;
@@ -3673,7 +3684,8 @@ const PB_META={
   mkt:{name:'Marketing — pre-appointment',color:'#8E6BB8',sub:'Runs when marketing enters a lead. Ends at the handoff: booking the appointment starts the receiving agent\'s workflow.'},
   rl:{name:'RL Licensed',color:null,biz:'RL',sub:'Buyer & listing leads with a licensed agent.'},
   asap:{name:'ASAP Lending',color:null,biz:'ASAP',sub:'Funding leads — docs, credit, pre-approval.'},
-  h2m_of:{name:'Owner Finance',color:null,biz:'H2M',sub:'Owner-finance buyers — qualify, match, terms, contract.'},
+  h2m_of:{name:'Owner Finance — Buyers',color:null,biz:'H2M',sub:'Owner-finance buyers — qualify, match, terms, contract.'},
+  h2m_of_sell:{name:'Owner Finance — Sellers',color:null,biz:'H2M',sub:'Owner-finance sellers — intake, paperwork, marketing, showings, contract.'},
   prop:{name:'Wholesale / Acquisitions',color:null,biz:'H2M',sub:'Property-driven: the seller and the house, not a client onboarding.'},
   dispo:{name:'Investors (Dispo)',color:null,biz:'H2M',sub:'Investor buyers — buy-box and inventory cadence.'}
 };
@@ -4004,7 +4016,7 @@ function vTeam(){
       (canManageSeat(u)?'<button class="btn ghost small" onclick="mAddUser(\''+u.id+'\')">Edit</button> ':'')+
       (u.id!==me.id&&canManageSeat(u)?'<button class="btn danger small" onclick="rmUser(\''+u.id+'\')">Remove</button>':u.id===me.id?'<span class="mut">you</span>':'')+'</td></tr>').join('')+'</table></div>';
   /* who-can-see-what: the access matrix */
-  const SHORT={asap:'ASAP',h2m_acq:'Acq',h2m_dispo:'Dispo',h2m_ws:'Whlsl',h2m_of:'OwnFin',rl_buy:'Buy',rl_list:'List',tc:'TC'};
+  const SHORT={asap:'ASAP',h2m_acq:'Acq',h2m_dispo:'Dispo',h2m_ws:'Whlsl',h2m_of:'OF Buy',h2m_of_sell:'OF Sell',rl_buy:'Buy',rl_list:'List',tc:'TC'};
   h+='<div class="sect-head" style="margin-top:22px"><h2 style="font-size:18px">Pipeline access</h2><span class="cnt">what each seat can and cannot see</span></div>'+
     '<div class="card" style="padding:0;overflow:auto"><table><tr><th>Seat</th>'+Object.keys(PIPES).map(p=>'<th style="text-align:center">'+SHORT[p]+'</th>').join('')+'<th>Scope</th></tr>'+
     S.users.map(u=>{const ap=allowedPipes(u);const custom=u.pipes&&u.pipes.length;
@@ -4178,7 +4190,7 @@ function mAddDeal(pipe,clientId){
   let pipes=myPipes().filter(p=>me.role!=='marketing');
   /* portal context: the modal only offers the division you're standing in */
   if(!pipe&&page==='biz'&&bizSel){
-    if(bizSel==='H2M')pipes=pipes.filter(p=>PIPES[p].biz==='H2M'&&(pipeSel==='h2m_of'?p==='h2m_of':p!=='h2m_of'));
+    if(bizSel==='H2M')pipes=pipes.filter(p=>PIPES[p].biz==='H2M'&&(isOF(pipeSel)?p===pipeSel:!isOF(p)));
     else pipes=pipes.filter(p=>PIPES[p].biz===bizSel);
   }
   if(pipe&&!pipes.includes(pipe))pipes=myPipes().filter(p=>me.role!=='marketing');
