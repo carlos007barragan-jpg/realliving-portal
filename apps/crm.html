@@ -602,6 +602,9 @@ const PIPES={
    Both are grouped under the "Owner Finance" nav section and are kept OUT of the core H2M board. */
 const OF_PIPES=['h2m_of','h2m_of_sell'];
 const isOF=p=>OF_PIPES.indexOf(p)>-1;
+/* Pipelines the whole team can always see, regardless of their seat's assigned pipes.
+   Owner Finance — Sellers is open to everyone so any seat can work seller leads. */
+const UNIVERSAL_PIPES=['h2m_of_sell'];
 /* Acquisitions is a normal REVENUE pipeline now (merged with Wholesale) — no pipeline is
    cost-side, so isCost() is always false. Kept as a helper in case a cost pipe returns later. */
 const COST_PIPES=[];
@@ -1257,7 +1260,10 @@ const workingClients=()=>S.clients.filter(c=>!isDormant(c));
 function allowedPipes(u){
   if(!u)return [];
   if(u.role==='owner'||u.id==='admin')return Object.keys(PIPES);
-  if(u.role==='manager'||u.role==='agent'||u.role==='marketing'||u.role==='va')return (u.pipes&&u.pipes.length?u.pipes.filter(p=>PIPES[p]):(u.business==='ALL'?Object.keys(PIPES):BIZPIPES[u.business]))||[];
+  if(u.role==='manager'||u.role==='agent'||u.role==='marketing'||u.role==='va'){
+    const base=(u.pipes&&u.pipes.length?u.pipes.filter(p=>PIPES[p]):(u.business==='ALL'?Object.keys(PIPES):BIZPIPES[u.business]))||[];
+    return [...new Set(base.concat(UNIVERSAL_PIPES.filter(p=>PIPES[p])))];
+  }
   return [];
 }
 function myPipes(){return allowedPipes(me)}
