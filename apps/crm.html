@@ -590,9 +590,8 @@ const BIZCOLOR={ASAP:'#B08A36',H2M:'#5F8A47',RL:'#3F7089',TC:'#9A5B74'};
 const BIZICON={ASAP:'M12 3v18M16 6.5c-.8-1-2.2-1.6-4-1.6-2.2 0-4 1.1-4 2.7s1.6 2.3 4 2.9 4 1.3 4 2.9-1.8 2.7-4 2.7c-1.8 0-3.2-.6-4-1.6',H2M:'M3 11l9-7 9 7M5 9v11h14V9M9 20v-6h6v6',RL:'M16 14a4 4 0 10-8 0M12 10a3 3 0 100-6 3 3 0 000 6zM4 20c0-3 4-4 8-4s8 1 8 4',TC:'M7 3h7l5 5v13H7zM14 3v5h5M10 12h6M10 16h4'};
 const PIPES={
   asap:{biz:'ASAP',name:'ASAP Lending',stages:['New Lead','Application','Underwriting','Term Sheet','Approved','Funded'],types:['Fix & Flip Funding','Bridge Loan','Rental / DSCR','Other Funding']},
-  h2m_acq:{biz:'H2M',name:'H2M · Acquisitions',stages:['Off-Market Lead','Under Contract','Due Diligence','Closed / Acquired'],types:['Acquisition']},
-  h2m_dispo:{biz:'H2M',name:'H2M · Dispositions',stages:['In Inventory','Marketed','Buyer Identified','Under Contract','Closed'],types:['Owner Finance (CFD)','Cash Sale','Retail Sale']},
-  h2m_ws:{biz:'H2M',name:'H2M · Wholesale',stages:['New Lead','Under Contract','Marketed to Buyers','Buyer Found','Assigned / Closed'],types:['Assignment','Double Close']},
+  h2m_acq:{biz:'H2M',name:'H2M · Acquisitions',stages:['Lead','Hot lead','Under contract / Find a buyer','Buyer found / Buyer\'s side under contract','Closed','Post close'],types:['Acquisition','Assignment','Double Close']},
+  h2m_dispo:{biz:'H2M',name:'H2M · Dispositions',stages:['Investors','Showing scheduled','Negotiation / terms','Under contract','EMD submitted','Closed','Post close / Under rehab'],types:['Owner Finance (CFD)','Cash Sale','Retail Sale']},
   h2m_of:{biz:'H2M',name:'H2M · Owner Finance — Buyers',stages:['New number (no contact)','Appointment scheduled','No show','Showing houses / Consult done','Found house / terms / negotiations','LOI / EMD / Under contract','Closed','Post close'],types:['Contract for Deed','Lease Option','Note Sale']},
   h2m_of_sell:{biz:'H2M',name:'H2M · Owner Finance — Sellers',stages:['Inquiry / new leads','Numbers / paperwork','Photos / access','Marketing','Showings','LOI / negotiations','Under contract / EMD','Closing','Post close'],types:['Contract for Deed','Lease Option','Note Sale']},
   rl_buy:{biz:'RL',name:'RL Team · Buy Side',stages:['Lead','Consult','Pre-Approved','Showing','Under Contract','Closed'],types:['Buyer Representation']},
@@ -603,7 +602,11 @@ const PIPES={
    Both are grouped under the "Owner Finance" nav section and are kept OUT of the core H2M board. */
 const OF_PIPES=['h2m_of','h2m_of_sell'];
 const isOF=p=>OF_PIPES.indexOf(p)>-1;
-const BIZPIPES={ASAP:['asap'],H2M:['h2m_acq','h2m_dispo','h2m_ws','h2m_of','h2m_of_sell'],RL:['rl_buy','rl_list','tc']};
+/* Acquisitions is a normal REVENUE pipeline now (merged with Wholesale) — no pipeline is
+   cost-side, so isCost() is always false. Kept as a helper in case a cost pipe returns later. */
+const COST_PIPES=[];
+const isCost=p=>COST_PIPES.indexOf(p)>-1;
+const BIZPIPES={ASAP:['asap'],H2M:['h2m_acq','h2m_dispo','h2m_of','h2m_of_sell'],RL:['rl_buy','rl_list','tc']};
 const SOURCES=['Facebook Ads','Google Ads','Zillow','Realtor.com','Referral','Sign Call','Cold Call','Direct Mail','Website','Open House','Past Client','Other'];
 /* How we classify a contact — who we bought from / sold to, and how. Shown as a badge. */
 const CRM_BUILD='0816-crmbell';
@@ -620,7 +623,7 @@ function seed(){
     {id:'sl2',name:'New this week',q:{createdWithin:7}},
     {id:'sl3',name:'No active deal',q:{activity:'none'}}
   ],
-  splits:{asap:50,h2m_dispo:10,h2m_ws:10,h2m_of:10,h2m_of_sell:10,rl_buy:70,rl_list:70,tc:0},
+  splits:{asap:50,h2m_acq:10,h2m_dispo:10,h2m_of:10,h2m_of_sell:10,rl_buy:70,rl_list:70,tc:0},
   tasks:[
     {id:'t1',title:'Call back about rate lock',clientId:'c2',agentId:'u5',due:d(1).slice(0,10),done:false,createdAt:d(3),by:'u5'},
     {id:'t2',title:'Send comps for Waldo listings',clientId:'c5',agentId:'u4',due:new Date(now+1*864e5).toISOString().slice(0,10),done:false,createdAt:d(1),by:'u4'},
@@ -707,9 +710,9 @@ function seed(){
      budget:0,down:0,closeDate:'2026-06-05',titleOffice:'Chicago Title',revenue:4300,createdAt:d(70),closedAt:'2026-06-05T16:00:00Z'},
     {id:'d26',clientId:'c9',pipe:'rl_list',type:'Listing',stage:4,agentId:'u4',propertyId:null,propInterest:'12904 Grandview Rd',
      budget:0,down:0,closeDate:'2026-05-22',titleOffice:'Continental Title',revenue:6900,createdAt:d(110),closedAt:'2026-05-22T16:00:00Z'},
-    {id:'d30',clientId:'c10',pipe:'h2m_ws',type:'Assignment',stage:2,agentId:'u1',propertyId:null,propInterest:'4112 Norton Ave',
+    {id:'d30',clientId:'c10',pipe:'h2m_acq',type:'Assignment',stage:2,agentId:'u1',propertyId:null,propInterest:'4112 Norton Ave',
      budget:0,down:0,closeDate:'',titleOffice:'',revenue:8000,createdAt:d(26)},
-    {id:'d31',clientId:'c11',pipe:'h2m_ws',type:'Assignment',stage:4,agentId:'u2',propertyId:null,propInterest:'6220 Walrond Ave',
+    {id:'d31',clientId:'c11',pipe:'h2m_acq',type:'Assignment',stage:4,agentId:'u2',propertyId:null,propInterest:'6220 Walrond Ave',
      budget:0,down:0,closeDate:'2026-06-10',titleOffice:'Chicago Title',revenue:9500,createdAt:d(115),closedAt:'2026-06-10T16:00:00Z'}
   ],
   acts:[
@@ -765,6 +768,7 @@ function load(){try{S=JSON.parse(localStorage.getItem(LS))}catch(e){S=null} if(!
   if(!S.splits){S.splits=fresh.splits;dirty=true}
   if(S.splits&&S.splits.h2m_of==null){S.splits.h2m_of=10;dirty=true}
   if(S.splits&&S.splits.h2m_of_sell==null){S.splits.h2m_of_sell=10;dirty=true}
+  if(S.splits&&S.splits.h2m_acq==null){S.splits.h2m_acq=10;dirty=true}
   if(!S.playbooks){S.playbooks=JSON.parse(JSON.stringify(PLAYBOOKS));dirty=true}
   S.users.forEach((u,i)=>{if(!u.ext){u.ext=String(101+i);dirty=true}});
   S.clients.forEach(c=>{if(!c.interests){c.interests=[];dirty=true}});
@@ -825,7 +829,7 @@ function closedDate(d){return d.closedAt||(d.closeDate?d.closeDate+'T16:00:00Z':
 function ytdByBiz(){
   const y={};Object.keys(BIZ).forEach(b=>y[b]={total:0,n:0,months:Array(12).fill(0)});
   S.deals.forEach(d=>{
-    if(d.pipe==='h2m_acq'||!isFinal(d))return;
+    if(isCost(d.pipe)||!isFinal(d))return;
     const cd=closedDate(d);if(!cd||!inThisYear(cd))return;
     const b=PIPES[d.pipe].biz;y[b].total+=d.revenue||0;y[b].n++;y[b].months[new Date(cd).getMonth()]+=d.revenue||0;
   });return y;
@@ -911,7 +915,7 @@ function platMin(uid,days){
   const m=Math.round(sec/60);return m>=60?Math.floor(m/60)+'h '+(m%60)+'m':m+'m';
 }
 function forecast30(pipes){
-  return S.deals.filter(d=>pipes.includes(d.pipe)&&d.pipe!=='h2m_acq'&&!isFinal(d))
+  return S.deals.filter(d=>pipes.includes(d.pipe)&&!isCost(d.pipe)&&!isFinal(d))
     .reduce((a,d)=>a+(d.revenue||0)*((d.stage+1)/PIPES[d.pipe].stages.length),0);
 }
 const folded=k=>!!(S.ui&&S.ui.f&&S.ui.f[k]);
@@ -1004,7 +1008,7 @@ function vCallbacks(){
 function attentionItems(){
   const items=[];const now=Date.now();
   S.deals.forEach(d=>{
-    if(d.pipe==='h2m_acq'||isFinal(d))return;
+    if(isCost(d.pipe)||isFinal(d))return;
     if(isDormant(C(d.clientId)))return;
     const lastMove=new Date((d.hist&&d.hist.length?d.hist[d.hist.length-1].at:d.createdAt)).getTime();
     const lastAct=Math.max(lastMove,...S.acts.filter(a=>a.dealId===d.id).map(a=>new Date(a.ts).getTime()));
@@ -1269,7 +1273,7 @@ function visibleDeals(pipe){
   if(me.role==='agent')ds=ds.filter(d=>d.agentId===me.id);
   return ds;
 }
-const PIPELABEL={asap:'ASAP Pipeline',h2m_acq:'Acquisitions',h2m_dispo:'Dispositions',h2m_ws:'Wholesale Pipeline',h2m_of:'Owner Finance — Buyers',h2m_of_sell:'Owner Finance — Sellers',rl_buy:'Buy Side',rl_list:'List Side',tc:'TC Dashboard'};
+const PIPELABEL={asap:'ASAP Pipeline',h2m_acq:'Acquisitions',h2m_dispo:'Dispositions',h2m_of:'Owner Finance — Buyers',h2m_of_sell:'Owner Finance — Sellers',rl_buy:'Buy Side',rl_list:'List Side',tc:'TC Dashboard'};
 const I={dash:'M3 12l9-8 9 8M5 10v10h14V10',search:'M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-5-5',
   contacts:'M16 14a4 4 0 10-8 0M12 10a3 3 0 100-6 3 3 0 000 6zM4 20c0-3 4-4 8-4s8 1 8 4',
   props:'M3 21h18M5 21V8l7-5 7 5v13M9 21v-5h6v5',cal:'M8 3v3M16 3v3M4 8h16M5 5h14v15H5z',
@@ -1290,7 +1294,7 @@ function pagesFor(){
   }else if(P.includes('tc')){
     out.push({sec:'Transaction Coord.'},{k:'biz',arg:'TC',pipe:'tc',label:'TC Dashboard',icon:BIZICON.TC});
   }
-  const h2mCore=['h2m_acq','h2m_dispo','h2m_ws'].filter(p=>P.includes(p));
+  const h2mCore=['h2m_acq','h2m_dispo'].filter(p=>P.includes(p));
   if(h2mCore.length){
     out.push({sec:'H2M'},{k:'biz',arg:'H2M',pipe:h2mCore[0],label:'H2M Pipeline',icon:BIZICON.H2M});
     if(me.role!=='agent')out.push({k:'reports',rep:'team',label:'Team KPIs',icon:I.team});
@@ -1449,7 +1453,7 @@ function go(k,arg){
 function revByBiz(){
   const r={};Object.keys(BIZ).forEach(b=>r[b]={open:0,closed:0,openN:0,closedN:0});
   S.deals.forEach(d=>{
-    if(d.pipe==='h2m_acq')return; // acquisitions are cost side, not revenue
+    if(isCost(d.pipe))return; // acquisitions are cost side, not revenue
     const b=PIPES[d.pipe].biz;
     if(isLost(d))return;
     if(isWon(d)){r[b].closed+=d.revenue||0;r[b].closedN++}else{r[b].open+=d.revenue||0;r[b].openN++}
@@ -1532,15 +1536,15 @@ function vDash(){
     /* 1 — needs attention */
     h+=vAttention();
     /* 2 — the six numbers, manus card style */
-    const closedIn=(mOff,pipes)=>S.deals.filter(d=>pipes.includes(d.pipe)&&d.pipe!=='h2m_acq'&&isFinal(d)&&closedDate(d)).reduce((a,d)=>{
+    const closedIn=(mOff,pipes)=>S.deals.filter(d=>pipes.includes(d.pipe)&&!isCost(d.pipe)&&isFinal(d)&&closedDate(d)).reduce((a,d)=>{
       const t=new Date(closedDate(d)),n=NOW(),ref=new Date(n.getFullYear(),n.getMonth()+mOff,1),nxt=new Date(n.getFullYear(),n.getMonth()+mOff+1,1);
       return (t>=ref&&t<nxt)?a+(d.revenue||0):a;},0);
     const revMTD=closedIn(0,scopePipes),revPrev=closedIn(-1,scopePipes);
     const revD=revPrev>0?Math.round(100*(revMTD-revPrev)/revPrev):(revMTD>0?100:0);
-    const actDeals=S.deals.filter(d=>scopePipes.includes(d.pipe)&&d.pipe!=='h2m_acq'&&!isFinal(d));
+    const actDeals=S.deals.filter(d=>scopePipes.includes(d.pipe)&&!isCost(d.pipe)&&!isFinal(d));
     const newDeals=S.deals.filter(d=>scopePipes.includes(d.pipe)&&inThisMonth(d.createdAt)).length;
     const appts7=upcomingAppts(null,7).length;
-    const closedMoN=S.deals.filter(d=>scopePipes.includes(d.pipe)&&d.pipe!=='h2m_acq'&&isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d))).length;
+    const closedMoN=S.deals.filter(d=>scopePipes.includes(d.pipe)&&!isCost(d.pipe)&&isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d))).length;
     const inMotion=actDeals.filter(d=>d.stage>=PIPES[d.pipe].stages.length-2).length;
     const activeProps=S.properties.filter(p=>!S.deals.some(dd=>dd.propertyId===p.id&&dd.pipe==='h2m_dispo'&&isWon(dd))).length;
     const yv=ytdByBiz();
@@ -1564,22 +1568,22 @@ function vDash(){
     const r=revByBiz();
     h+='<div class="grid cards4 sect">'+Object.keys(BIZ).map(b=>{
       const pipes=BIZPIPESALL(b);
-      const closedMo=S.deals.filter(d=>pipes.includes(d.pipe)&&d.pipe!=='h2m_acq'&&isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d)));
+      const closedMo=S.deals.filter(d=>pipes.includes(d.pipe)&&!isCost(d.pipe)&&isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d)));
       return '<div class="card click" onclick="go(\'biz\',\''+b+'\')"><div class="vhead"><span class="icobox"><svg viewBox="0 0 24 24"><path d="'+BIZICON[b]+'"/></svg></span><span class="t">'+BIZ[b]+'<small>'+r[b].openN+' active deals</small></span></div>'+
       '<div class="insets"><div class="inset"><div class="n">'+closedMo.length+'</div><div class="l">Closed</div></div>'+
       '<div class="inset"><div class="n">'+money(closedMo.reduce((a,d)=>a+(d.revenue||0),0))+'</div><div class="l">Revenue</div></div></div></div>'}).join('')+'</div>';
     /* 5 — revenue by vertical (bars) + deal distribution (donut) */
     const y=yv;
     const donutSegs=scope.map(b=>({label:BIZ[b],color:BIZCOLOR[b],val:r[b].openN,
-      tip:tipDeals(BIZ[b]+' — in the pipeline',S.deals.filter(dd=>BIZPIPESALL(b).includes(dd.pipe)&&dd.pipe!=='h2m_acq'&&!isFinal(dd)),'Open pipeline')}));
+      tip:tipDeals(BIZ[b]+' — in the pipeline',S.deals.filter(dd=>BIZPIPESALL(b).includes(dd.pipe)&&!isCost(dd.pipe)&&!isFinal(dd)),'Open pipeline')}));
     h+='<div class="two sect"><div class="card"><div class="sect-head" style="margin-bottom:2px"><h2 style="font-size:19px">Revenue by Vertical</h2><span class="cnt">closed YTD</span></div>'+
       barChartV(scope.map(b=>vshort[b]),scope.map(b=>y[b].total),scope.map(b=>BIZCOLOR[b]),v=>'$'+Math.round(v/1000)+'K',
-        scope.map(b=>tipDeals(BIZ[b]+' — closed YTD',S.deals.filter(dd=>BIZPIPESALL(b).includes(dd.pipe)&&dd.pipe!=='h2m_acq'&&isFinal(dd)&&closedDate(dd)&&inThisYear(closedDate(dd))))))+'</div>'+
+        scope.map(b=>tipDeals(BIZ[b]+' — closed YTD',S.deals.filter(dd=>BIZPIPESALL(b).includes(dd.pipe)&&!isCost(dd.pipe)&&isFinal(dd)&&closedDate(dd)&&inThisYear(closedDate(dd))))))+'</div>'+
       '<div class="card"><div class="sect-head" style="margin-bottom:10px"><h2 style="font-size:19px">Deal Distribution</h2><span class="cnt">active deals</span></div>'+
       '<div class="donutwrap">'+svgDonut(donutSegs)+
       '<div class="dlegend">'+scope.map(b=>'<div><i style="background:'+BIZCOLOR[b]+'"></i>'+BIZ[b]+' — <b>'+r[b].openN+'</b></div>').join('')+'</div></div></div></div>';
     /* 6 — revenue trend with daily / weekly / monthly / yearly views */
-    const closedInWin=(a,b)=>S.deals.filter(dd=>scopePipes.includes(dd.pipe)&&dd.pipe!=='h2m_acq'&&isFinal(dd)&&closedDate(dd)&&new Date(closedDate(dd))>=a&&new Date(closedDate(dd))<b);
+    const closedInWin=(a,b)=>S.deals.filter(dd=>scopePipes.includes(dd.pipe)&&!isCost(dd.pipe)&&isFinal(dd)&&closedDate(dd)&&new Date(closedDate(dd))>=a&&new Date(closedDate(dd))<b);
     const names=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const short=t=>names[t.getMonth()]+' '+t.getDate();
     let tLabels=[],tVals=[],tTips=[],tDesc='';
@@ -1606,7 +1610,7 @@ function vDash(){
       lineChart(tLabels,[{name:'Revenue',color:'#B08A36',vals:tVals,tips:tTips}],v=>v>=1000?'$'+Math.round(v/1000)+'K':'$'+Math.round(v))+'</div></div>';
     /* Owner money-out view — what the business has paid the team in commissions this year */
     const paid={};let paidTot=0;
-    S.deals.filter(d=>isWon(d)&&closedDate(d)&&inThisYear(closedDate(d))&&d.pipe!=='h2m_acq').forEach(d=>{const ap=agentPay(d);paid[d.agentId]=(paid[d.agentId]||0)+ap;paidTot+=ap;});
+    S.deals.filter(d=>isWon(d)&&closedDate(d)&&inThisYear(closedDate(d))&&!isCost(d.pipe)).forEach(d=>{const ap=agentPay(d);paid[d.agentId]=(paid[d.agentId]||0)+ap;paidTot+=ap;});
     const paidRows=Object.keys(paid).sort((a,b)=>paid[b]-paid[a]);
     h+='<div class="sect"><div class="card"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:19px">Commissions paid out \u2014 '+NOW().getFullYear()+'</h2><span class="cnt">to the team, from closed deals</span><span class="spacer"></span><span class="pill">'+money(paidTot)+' total</span></div>'+
       (paidRows.length?'<div style="overflow:auto"><table style="width:100%"><tr><th style="text-align:left">Team member</th><th style="text-align:right">Commission paid</th></tr>'+
@@ -1615,7 +1619,7 @@ function vDash(){
   }
   if(me.role==='manager'){
     const pipes=myPipes();let open=0,openN=0,closedN=0,closed=0;
-    pipes.forEach(p=>S.deals.filter(d=>d.pipe===p).forEach(d=>{if(d.pipe==='h2m_acq'||isLost(d)||isArchived(d))return;if(isWon(d)){closed+=d.revenue||0;closedN++}else{open+=d.revenue||0;openN++}}));
+    pipes.forEach(p=>S.deals.filter(d=>d.pipe===p).forEach(d=>{if(isCost(d.pipe)||isLost(d)||isArchived(d))return;if(isWon(d)){closed+=d.revenue||0;closedN++}else{open+=d.revenue||0;openN++}}));
     h+='<div class="grid cards4"><div class="card"><div class="eyebrow">Open pipeline · '+BIZ[me.business]+'</div><div class="big">'+money(open)+'</div><div class="sub"><b>'+openN+'</b> active deals</div></div>'+
        '<div class="card"><div class="eyebrow">Closed</div><div class="big">'+money(closed)+'</div><div class="sub"><b>'+closedN+'</b> deals closed</div></div>'+
        '<div class="card"><div class="eyebrow">Team</div><div class="big">'+S.users.filter(u=>u.business===me.business).length+'</div><div class="sub">people in '+BIZ[me.business]+'</div></div></div>';
@@ -1759,14 +1763,14 @@ function opportunities(){
   /* clients being sold more than one product at once — highest-cost, highest-value, nurture hardest */
   const out=[];
   S.clients.forEach(c=>{
-    const open=S.deals.filter(x=>x.clientId===c.id&&!isFinal(x)&&x.pipe!=='h2m_acq');
+    const open=S.deals.filter(x=>x.clientId===c.id&&!isFinal(x)&&!isCost(x.pipe));
     if(open.length<2)return;
     const pipes=[...new Set(open.map(x=>x.pipe))];
     if(pipes.length<2)return;
     const bizs=[...new Set(open.map(x=>PIPES[x.pipe].biz))];
     const value=open.reduce((a,x)=>a+(x.revenue||0),0);
     const agents=[...new Set(open.map(x=>U(x.agentId).name))];
-    const won=S.deals.filter(x=>x.clientId===c.id&&isWon(x)&&x.pipe!=='h2m_acq').length;
+    const won=S.deals.filter(x=>x.clientId===c.id&&isWon(x)&&!isCost(x.pipe)).length;
     out.push({key:c.id+':multi',cid:c.id,pipes,bizs,value,agents,won,
       deals:open.sort((a,b)=>b.stage-a.stage),
       t:c.name,
@@ -1829,13 +1833,13 @@ function saveTask(){
   if(g('mt-client'))logAct(null,g('mt-client'),'Task created — '+g('mt-title').trim()+' (due '+fdate(g('mt-due'))+')'+(assignee!==meId?' · assigned to '+esc(U(assignee).name):'')+'.');
   save();closeAll();refresh();toast(assignee!==meId?'Task added for '+U(assignee).name:'Task added');
 }
-const LEAD_TARGETS={asap:'ASAP Lending — funding lead',rl_buy:'RL Team — buyer lead',rl_list:'RL Team — seller / listing lead',h2m_ws:'H2M — wholesale seller lead',h2m_dispo:'H2M — investor buyer lead',h2m_of:'H2M — owner finance buyer',h2m_of_sell:'H2M — owner finance seller'};
+const LEAD_TARGETS={asap:'ASAP Lending — funding lead',rl_buy:'RL Team — buyer lead',rl_list:'RL Team — seller / listing lead',h2m_acq:'H2M — cash seller lead',h2m_dispo:'H2M — investor buyer lead',h2m_of:'H2M — owner finance buyer',h2m_of_sell:'H2M — owner finance seller'};
 /* ================= GUIDED INTAKE ================= */
 const INTAKE_OPPS=[
   {pipe:'rl_buy',label:'Buying a home',money:true},
   {pipe:'rl_list',label:'Selling a home',money:false},
   {pipe:'asap',label:'Mortgage / financing',money:true},
-  {pipe:'h2m_ws',label:'Sell off-market for cash',money:false},
+  {pipe:'h2m_acq',label:'Sell off-market for cash',money:true},
   {pipe:'h2m_dispo',label:'Investor looking to buy',money:true},
   {pipe:'h2m_of',label:'Buy with owner financing',money:true},
   {pipe:'h2m_of_sell',label:'Sell my house on owner finance',money:false}
@@ -2006,7 +2010,7 @@ function PB(key){return (S.playbooks&&S.playbooks[key])||PLAYBOOKS[key]}
 function pbKey(pipe){
   if(pipe==='asap')return 'asap';
   if(pipe==='h2m_of')return 'h2m_of';
-  if(pipe==='h2m_ws'||pipe==='h2m_acq')return 'prop';
+  if(pipe==='h2m_acq')return 'prop';
   if(pipe==='h2m_dispo')return 'dispo';
   if(pipe==='rl_buy'||pipe==='rl_list')return 'rl';
   return null;
@@ -2041,7 +2045,7 @@ function vPulse(people){
     const calls=t7.filter(t=>t.kind==='call_out'||t.kind==='call_in').length;
     const texts=t7.filter(t=>t.kind==='text_out'||t.kind==='text_in').length;
     const appts=S.appts.filter(a=>a.agentId===u.id&&inThisWeek(a.dt)).length;
-    const won=S.deals.filter(d=>d.agentId===u.id&&d.pipe!=='h2m_acq'&&isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d)));
+    const won=S.deals.filter(d=>d.agentId===u.id&&!isCost(d.pipe)&&isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d)));
     const leads=S.clients.filter(c=>c.genBy===u.id&&inThisMonth(c.createdAt)).length;
     return {u,live:isLive(u.id),leads,appts,calls,texts,plat:platMin(u.id,7),salesN:won.length,rev:won.reduce((a,d)=>a+(d.revenue||0),0)};
   }).sort((a,b)=>b.rev-a.rev||b.salesN-a.salesN||b.calls-a.calls);
@@ -2060,7 +2064,7 @@ function vAgentBoard(people){
   return '<div class="sect"><div class="sect-head"><h2>Team KPIs by agent</h2><span class="cnt">appointments this week · closings this month · income YTD</span><span class="spacer"></span>'+foldBtn('agents')+'</div>'+
     '<div class="card" style="padding:0;overflow:auto"><table><tr><th>Agent</th><th>Leads gen (mo)</th><th>Appointments (wk)</th><th>Active deals</th><th>Closings (mo)</th><th>Income YTD</th><th>Last active</th><th>Platform (7d)</th></tr>'+
     people.map(u=>{
-      const mine=S.deals.filter(d=>d.agentId===u.id&&d.pipe!=='h2m_acq');
+      const mine=S.deals.filter(d=>d.agentId===u.id&&!isCost(d.pipe));
       const appts=S.appts.filter(a=>a.agentId===u.id&&inThisWeek(a.dt)).length;
       const closings=mine.filter(d=>isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d))).length;
       const ytd=mine.filter(d=>isFinal(d)&&closedDate(d)&&inThisYear(closedDate(d))).reduce((a,d)=>a+(d.revenue||0),0);
@@ -2082,7 +2086,7 @@ function vApptList(scope){
       '<button class="btn ghost small" onclick="apptDone(\''+a.id+'\')">Done</button></div>'}).join(''):'<div class="empty" style="padding:18px">Nothing on the books — add one.</div>')+'</div>';
 }
 function vClosingTimeline(scope){
-  let ds=S.deals.filter(d=>d.pipe!=='h2m_acq'&&!isFinal(d)&&d.closeDate);
+  let ds=S.deals.filter(d=>!isCost(d.pipe)&&!isFinal(d)&&d.closeDate);
   if(scope==='team')ds=ds.filter(d=>allowedPipes(me).includes(d.pipe));
   else if(scope&&scope!=='team')ds=ds.filter(d=>d.agentId===scope);
   ds.sort((a,b)=>a.closeDate.localeCompare(b.closeDate));
@@ -2092,7 +2096,7 @@ function vClosingTimeline(scope){
       '<small>'+fdate(d.closeDate)+' · '+(days>=0?days+' days out':Math.abs(days)+' days past due')+' · '+PIPES[d.pipe].stages[d.stage]+'</small></li>'}).join(''):'<div class="empty" style="padding:18px">No close dates set yet.</div>')+'</ul></div>';
 }
 function vLinked(){
-  const groups={};S.deals.forEach(d=>{if(d.propertyId&&d.pipe!=='h2m_acq'){groups[d.propertyId]=groups[d.propertyId]||[];groups[d.propertyId].push(d)}});
+  const groups={};S.deals.forEach(d=>{if(d.propertyId&&!isCost(d.pipe)){groups[d.propertyId]=groups[d.propertyId]||[];groups[d.propertyId].push(d)}});
   const multi=Object.entries(groups).filter(([,ds])=>new Set(ds.map(d=>PIPES[d.pipe].biz)).size>1);
   if(!multi.length)return '';
   return '<div class="sect"><div class="sect-head"><h2>Linked transactions</h2><span class="cnt">one property, revenue in multiple businesses</span></div>'+
@@ -2108,7 +2112,7 @@ function vBiz(b){
     '<div class="card"><div class="allclear"><span class="sdot a"></span>Your seat doesn\'t include '+BIZ[b]+' — ask ownership if you need access.</div></div>';
   if(!pipes.includes(pipeSel))pipeSel=pipes[0];
   let open=0,openN=0,closed=0,closedN=0;
-  pipes.forEach(p=>visibleDeals(p).forEach(d=>{if(d.pipe==='h2m_acq')return;
+  pipes.forEach(p=>visibleDeals(p).forEach(d=>{if(isCost(d.pipe))return;
     if(isLost(d))return;
     if(isWon(d)){closed+=d.revenue||0;closedN++}else{open+=d.revenue||0;openN++}}));
   const rate=(openN+closedN)?Math.round(100*closedN/(openN+closedN)):0;
@@ -2138,7 +2142,7 @@ function renderBoard(pipe,wrapStyle){
     const col=ds.filter(d=>d.stage===i);
     return '<div class="col" ondragover="event.preventDefault();this.classList.add(\'dragover\')" ondragleave="this.classList.remove(\'dragover\')" ondrop="dropDeal(event,'+i+');this.classList.remove(\'dragover\')">'+
       '<div class="col-h"><span class="st">'+st+'</span><span class="n">'+col.length+(hideMoney()?'':' · '+money(col.reduce((a,d)=>a+(d.revenue||0),0)))+'</span></div><div class="col-b">'+
-      col.map(d=>{const lk=linkedDeals(d).filter(x=>x.pipe!=='h2m_acq');const nbiz=new Set([d,...lk].map(x=>PIPES[x.pipe].biz)).size;
+      col.map(d=>{const lk=linkedDeals(d).filter(x=>!isCost(x.pipe));const nbiz=new Set([d,...lk].map(x=>PIPES[x.pipe].biz)).size;
         const ast=actState(d);
         return '<div class="dcard" draggable="'+(canEditDeal(d))+'" ondragstart="event.dataTransfer.setData(\'text\',\''+d.id+'\')" onclick="openDeal(\''+d.id+'\')">'+
         '<div class="t">'+esc(dealTitle(d))+'</div><div class="s">'+esc(d.propInterest||d.type)+'</div>'+
@@ -2424,7 +2428,7 @@ function vScript(c,open){
 function vClient(id){
   const c=C(id);if(!c)return '<div class="empty">Client not found.</div>';
   const ds=S.deals.filter(d=>d.clientId===id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  const open=ds.filter(d=>!isFinal(d)),won=ds.filter(d=>isWon(d)&&d.pipe!=='h2m_acq'),lost=ds.filter(isLost);
+  const open=ds.filter(d=>!isFinal(d)),won=ds.filter(d=>isWon(d)&&!isCost(d.pipe)),lost=ds.filter(isLost);
   const life=won.reduce((a,d)=>a+(d.revenue||0),0);
   const assignedId=c.assignedTo||(open.find(d=>d.agentId)||{}).agentId||c.genBy;const assignedName=assignedId?U(assignedId).name:'—';
   const bizs=[...new Set(ds.map(d=>PIPES[d.pipe].biz))];
@@ -2730,7 +2734,7 @@ function vProps(){
   h+='<div class="card" style="padding:0;overflow:auto"><table><tr>'+(shareMode?'<th style="width:34px"></th>':'')+'<th>Address</th><th>Category</th><th>Bd/Ba</th>'+
     (anyInvest?(showAcq?'<th>Acq price</th>':'')+'<th>Rehab</th><th>ARV</th><th>'+(showAcq?'Our spread':'Buyer spread')+'</th>':'')+
     '<th>Price</th><th>Status</th><th>Transactions</th></tr>'+
-    list.map(p=>{const ds=S.deals.filter(d=>d.propertyId===p.id&&d.pipe!=='h2m_acq');
+    list.map(p=>{const ds=S.deals.filter(d=>d.propertyId===p.id&&!isCost(d.pipe));
       const inv=isInvestProp(p), dash='<td class="mut">—</td>';
       const rowClick=shareMode?("toggleShareSel('"+p.id+"')"):("go('prop','"+p.id+"')");
       const cbCell=shareMode?('<td style="width:34px" onclick="event.stopPropagation();toggleShareSel(\''+p.id+'\')"><input type="checkbox" id="cbx_'+p.id+'"'+(shareSel[p.id]?' checked':'')+' onclick="event.stopPropagation();toggleShareSel(\''+p.id+'\')"></td>'):'';
@@ -3017,7 +3021,7 @@ function vProp(id){
   }
   h+='<div class="sect"><div class="sect-head"><h2>Transactions on this property</h2><span class="cnt">every business touching it</span></div>'+
     (ds.length?ds.map(d=>'<div class="deal-row" onclick="openDeal(\''+d.id+'\')"><div class="a">'+esc(PIPES[d.pipe].name)+' — '+esc(d.type)+(d.clientId?' · '+esc(C(d.clientId).name):'')+'<small>'+esc(U(d.agentId).name)+(d.closeDate?' · closes '+fdate(d.closeDate):'')+'</small></div>'+
-    '<div style="text-align:right"><span class="tag'+(isFinal(d)?' gr':'')+'">'+PIPES[d.pipe].stages[d.stage]+'</span>'+(hideMoney()||d.pipe==='h2m_acq'?'':'<div class="money" style="margin-top:5px;font-size:13px">'+money(d.revenue)+'</div>')+'</div></div>').join(''):'<div class="empty">No transactions linked yet.</div>')+'</div>';
+    '<div style="text-align:right"><span class="tag'+(isFinal(d)?' gr':'')+'">'+PIPES[d.pipe].stages[d.stage]+'</span>'+(hideMoney()||isCost(d.pipe)?'':'<div class="money" style="margin-top:5px;font-size:13px">'+money(d.revenue)+'</div>')+'</div></div>').join(''):'<div class="empty">No transactions linked yet.</div>')+'</div>';
   return h;
 }
 /* ================= REPORTS ================= */
@@ -3054,7 +3058,7 @@ function repTeam(){
   const r=revByBiz();const pipelineOpen=Object.values(r).reduce((a,x)=>a+x.open,0);
   const leadsMo=S.clients.filter(c=>inThisMonth(c.createdAt)).length;
   const apptsWk=S.appts.filter(a=>inThisWeek(a.dt)).length;
-  const closingsMo=S.deals.filter(d=>d.pipe!=='h2m_acq'&&isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d))).length;
+  const closingsMo=S.deals.filter(d=>!isCost(d.pipe)&&isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d))).length;
   const rows=[
     ['New leads','this month, all sources',leadsMo,T.leadsMo,dotStrip(leadsMo,T.leadsMo)],
     ['Appointments','this week, whole team',apptsWk,T.apptsWk,dotStrip(apptsWk,T.apptsWk)],
@@ -3090,7 +3094,7 @@ function matchList(c,q){
   if(q.createdWithin&&(Date.now()-new Date(c.createdAt))>q.createdWithin*864e5)return false;
   if(q.activity==='active'&&!ds.some(x=>!isFinal(x)))return false;
   if(q.activity==='none'&&ds.some(x=>!isFinal(x)))return false;
-  if(q.activity==='closed'&&!ds.some(x=>isFinal(x)&&x.pipe!=='h2m_acq'))return false;
+  if(q.activity==='closed'&&!ds.some(x=>isFinal(x)&&!isCost(x.pipe)))return false;
   if(q.lastTouch){
     const last=lastActivityTs(c.id);
     if(last&&(Date.now()-new Date(last))<q.lastTouch*864e5)return false;
@@ -3302,7 +3306,7 @@ window.addEventListener('message',function(e){var d=e.data;if(!d||d.rl!=='wrap'|
 /* ================= MY LEADS (marketing tracker) ================= */
 function leadStatus(c){
   const ds=S.deals.filter(x=>x.clientId===c.id);
-  const converted=ds.some(x=>isFinal(x)&&x.pipe!=='h2m_acq');
+  const converted=ds.some(x=>isFinal(x)&&!isCost(x.pipe));
   const engaged=converted||ds.some(x=>x.stage>0)||S.touches.some(t=>t.clientId===c.id)||S.appts.some(a=>a.clientId===c.id);
   return converted?'converted':(engaged?'engaged':'waiting');
 }
@@ -3543,7 +3547,7 @@ function saveSplits(){
   save();go('settings');toast('Commission settings saved');
 }
 function vCommissions(){
-  let ds=S.deals.filter(d=>d.pipe!=='h2m_acq'&&isWon(d)&&closedDate(d));
+  let ds=S.deals.filter(d=>!isCost(d.pipe)&&isWon(d)&&closedDate(d));
   if(me.role==='agent')ds=ds.filter(d=>d.agentId===me.id);
   else if(me.role==='manager')ds=ds.filter(d=>allowedPipes(me).includes(d.pipe));
   ds.sort((a,b)=>closedDate(b).localeCompare(closedDate(a)));
@@ -4016,7 +4020,7 @@ function vTeam(){
       (canManageSeat(u)?'<button class="btn ghost small" onclick="mAddUser(\''+u.id+'\')">Edit</button> ':'')+
       (u.id!==me.id&&canManageSeat(u)?'<button class="btn danger small" onclick="rmUser(\''+u.id+'\')">Remove</button>':u.id===me.id?'<span class="mut">you</span>':'')+'</td></tr>').join('')+'</table></div>';
   /* who-can-see-what: the access matrix */
-  const SHORT={asap:'ASAP',h2m_acq:'Acq',h2m_dispo:'Dispo',h2m_ws:'Whlsl',h2m_of:'OF Buy',h2m_of_sell:'OF Sell',rl_buy:'Buy',rl_list:'List',tc:'TC'};
+  const SHORT={asap:'ASAP',h2m_acq:'Acq',h2m_dispo:'Dispo',h2m_of:'OF Buy',h2m_of_sell:'OF Sell',rl_buy:'Buy',rl_list:'List',tc:'TC'};
   h+='<div class="sect-head" style="margin-top:22px"><h2 style="font-size:18px">Pipeline access</h2><span class="cnt">what each seat can and cannot see</span></div>'+
     '<div class="card" style="padding:0;overflow:auto"><table><tr><th>Seat</th>'+Object.keys(PIPES).map(p=>'<th style="text-align:center">'+SHORT[p]+'</th>').join('')+'<th>Scope</th></tr>'+
     S.users.map(u=>{const ap=allowedPipes(u);const custom=u.pipes&&u.pipes.length;
@@ -4109,7 +4113,7 @@ function openDeal(id){
     (edit?'<div style="display:flex;gap:8px;margin-bottom:10px"><input id="dn-in" placeholder="Add a note to this deal…"><button class="btn small" onclick="addDealNote(\''+d.id+'\')">Add</button></div>':'')+
     '<ul class="tl" style="margin-top:2px">'+(dacts.length?dacts.map(a=>'<li>'+esc(a.text)+'<small>'+esc(U(a.by).name)+' · '+fdate(a.ts)+'</small></li>').join(''):'<div class="empty" style="padding:8px 0">Nothing logged on this deal yet.</div>')+'</ul>';
   if(lk.length){
-    h+='<label>Linked transactions (same property)</label>'+lk.map(x=>'<div class="deal-row" onclick="openDeal(\''+x.id+'\')"><div class="a">'+esc(PIPES[x.pipe].name)+'<small>'+PIPES[x.pipe].stages[x.stage]+(hideMoney()||x.pipe==='h2m_acq'?'':' · '+money(x.revenue))+'</small></div></div>').join('');
+    h+='<label>Linked transactions (same property)</label>'+lk.map(x=>'<div class="deal-row" onclick="openDeal(\''+x.id+'\')"><div class="a">'+esc(PIPES[x.pipe].name)+'<small>'+PIPES[x.pipe].stages[x.stage]+(hideMoney()||isCost(x.pipe)?'':' · '+money(x.revenue))+'</small></div></div>').join('');
   }
   if(edit){
     h+='<div style="display:flex;gap:10px;margin-top:20px"><button class="btn" onclick="saveDeal(\''+d.id+'\')">Save changes</button><button class="btn danger" onclick="rmDeal(\''+d.id+'\')">Delete deal</button></div>';
@@ -4215,10 +4219,10 @@ function mdPipeChange(){
 function saveNewDeal(){
   const g=x=>document.getElementById(x).value;
   const pipe=g('md-pipe');
-  const _pbAfter=(d)=>{if(['h2m_ws','h2m_acq'].includes(pipe))firePlaybook('prop',d.clientId?C(d.clientId):null,d.agentId,d.propInterest||(d.propertyId&&P(d.propertyId)?P(d.propertyId).address:null));};
+  const _pbAfter=(d)=>{if(pipe==='h2m_acq')firePlaybook('prop',d.clientId?C(d.clientId):null,d.agentId,d.propInterest||(d.propertyId&&P(d.propertyId)?P(d.propertyId).address:null));};
   const d={id:uid('d'),clientId:g('md-client')||null,pipe,type:g('md-type'),stage:0,agentId:g('md-agent'),propertyId:g('md-prop')||null,hist:[{s:0,at:new Date().toISOString()}],
     propInterest:g('md-pi')||(g('md-prop')?P(g('md-prop')).address:''),budget:0,down:0,closeDate:'',titleOffice:'',revenue:parseFloat(g('md-rev'))||0,createdAt:new Date().toISOString()};
-  if(!d.clientId&&pipe!=='h2m_acq'){toast('Pick a client for this pipeline');return}
+  if(!d.clientId&&!isCost(pipe)){toast('Pick a client for this pipeline');return}
   S.deals.push(d);_pbAfter(d);logAct(d.id,d.clientId,'Deal opened in '+PIPES[pipe].name+' — '+d.type+'.');
   /* a new deal on a parked or past client puts them back in play automatically */
   if(d.clientId){const cc=C(d.clientId);
