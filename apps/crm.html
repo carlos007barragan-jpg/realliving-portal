@@ -1119,12 +1119,35 @@ function doLogin(){
   sessionStorage.setItem('rl_adm','1');sessionStorage.removeItem('rl_view');
   DEV=true;me=ADMIN;enter();
 }
+/* True for the "your token is expired / invalid" family of failures. The iframe's Supabase
+   client runs with autoRefreshToken:false (only the top-level hub refreshes), so after a long
+   gap — e.g. finishing training on an iPad — the stored session is present but expired, and the
+   first authenticated call comes back 401. We detect that and recover by pulling a fresh session
+   from the hub, instead of mislabelling it "no seat" or silently dropping to a second login. */
+function isAuthErr(e){
+  if(!e)return false;
+  const m=String(e.message||e.error_description||e.msg||e.hint||'').toLowerCase();
+  const c=String(e.status||e.statusCode||e.code||'');
+  return c==='401'||c==='PGRST301'||/jwt|token|expired|unauthor|not authenticated|invalid.*(claim|signature|grant)|refresh/.test(m);
+}
 async function cloudEnter(userId,emailFallback){
+  try{ return await _cloudEnter(userId,emailFallback); }
+  catch(e){
+    if(!isAuthErr(e))throw e;
+    /* Expired/stale session inside the iframe. Ask the hub (top-level, auto-refreshing) for a
+       live session and retry once before surfacing a login. */
+    let s=null; try{ s=await requestParentSession(); }catch(_e){}
+    if(!s)throw new Error('Your session expired — please sign in again.');
+    return await _cloudEnter(s.user.id, s.user.email||emailFallback);
+  }
+}
+async function _cloudEnter(userId,emailFallback){
   try{
     const {data:{user}}=await sb.auth.getUser();
     if(user&&user.user_metadata&&user.user_metadata.must_set_password){mFirstPassword();return}
-  }catch(e){}
+  }catch(e){ if(isAuthErr(e))throw e; }
   const {data:prof,error:pe}=await sb.from('profiles').select('*').eq('id',userId).single();
+  if(pe&&isAuthErr(pe))throw pe;
   if(pe||!prof)throw new Error('Signed in, but no CRM seat is mapped to this account yet.');
   SEAT_ID=prof.seat_id;DEV=false;
   await pullAll(true);
@@ -1159,7 +1182,7 @@ async function cloudResume(){
     if(!session) session=await requestParentSession();  // Safari-safe SSO: ask the hub directly
     if(!session){revealLogin();return;}
     await cloudEnter(session.user.id,session.user.email);
-  }catch(e){console.error('[sso resume]',e);revealLogin();}
+  }catch(e){console.error('[sso resume]',e);revealLogin(String(e&&e.message||e||''));}
 }
 /* When embedded in the Business Suite with no local session — which Safari/iOS can cause by
    withholding the hub's stored session from this iframe — ask the hub to hand the session over
@@ -1185,7 +1208,7 @@ async function requestParentSession(){
    and Supabase project. So we don't show a login form up front — we show a quiet loader,
    resume that session, and walk straight in. The form is only revealed if there is genuinely
    no session (someone opened the CRM directly, outside the hub). */
-function revealLogin(){try{const sp=document.getElementById('li-spin');if(sp)sp.style.display='none';const card=document.querySelector('#login .login-card');if(card)card.style.display='';const f=document.getElementById('li-form'),b=document.getElementById('li-boot');if(b)b.style.display='none';if(f)f.style.display='';}catch(_e){}}
+function revealLogin(reason){try{const sp=document.getElementById('li-spin');if(sp)sp.style.display='none';const card=document.querySelector('#login .login-card');if(card)card.style.display='';const f=document.getElementById('li-form'),b=document.getElementById('li-boot');if(b)b.style.display='none';if(f)f.style.display='';const er=document.getElementById('li-err');if(er&&reason)er.textContent=reason;}catch(_e){}}
 if(typeof window!=='undefined')setTimeout(()=>{cloudResume()},0);
 /* ===== Auto-update ==========================================================
    Service worker is network-first, so a fresh load always gets newest code. The
