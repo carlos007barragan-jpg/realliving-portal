@@ -852,6 +852,19 @@ function renderDashboard(){
       try{ if(e.source && e.source!==$("appFrame").contentWindow) return; }catch(_e){}
       if(currentApp) setAppHash(currentApp, e.data.sub||''); return;
     }
+    /* Single sign-on hand-off: an embedded app (e.g. the CRM) asks the hub for the live
+       session instead of relying on shared storage, which Safari/iOS can withhold from an
+       iframe. We only ever reply to a same-origin requester, with the tokens scoped to that
+       origin, so the session never leaves this site. */
+    if(e.data && e.data.type==='rl-need-session'){
+      if(e.origin!==location.origin || !e.source) return;
+      (async()=>{ try{
+        const {data:{session}}=await sb.auth.getSession();
+        if(session) e.source.postMessage({type:'rl-session',access_token:session.access_token,refresh_token:session.refresh_token}, e.origin);
+        else e.source.postMessage({type:'rl-session',access_token:null}, e.origin);
+      }catch(_e){} })();
+      return;
+    }
   });
 
   $("cardGrid").addEventListener("click", e => {

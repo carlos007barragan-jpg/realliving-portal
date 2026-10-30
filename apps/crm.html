@@ -1155,10 +1155,31 @@ async function cloudLogin(email,pw){
 async function cloudResume(){
   try{
     if(!sb||DEV||SEAT_ID)return;
-    const {data:{session}}=await sb.auth.getSession();
+    let {data:{session}}=await sb.auth.getSession();
+    if(!session) session=await requestParentSession();  // Safari-safe SSO: ask the hub directly
     if(!session){revealLogin();return;}
     await cloudEnter(session.user.id,session.user.email);
   }catch(e){console.error('[sso resume]',e);revealLogin();}
+}
+/* When embedded in the Business Suite with no local session — which Safari/iOS can cause by
+   withholding the hub's stored session from this iframe — ask the hub to hand the session over
+   via postMessage and adopt it with setSession, so we walk straight in instead of showing a
+   second login. Same-origin only; no-op when opened standalone. */
+async function requestParentSession(){
+  try{ if(window.self===window.top) return null; }catch(e){ return null; }
+  return await new Promise(resolve=>{
+    let done=false;
+    function onMsg(ev){
+      if(ev.origin!==location.origin || !(ev.data&&ev.data.type==='rl-session')) return;
+      done=true; window.removeEventListener('message',onMsg);
+      if(!ev.data.access_token){ resolve(null); return; }
+      sb.auth.setSession({access_token:ev.data.access_token,refresh_token:ev.data.refresh_token})
+        .then(r=>resolve((r&&r.data&&r.data.session)||null),()=>resolve(null));
+    }
+    window.addEventListener('message',onMsg);
+    try{ window.parent.postMessage({type:'rl-need-session'}, location.origin); }catch(e){}
+    setTimeout(()=>{ if(!done){ window.removeEventListener('message',onMsg); resolve(null); } }, 3000);
+  });
 }
 /* The CRM is opened from the hub, which already signed the person in on the same domain
    and Supabase project. So we don't show a login form up front — we show a quiet loader,
