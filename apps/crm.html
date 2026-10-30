@@ -792,8 +792,22 @@ function normalize(){
   save();
 }
 const isFinalRaw=d=>d.stage>=PIPES[d.pipe].stages.length-1;
+/* Safari/iOS gives this embedded CRM only ~5MB of localStorage, and the full team dataset no
+   longer fits — setItem then throws QuotaExceededError ("the quota has been exceeded"), which
+   used to crash the load and bounce the person to a dead login. The local copy is only an
+   offline / faster-next-load convenience: the cloud is the source of truth and every load
+   re-pulls it. So a failed cache write must never break the app — drop the stale copy and run
+   from memory for the session. Returns true if it persisted, false if it fell back to memory. */
+function persistLocal(){
+  try{ localStorage.setItem(LS,JSON.stringify(S)); return true; }
+  catch(e){
+    try{ localStorage.removeItem(LS); }catch(_e){}
+    if(!persistLocal._warned){ persistLocal._warned=true; console.warn('[cache] localStorage full on this device — running live from the cloud:',String(e&&e.message||e)); }
+    return false;
+  }
+}
 function save(){
-  localStorage.setItem(LS,JSON.stringify(S));
+  persistLocal();
   if(sb&&SEAT_ID){stampChanges();clearTimeout(save._t);save._t=setTimeout(pushChanges,400);}
 }
 /* Is there anything saved here that has not reached the cloud yet? */
@@ -4671,7 +4685,7 @@ async function twilioAction(body){
   const now=new Date().toISOString();
   const rows=[{collection:'touches',id:out.touch.id,data:out.touch,updated_at:now,deleted:false}];
   if(out.act)rows.push({collection:'acts',id:out.act.id,data:out.act,updated_at:now,deleted:false});
-  applyRemote(rows);localStorage.setItem(LS,JSON.stringify(S));
+  applyRemote(rows);persistLocal();
   return out;
 }
 function mSendText(cid){
@@ -4776,7 +4790,7 @@ async function doSendEmail(cid){
     const now=new Date().toISOString();
     const rows=[{collection:'touches',id:out.touch.id,data:out.touch,updated_at:now,deleted:false}];
     if(out.act)rows.push({collection:'acts',id:out.act.id,data:out.act,updated_at:now,deleted:false});
-    applyRemote(rows);localStorage.setItem(LS,JSON.stringify(S));
+    applyRemote(rows);persistLocal();
     closeAll();refresh();toast('Email sent to '+c.name);
   }catch(e){document.getElementById('em-err').textContent=String(e.message||e);btn.disabled=false;btn.textContent='Send email';}
 }
@@ -5060,7 +5074,7 @@ async function pullAll(first){
     }
     const changed=applyRemote(data||[]);
     if(changed){
-      localStorage.setItem(LS,JSON.stringify(S));
+      persistLocal();
       /* refresh() re-renders the page, and rendering closes any open editor — so a
          teammate's change syncing while someone is halfway through a property would wipe
          the form and everything typed into it. It reads as the box timing out and closing.
