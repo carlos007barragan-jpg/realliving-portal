@@ -4313,7 +4313,8 @@ function mAddClient(edit){
   const curAssigned=edit?((c.assignedTo)||((S.deals.find(d=>d.clientId===edit&&d.agentId&&!isFinal(d))||{}).agentId)||c.genBy):null;
   modal('<h2>'+(edit?'Edit client':'New client')+'</h2>'+
   '<label>Full name</label><input id="mc-name" value="'+esc(c.name)+'">'+
-  '<div class="frow"><div><label>Phone</label><input id="mc-phone" value="'+esc(c.phone)+'"></div><div><label>Email</label><input id="mc-email" value="'+esc(c.email)+'"></div></div>'+
+  '<div class="frow"><div><label>Phone</label><input id="mc-phone"'+(edit?'':' oninput="mcDupeCheck()"')+' value="'+esc(c.phone)+'"></div><div><label>Email</label><input id="mc-email" value="'+esc(c.email)+'"></div></div>'+
+  (edit?'':'<div id="mc-dupe"></div>')+
   '<label>Address / area</label><input id="mc-addr" value="'+esc(c.address)+'">'+
   '<div class="frow"><div><label>Spouse name</label><input id="mc-sname" value="'+esc(c.spouseName)+'"></div><div><label>Spouse phone</label><input id="mc-sphone" value="'+esc(c.spousePhone)+'"></div></div>'+
   '<label>Spouse email</label><input id="mc-semail" value="'+esc(c.spouseEmail)+'">'+
@@ -4326,9 +4327,28 @@ function mAddClient(edit){
   '<button class="btn" style="margin-top:18px" onclick="saveClient(\''+(edit||'')+'\')">'+(edit?'Save changes':'Add client')+'</button>');
 }
 function mEditClient(id){mAddClient(id)}
+/* Duplicate guard for Quick-add: a contact already holding this number (their own or a
+   spouse line) is surfaced so a second record isn't created by accident. */
+function findByPhone(pd){ if(!pd||pd.length<10)return null; return S.clients.find(c=>digits10(c.phone)===pd||digits10(c.spousePhone)===pd)||null; }
+function dupeCardHTML(dupe,withAddAnyway){
+  return '<div class="card" style="border-color:var(--red);padding:10px 14px;margin-top:8px">'+
+    '<b style="color:var(--red)">Possible duplicate</b> — this number already belongs to <b>'+esc(dupe.name)+'</b>.'+
+    '<div style="margin-top:8px"><button class="btn small" onclick="closeAll();go(\'client\',\''+dupe.id+'\')">Open '+esc((dupe.name||'').split(' ')[0]||'contact')+'</button>'+
+    (withAddAnyway?' <button class="btn ghost small" onclick="saveClient._force=true;saveClient(\'\')">Add anyway</button>':'')+'</div></div>';
+}
+function mcDupeCheck(){
+  const el=document.getElementById('mc-phone'),box=document.getElementById('mc-dupe'); if(!el||!box)return;
+  const dupe=findByPhone(digits10(el.value));
+  box.innerHTML=dupe?dupeCardHTML(dupe,false):'';
+}
 function saveClient(edit){
   const g=x=>document.getElementById(x).value.trim();
   if(!g('mc-name')){toast('Name is required');return}
+  if(!edit&&!saveClient._force){
+    const dupe=findByPhone(digits10((document.getElementById('mc-phone')||{}).value||''));
+    if(dupe){ const box=document.getElementById('mc-dupe'); if(box)box.innerHTML=dupeCardHTML(dupe,true); toast('Possible duplicate — '+dupe.name); return; }
+  }
+  saveClient._force=false;
   if(edit){const c=C(edit);Object.assign(c,{name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail')});const _ag=document.getElementById('mc-agent');if(_ag&&_ag.value){if(_ag.value!==c.assignedTo)c.assignedAt=new Date().toISOString();c.assignedTo=_ag.value;}c.coAssignees=[].slice.call(document.querySelectorAll('input[name=mc-co]:checked')).map(x=>x.value).filter(x=>x&&x!==c.assignedTo);c.ctypes=ctSel();delete c.ctype;
     save();closeAll();go('client',edit);toast('Client updated');return}
   const c={id:uid('c'),name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail'),source:g('mc-src'),ctypes:ctSel(),genBy:me.id,createdAt:new Date().toISOString(),docs:[],interests:[]};
