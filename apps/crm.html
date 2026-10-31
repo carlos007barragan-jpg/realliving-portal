@@ -2422,7 +2422,7 @@ function reviewAsk(d){
   logAct(d.id,c.id,'Review request queued'+(link?'':' — add your Google review link in Settings → Company to arm the auto-text')+'.');
 }
 /* ================= CLIENTS ================= */
-let clientQ='';let ctypeFilter='';
+let clientQ='';let ctypeFilter='';let pipeFilter='';let stageFilter='';
 let payAgent=null;
 function vClients(){
   const activeL=S.smartlists.find(x=>x.id===slSel);
@@ -2433,9 +2433,12 @@ function vClients(){
   list=list.filter(c=>!clientQ||c.name.toLowerCase().includes(clientQ)||c.phone.includes(clientQ)||(c.email||'').toLowerCase().includes(clientQ))
     .sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   if(ctypeFilter)list=list.filter(c=>getCtypes(c).indexOf(ctypeFilter)>-1);
+  list=list.filter(matchPipeStage);
   let h='<div class="sect-head"><h2>Contacts</h2><span class="cnt">'+list.length+(dormView==='past'?' past clients — they have bought from us before':(dormView?' dormant — parked until someone reheats them':(activeL?' in "'+esc(activeL.name)+'"':' being worked')))+'</span><span class="spacer"></span>'+
     '<input style="width:220px" placeholder="Filter by name / phone / email" value="'+esc(clientQ)+'" oninput="clientQ=this.value.toLowerCase();go(\'clients\')">'+
     '<select class="tfilter" style="margin-left:8px" onchange="filterType(this.value)"><option value="">All types</option>'+CTYPES.map(t=>'<option'+(t===ctypeFilter?' selected':'')+'>'+t+'</option>').join('')+'</select>'+
+    '<select class="tfilter" style="margin-left:8px" title="Filter by pipeline" onchange="setPipeFilter(this.value)"><option value="">All pipelines</option>'+myPipes().map(p=>'<option value="'+p+'"'+(p===pipeFilter?' selected':'')+'>'+esc(PIPELABEL[p]||PIPES[p].name)+'</option>').join('')+'</select>'+
+    (pipeFilter&&PIPES[pipeFilter]?'<select class="tfilter" style="margin-left:8px" title="Filter by stage" onchange="stageFilter=this.value;go(\'clients\')"><option value="">All stages</option>'+PIPES[pipeFilter].stages.map((st,i)=>'<option value="'+i+'"'+(String(i)===String(stageFilter)?' selected':'')+'>'+esc(st)+'</option>').join('')+'</select>':'')+
     '<button class="btn ghost small" style="margin-left:10px" onclick="mAddClient()">Quick add</button>'+
     '<button class="btn small" style="margin-left:8px" onclick="mIntake()">+ New intake</button></div>';
   h+='<div class="ttabs" style="margin:2px 0 10px">'+
@@ -2470,6 +2473,21 @@ function ctypeBadges(c){return getCtypes(c).map(function(t){var col=ctypeColor(t
 function ctToggle(el){el.classList.toggle('on');}
 function ctSel(){return [].slice.call(document.querySelectorAll('#mc-ctypes .ctchip.on')).map(function(x){return x.getAttribute('data-val');});}
 function filterType(v){ctypeFilter=v;go('clients');}
+function setPipeFilter(v){pipeFilter=v;stageFilter='';go('clients');}
+/* A contact matches the pipeline/stage filter when they have a live deal in that pipeline
+   (and, if a stage is chosen, at that stage). Agents only match on deals they're on, so a
+   filtered list — and the auto-dial built from it — is their own leads. */
+function matchPipeStage(c){
+  if(!pipeFilter)return true;
+  const ds=S.deals.filter(d=>d.clientId===c.id&&d.pipe===pipeFilter&&!isLost(d)&&!isArchived(d)&&(stageFilter===''||d.stage===+stageFilter));
+  if(!ds.length)return false;
+  if(me.role==='agent')return ds.some(d=>onDeal(d,me.id));
+  return true;
+}
+function pipeStageLabel(){
+  if(!pipeFilter||!PIPES[pipeFilter])return '';
+  return (PIPELABEL[pipeFilter]||PIPES[pipeFilter].name)+(stageFilter!==''&&PIPES[pipeFilter].stages[+stageFilter]?' · '+PIPES[pipeFilter].stages[+stageFilter]:'');
+}
 function kv(k,v){return '<div><small>'+esc(k)+'</small>'+(v?esc(v):'—')+'</div>'}
 const SCRIPTS={
 h2m_of:{name:"Owner Finance",q:["Timeline - buying in 30, 90 days, or just looking?","What areas are you open to?","Comfortable monthly payment (not the max)?","Down payment set aside now? Most fall $5k-$20k.","Looked at bank financing, or is owner finance what you want?"],g:"$5k+ down now or within 30 days, wants in 90 days, monthly fits inventory",y:"Down payment 60-90 days out, or monthly is tight for their area - flag timeline",r:"No down payment and no plan, or 6+ months out - Nurture (these convert later)",next:"Book a showing on 1-2 matching homes, not a list of 10. Confirm the down payment on site and ask for the application or deposit if they love it."},
@@ -3204,8 +3222,7 @@ function rmList(id){S.smartlists=S.smartlists.filter(l=>l.id!==id);markDel('smar
 /* ---------- call session (power dialer over any smart list) ---------- */
 let csQ=[],csI=0;
 function startSession(){
-  const l=S.smartlists.find(x=>x.id===slSel);
-  csQ=(l?listMembers(l.q):S.clients.slice()).filter(c=>c.phone);csI=0;
+  csQ=adBaseList().list.filter(c=>c.phone);csI=0;
   if(!csQ.length){toast('Nobody with a phone number in this list');return}
   vSession();
 }
@@ -3245,7 +3262,9 @@ function adBaseList(){
   let list=l?listMembers(l.q):S.clients.slice();
   list=list.filter(c=>(dormView==='past'?c.pastClient:(dormView?isDormant(c)&&!c.pastClient:!isDormant(c))));
   if(ctypeFilter)list=list.filter(c=>getCtypes(c).indexOf(ctypeFilter)>-1);
-  return {list:list,name:l?l.name:'All shown'};
+  list=list.filter(matchPipeStage);
+  const nm=pipeFilter?pipeStageLabel()+(l?' · '+l.name:''):(l?l.name:'All shown');
+  return {list:list,name:nm};
 }
 function startAutoDial(){
   if(!CLOUD||!sb||!SEAT_ID){toast('Open the CRM from the Business Suite to use the dialer');return;}
