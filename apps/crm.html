@@ -799,10 +799,11 @@ const isFinalRaw=d=>d.stage>=PIPES[d.pipe].stages.length-1;
    re-pulls it. So a failed cache write must never break the app — drop the stale copy and run
    from memory for the session. Returns true if it persisted, false if it fell back to memory. */
 function persistLocal(){
+  persistDurable();
   try{ localStorage.setItem(LS,JSON.stringify(S)); return true; }
   catch(e){
     try{ localStorage.removeItem(LS); }catch(_e){}
-    if(!persistLocal._warned){ persistLocal._warned=true; console.warn('[cache] localStorage full on this device — running live from the cloud:',String(e&&e.message||e)); }
+    if(!persistLocal._warned){ persistLocal._warned=true; console.warn('[cache] localStorage full on this device — using IndexedDB cache:',String(e&&e.message||e)); }
     return false;
   }
 }
@@ -1164,7 +1165,7 @@ async function _cloudEnter(userId,emailFallback){
   if(pe&&isAuthErr(pe))throw pe;
   if(pe||!prof)throw new Error('Signed in, but no CRM seat is mapped to this account yet.');
   SEAT_ID=prof.seat_id;DEV=false;
-  await pullAll(true);
+  await resumeFromCacheOrFull();
   const seat=S.users.find(u=>u.id===SEAT_ID);
   me=(prof.role==='owner')?ADMIN:(seat||{id:SEAT_ID,name:prof.full_name||emailFallback,role:prof.role,business:prof.business});
   REAL_OWNER=(prof.role==='owner');REAL_NAME=prof.full_name||emailFallback||'';
@@ -4993,6 +4994,17 @@ function snapKey(o){return JSON.stringify(o)}
    from an id missing in memory — a stale or partial local copy must never be able
    to wipe a record for the whole team. */
 function markDel(col,id){(_del[col]=_del[col]||{})[id]=new Date().toISOString();if(_snap[col])delete _snap[col][id];}
+/* Durable cache in IndexedDB. localStorage is ~5MB on Safari/iOS and the dataset no longer
+   fits, so on iPads the cache lived nowhere and every load re-pulled all ~14k rows (the
+   "takes a minute" lag). IndexedDB holds hundreds of MB, so we keep the dataset there and on
+   the next load sync only the delta. Best-effort: any failure falls back to today's full pull. */
+const IDB_NAME='rl_crm_cache',IDB_STORE='kv',IDB_KEY='snapshot';
+function idbOpen(){return new Promise((res,rej)=>{try{const rq=indexedDB.open(IDB_NAME,1);rq.onupgradeneeded=()=>{try{rq.result.createObjectStore(IDB_STORE)}catch(_e){}};rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);}catch(e){rej(e)}});}
+function idbPutCache(val){return idbOpen().then(db=>new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(val,IDB_KEY);tx.oncomplete=()=>{db.close();res(true)};tx.onerror=()=>{db.close();rej(tx.error)};}));}
+function idbGetCache(){return idbOpen().then(db=>new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readonly');const rq=tx.objectStore(IDB_STORE).get(IDB_KEY);rq.onsuccess=()=>{db.close();res(rq.result)};rq.onerror=()=>{db.close();rej(rq.error)};}));}
+let _durableT=null;
+function persistDurable(){ if(typeof indexedDB==='undefined')return; clearTimeout(_durableT); _durableT=setTimeout(persistDurableNow,1500); }
+function persistDurableNow(){ if(typeof indexedDB==='undefined')return; clearTimeout(_durableT); try{ if(sb&&SEAT_ID&&S&&S.users) idbPutCache({S:S,lastPull:_lastPull,ver:1}).catch(()=>{}); }catch(_e){} }
 function stampChanges(){
   const now=new Date().toISOString();
   SYNC_COLS.forEach(col=>{
@@ -5076,6 +5088,33 @@ function applyRemote(rows){
   });
   return changed;
 }
+/* On load, adopt the device's durable cache (if any) and sync only the delta — near-instant.
+   With no usable cache (first-ever load on this device, or the cache failed to read), fall back
+   to a full pull. Deletes are soft (a deleted:true row with a fresh updated_at), so the delta
+   pull removes them just as the live sync does. */
+async function resumeFromCacheOrFull(){
+  let cached=null;
+  try{ if(typeof indexedDB!=='undefined') cached=await idbGetCache(); }catch(_e){}
+  if(cached&&cached.S&&cached.S.users&&cached.S.users.length&&cached.lastPull){
+    try{
+      S=cached.S;
+      if(!S.presence)S.presence={}; if(!S.sessions)S.sessions={};
+      SYNC_COLS.forEach(c=>{if(!Array.isArray(S[c]))S[c]=[]});
+      const fresh=seed();
+      if(S.targets==null)S.targets=fresh.targets;
+      if(S.dismissed==null)S.dismissed=fresh.dismissed;
+      if(S.splits==null)S.splits=fresh.splits;
+      if(S.playbooks==null)S.playbooks=JSON.parse(JSON.stringify(PLAYBOOKS));
+      _lastPull=cached.lastPull;
+      stampChanges();      /* seed the push baseline (_snap) from the cached state */
+      _pushQ={}; _del={};   /* the cache already matched the cloud as of lastPull — nothing to push */
+      await pullAll(false); /* bring in only what changed since */
+      return true;
+    }catch(e){ console.warn('[cache resume] falling back to full pull',e); }
+  }
+  await pullAll(true);
+  return false;
+}
 async function pullAll(first){
   if(!sb||!SEAT_ID)return;
   try{
@@ -5092,15 +5131,17 @@ async function pullAll(first){
        saw them. Page through every row, ordered by the primary key (collection,id) so pages
        can never skip or repeat a row. */
     let data=[];
-    { const PAGE=1000; let _from=0;
-      for(;;){
-        let pq=sb.from('records').select('*').order('collection',{ascending:true}).order('id',{ascending:true}).range(_from,_from+PAGE-1);
-        if(!first)pq=pq.gt('updated_at',_lastPull);
-        const {data:_page,error}=await pq;
-        if(error)throw error;
-        data=data.concat(_page||[]);
-        if(!_page||_page.length<PAGE)break;
-        _from+=PAGE;
+    /* Fetch pages CONCURRENTLY rather than one-after-another. A full pull of ~14k rows was
+       ~14 sequential round-trips (the slow first load); firing a wave at once collapses that.
+       Ranges are disjoint and ordered, so order of arrival doesn't matter and nothing repeats;
+       a short page means the end, so we stop. */
+    { const PAGE=1000, CONC=first?6:2; let waveBase=0, done=false;
+      const mk=(from)=>{ let pq=sb.from('records').select('*').order('collection',{ascending:true}).order('id',{ascending:true}).range(from,from+PAGE-1); if(!first)pq=pq.gt('updated_at',_lastPull); return pq; };
+      while(!done){
+        const reqs=[]; for(let k=0;k<CONC;k++)reqs.push(mk((waveBase+k)*PAGE));
+        const pages=await Promise.all(reqs);
+        for(const {data:_page,error} of pages){ if(error)throw error; if(_page&&_page.length)data=data.concat(_page); if(!_page||_page.length<PAGE)done=true; }
+        waveBase+=CONC;
       }
     }
     if(first){
@@ -5126,7 +5167,7 @@ function startSync(){
   /* Leaving the page inside the debounce window used to strand the last save on this
      device only. Flush on the way out — hiding the tab counts, since phones background a
      page without ever firing an unload. */
-  const flush=()=>{try{if(hasQueued())pushChanges()}catch(e){}};
+  const flush=()=>{try{if(hasQueued())pushChanges()}catch(e){}try{persistDurableNow()}catch(e){}};
   window.addEventListener('pagehide',flush);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});
   _syncTimer=setInterval(async()=>{
