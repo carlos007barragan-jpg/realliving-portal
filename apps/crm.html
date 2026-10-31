@@ -1686,8 +1686,10 @@ function vDash(){
     pipes.forEach(p=>S.deals.filter(d=>d.pipe===p).forEach(d=>{if(isCost(d.pipe)||isLost(d)||isArchived(d))return;if(isWon(d)){closed+=d.revenue||0;closedN++}else{open+=d.revenue||0;openN++}}));
     h+='<div class="grid cards4"><div class="card"><div class="eyebrow">Open pipeline · '+BIZ[me.business]+'</div><div class="big">'+money(open)+'</div><div class="sub"><b>'+openN+'</b> active deals</div></div>'+
        '<div class="card"><div class="eyebrow">Closed</div><div class="big">'+money(closed)+'</div><div class="sub"><b>'+closedN+'</b> deals closed</div></div>'+
-       '<div class="card"><div class="eyebrow">Team</div><div class="big">'+S.users.filter(u=>u.business===me.business).length+'</div><div class="sub">people in '+BIZ[me.business]+'</div></div></div>';
-    const crew=S.users.filter(u=>u.business===me.business&&u.role!=='marketing');
+       '<div class="card"><div class="eyebrow">Team</div><div class="big">'+S.users.filter(u=>u.role!=='marketing').length+'</div><div class="sub">people on the team</div></div></div>';
+    /* Managers see the whole team's KPIs, not just their own business — a manager roster that
+       filtered on business hid everyone tagged differently (Andrés, Óskar, Trinity, Mya). */
+    const crew=S.users.filter(u=>u.role!=='marketing');
     h+='<div class="sect">'+vRadar(4)+'</div>';
     h+=vAgentBoard(crew);
     {const today=NOW().toISOString().slice(0,10);
@@ -1744,8 +1746,7 @@ function vDash(){
        '<div class="kpirow"><span class="lab">Leads moved to Qualified / Not-a-Fit<small>today</small></span>'+dotStrip(advanced,qT)+'<span class="val">'+advanced+' / '+qT+'</span></div></div></div>';
   }
   /* team pulse for leadership, recent activity for individual contributors */
-  if(me.role==='owner')h+=vPulse(S.users);
-  else if(me.role==='manager')h+=vPulse(S.users.filter(u=>u.business===me.business));
+  if(me.role==='owner'||me.role==='manager')h+=vPulse(S.users);
   else{
     const acts=S.acts.slice().sort((a,b)=>b.ts.localeCompare(a.ts)).filter(a=>{
       if(me.role==='marketing')return true;
@@ -3131,7 +3132,7 @@ function repTeam(){
   ];
   let h='<div class="sect-head" style="margin-top:4px"><h2>Company scoreboard</h2><span class="cnt">dots fill as you hit targets</span><span class="spacer"></span>'+(me.role==='owner'?'<button class="btn ghost small" onclick="mTargets()">Edit targets</button>':'')+'</div><div class="card" style="padding:6px 20px">'+
     rows.map(x=>'<div class="kpirow"><span class="lab">'+x[0]+'<small>'+x[1]+'</small></span>'+x[4]+'<span class="val">'+(x[0]==='Open pipeline'?money(x[2]):x[2]+' / '+x[3])+'</span></div>').join('')+'</div>';
-  const people=S.users.filter(u=>u.role!=='marketing').filter(u=>me.role==='owner'||u.business===me.business);
+  const people=S.users.filter(u=>u.role!=='marketing').filter(u=>me.role==='owner'||me.role==='manager'||u.business===me.business);
   h+=vAgentBoard(people);
   h+=vScorecard();
   return h;
