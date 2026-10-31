@@ -1173,6 +1173,7 @@ async function _cloudEnter(userId,emailFallback){
   /* a real sign-in always lands on your true identity — drop any stale View-As preview
      so a refresh never resurrects it (this was the "shows Karely, then admin" flash) */
   sessionStorage.removeItem('rl_view');
+  try{expireStaleTasks();}catch(e){}
   enter();startSync();
 }
 async function cloudLogin(email,pw){
@@ -1887,6 +1888,14 @@ function toggleTask(id){
   const t=S.tasks.find(x=>x.id===id);if(!t)return;
   t.done=!t.done;t.doneAt=t.done?new Date().toISOString():null;
   if(t.done&&t.clientId)logAct(null,t.clientId,'Task completed — '+t.title+'.');
+  /* Completing a cadence step reveals the next one — one action at a time, due relative to now. */
+  if(t.done&&t.pbKey!=null&&typeof t.pbIdx==='number'){
+    const steps=PB(t.pbKey);
+    if(steps&&t.pbIdx+1<steps.length){
+      const laterOpen=S.tasks.some(x=>x.clientId===t.clientId&&x.pbKey===t.pbKey&&typeof x.pbIdx==='number'&&x.pbIdx>t.pbIdx&&!x.done);
+      if(!laterOpen)spawnPbStep(t.pbKey,t.pbIdx+1,t.clientId,t.agentId,t.pbProp,Date.now());
+    }
+  }
   save();refresh();
 }
 function mAddTask(clientId){
@@ -2089,18 +2098,51 @@ function pbKey(pipe){
   if(pipe==='rl_buy'||pipe==='rl_list')return 'rl';
   return null;
 }
+/* Create ONE step of a playbook cadence. Steps unfold one at a time — the next is created only
+   when the current is completed (see toggleTask) — so a lead shows a single next action instead
+   of dumping all 7 at once. Due is relative to when the step is spawned, using the gap between
+   this step's offset and the previous one's. */
+function spawnPbStep(key,idx,clientId,who,propLabel,baseTs){
+  const steps=PB(key); if(!steps||idx<0||idx>=steps.length||!who)return null;
+  const p=steps[idx];
+  const prevOff=idx>0?(steps[idx-1].off||0):0;
+  const gap=Math.max(0,(p.off||0)-prevOff);
+  const cc=clientId?C(clientId):null;
+  const fn=cc?((cc.name||'').split(' ')[0]||'the client'):'the seller';
+  const t={id:uid('t'),
+    title:p.t.replace(/\{first\}/g,fn).replace(/\{prop\}/g,propLabel||'the property'),
+    clientId:clientId||null,agentId:who,
+    due:new Date((baseTs||Date.now())+gap*864e5).toISOString().slice(0,10),
+    done:false,createdAt:new Date().toISOString(),by:(me&&me.id==='admin'?realUid():(me?me.id:who)),
+    plan:'pb-'+key,pbKey:key,pbIdx:idx,pbProp:propLabel||''};
+  if(p.auto&&S.targets.autoText===true){t.auto=p.auto;t.tpl=p.tpl;}
+  S.tasks.push(t);
+  return t;
+}
 function firePlaybook(key,c,who,propLabel){
   if(S.targets.autoPlan===false)return;
   if(!PB(key)||!who)return;
-  if(c&&S.tasks.some(t=>t.clientId===c.id&&t.plan==='pb-'+key&&!t.done))return; /* no doubles */
-  const fn=c?(c.name||'').split(' ')[0]:'the seller';
-  PB(key).forEach(p=>{const t={id:uid('t'),
-    title:p.t.replace(/\{first\}/g,fn).replace(/\{prop\}/g,propLabel||'the property'),
-    clientId:c?c.id:null,agentId:who,
-    due:new Date(Date.now()+p.off*864e5).toISOString().slice(0,10),done:false,createdAt:new Date().toISOString(),by:me.id==='admin'?realUid():me.id,plan:'pb-'+key};
-    if(p.auto&&S.targets.autoText===true){t.auto=p.auto;t.tpl=p.tpl;}
-    S.tasks.push(t);});
-  if(c)logAct(null,c.id,'Workflow started — '+PB(key).length+' steps ('+({mkt:'marketing pre-appointment',rl:'RL licensed',asap:'ASAP lending',h2m_of:'owner finance',prop:'property / wholesale',dispo:'investor'}[key])+') with '+U(who).name+'.');
+  if(c&&S.tasks.some(t=>t.clientId===c.id&&t.plan==='pb-'+key&&!t.done))return; /* a step is already live */
+  spawnPbStep(key,0,c?c.id:null,who,propLabel,Date.now());
+  if(c)logAct(null,c.id,'Workflow started — '+({mkt:'marketing pre-appointment',rl:'RL licensed',asap:'ASAP lending',h2m_of:'owner finance',prop:'property / wholesale',dispo:'investor'}[key]||key)+' cadence (one step at a time) with '+U(who).name+'.');
+}
+/* Auto-expire abandoned cadence tasks. A playbook/stage follow-up that's been overdue for
+   more than this long is dead weight — it buries the real next actions and makes "overdue"
+   meaningless. Close it quietly (marked expired, not deleted) so the list stays honest. Runs
+   once per session; idempotent. Manual tasks and appointment-driven tasks are never touched. */
+const TASK_EXPIRE_DAYS=21;
+function expireStaleTasks(){
+  if(!S||!S.tasks)return;
+  const cutoff=new Date(NOW().getTime()-TASK_EXPIRE_DAYS*864e5).toISOString().slice(0,10);
+  let n=0;
+  S.tasks.forEach(t=>{
+    if(t.done||!t.plan)return;
+    const pl=String(t.plan);
+    if(pl.indexOf('pb-')!==0&&pl.indexOf('pbs-')!==0)return; /* only auto cadences; leave appt-* and manual */
+    if(!t.due||t.due>=cutoff)return;
+    t.done=true;t.doneAt=new Date().toISOString();t.expired=true;n++;
+  });
+  if(n)save();
 }
 function startLeadPlan(c,forceWho,pipe){
   const creator=me.id==='admin'?realUid():me.id;
@@ -2373,6 +2415,10 @@ function saveDealNumbers(id){
   save();closeAll();refresh();toast('Recorded — '+U(d.agentId).name+' is owed '+money(pay));
 }
 function fireStagePlay(d,prevIdx,idx){
+  /* Retired: stage-move auto-tasks ran at ~11% completion and duplicated the playbook
+     follow-ups. The one-at-a-time cadence now carries follow-up; moving a deal no longer
+     spawns its own task set. */
+  return;
   if(S.targets&&S.targets.autoPlan===false)return;
   if(idx<=prevIdx)return;                 /* only when a deal moves FORWARD */
   if(idx===0||isFinal(d))return;          /* skip New and closed/final stages */
