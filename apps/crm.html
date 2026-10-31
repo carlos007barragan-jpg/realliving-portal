@@ -1300,7 +1300,7 @@ function realUid(){return SEAT_ID||(me&&me.id!=='admin'?me.id:'u1')}
    are gated separately on marketing/va, not here. */
 const hideMoney=()=>me.role==='marketing'||me.role==='va'||me.role==='agent';
 const moneyEntryHidden=()=>me.role==='marketing'||me.role==='va';
-const dealMoneyHidden=d=>hideMoney()||(me.role==='agent'&&d.agentId!==me.id);
+const dealMoneyHidden=d=>hideMoney()||(me.role==='agent'&&!onDeal(d,me.id));
 /* Only our own Twilio line truly can't be dialed (a call from it to itself loops and fails).
    Everything else — including personal cells used for test calls — is allowed. */
 const NO_DIAL=['9135132656'];
@@ -1325,16 +1325,24 @@ function allowedPipes(u){
   return [];
 }
 function myPipes(){return allowedPipes(me)}
+/* Co-assignment: a lead can be worked by more than one person. agentId / assignedTo stay the
+   PRIMARY owner (KPI credit and pay track the primary, so nothing double-counts); coAgents /
+   coAssignees hold everyone else who's also working it. The "team" is the primary plus the
+   co-assignees, and anyone on the team can see and act on the lead. */
+function dealTeam(d){ const a=[]; if(d&&d.agentId)a.push(d.agentId); if(d&&d.coAgents)d.coAgents.forEach(x=>{if(x&&a.indexOf(x)<0)a.push(x)}); return a; }
+function onDeal(d,uid){ return dealTeam(d).indexOf(uid)>-1; }
+function leadTeam(c){ const a=[]; const pri=c&&(c.assignedTo||c.genBy); if(pri)a.push(pri); if(c&&c.coAssignees)c.coAssignees.forEach(x=>{if(x&&a.indexOf(x)<0)a.push(x)}); return a; }
+function onLead(c,uid){ return leadTeam(c).indexOf(uid)>-1; }
 function canEditDeal(d){
   if(me.role==='owner')return true;
   if(me.role==='manager')return allowedPipes(me).includes(d.pipe);
-  if(me.role==='agent')return d.agentId===me.id;
+  if(me.role==='agent')return onDeal(d,me.id);
   return false;
 }
 function visibleDeals(pipe){
   /* closed-out (lost) files drop off the board — they live on the client profile instead */
   let ds=S.deals.filter(d=>d.pipe===pipe&&!isLost(d)&&!isArchived(d));
-  if(me.role==='agent')ds=ds.filter(d=>d.agentId===me.id);
+  if(me.role==='agent')ds=ds.filter(d=>onDeal(d,me.id));
   return ds;
 }
 const PIPELABEL={asap:'ASAP Pipeline',h2m_acq:'Acquisitions',h2m_dispo:'Dispositions',h2m_of:'Owner Finance — Buyers',h2m_of_sell:'Owner Finance — Sellers',rl_buy:'Buy Side',rl_list:'List Side',tc:'TC Dashboard'};
@@ -1544,7 +1552,7 @@ function vMyDay(){
 function vAgentDay(){
   const mid=me.id==='admin'?realUid():me.id;
   const today=NOW().toISOString().slice(0,10);
-  const mineLeads=S.clients.filter(c=>!c.archived&&(c.assignedTo===mid||c.genBy===mid));
+  const mineLeads=S.clients.filter(c=>!c.archived&&(onLead(c,mid)||c.genBy===mid));
   const untouched=mineLeads.filter(c=>!isDormant(c)&&!S.touches.some(t=>t.clientId===c.id))
     .sort((a,b)=>String(b.assignedAt||b.createdAt||'').localeCompare(String(a.assignedAt||a.createdAt||'')));
   let calls=[]; try{calls=callbackItems().filter(t=>!t.agentId||t.agentId===mid);}catch(_e){}
@@ -1704,7 +1712,7 @@ function vDash(){
   if(me.role==='agent'){
     const mid=me.id==='admin'?realUid():me.id;
     h+=vAgentDay();
-    const mineLeads=S.clients.filter(c=>!c.archived&&(c.assignedTo===mid||c.genBy===mid));
+    const mineLeads=S.clients.filter(c=>!c.archived&&(onLead(c,mid)||c.genBy===mid));
     const working=mineLeads.filter(c=>!isDormant(c));
     const newLeads=mineLeads.filter(c=>inThisMonth(c.createdAt)||(c.assignedAt&&inThisMonth(c.assignedAt))).length;
     const untouched=working.filter(c=>!S.touches.some(t=>t.clientId===c.id)).length;
@@ -1843,7 +1851,7 @@ function opportunities(){
   });
   out.sort((a,b)=>(b.bizs.length-a.bizs.length)||(b.value-a.value));
   let res=out.filter(o=>!(S.dismissed||[]).includes(o.key));
-  if(me.role==='agent')res=res.filter(o=>o.deals.some(d=>d.agentId===me.id));
+  if(me.role==='agent')res=res.filter(o=>o.deals.some(d=>onDeal(d,me.id)));
   else if(me.role==='manager')res=res.filter(o=>o.deals.some(d=>allowedPipes(me).includes(d.pipe)));
   return res;
 }
@@ -2193,7 +2201,7 @@ function vBiz(b){
   h+=renderBoard(pipeSel,pipes.length>1?'':' style="margin-top:20px"');
   /* business activity */
   const acts=S.acts.slice().sort((x,y)=>y.ts.localeCompare(x.ts)).filter(a=>{
-    const d=a.dealId?D(a.dealId):null;return d&&pipes.includes(d.pipe)&&(me.role!=='agent'||d.agentId===me.id);}).slice(0,6);
+    const d=a.dealId?D(a.dealId):null;return d&&pipes.includes(d.pipe)&&(me.role!=='agent'||onDeal(d,me.id));}).slice(0,6);
   h+='<div class="sect"><div class="sect-head"><h2>Activity in '+BIZ[b]+'</h2></div><ul class="tl">'+
     (acts.length?acts.map(a=>{const c=a.clientId?C(a.clientId):null;
       return '<li>'+(c?'<b style="font-weight:400;color:var(--gold2);cursor:pointer" onclick="go(\'client\',\''+c.id+'\')">'+esc(c.name)+'</b> — ':'')+esc(a.text)+'<small>'+esc(U(a.by).name)+' · '+fdate(a.ts)+'</small></li>'}).join(''):'<div class="empty">Nothing logged in this business yet.</div>')+'</ul></div>';
@@ -2211,7 +2219,7 @@ function renderBoard(pipe,wrapStyle){
         const ast=actState(d);
         return '<div class="dcard" draggable="'+(canEditDeal(d))+'" ondragstart="event.dataTransfer.setData(\'text\',\''+d.id+'\')" onclick="openDeal(\''+d.id+'\')">'+
         '<div class="t">'+esc(dealTitle(d))+'</div><div class="s">'+esc(d.propInterest||d.type)+'</div>'+
-        '<div class="r"><span class="mut"><span class="adot '+ast[0]+'"'+tipAttr('<div class="tt">'+ast[1]+'</div>')+'></span>'+esc(U(d.agentId).name.split(' ')[0])+(isDormant(C(d.clientId))?' <span class="tag" style="border-color:var(--amber);color:var(--amber);font-size:9.5px;padding:1px 5px">dormant</span>':'')+'</span>'+(hideMoney()?'':'<span class="money">'+money(d.revenue)+'</span>')+'</div>'+
+        '<div class="r"><span class="mut"><span class="adot '+ast[0]+'"'+tipAttr('<div class="tt">'+ast[1]+'</div>')+'></span>'+esc(U(d.agentId).name.split(' ')[0])+(dealTeam(d).length>1?' <span class="tag" style="border-color:var(--gold2);color:var(--gold2);font-size:9.5px;padding:1px 5px"'+tipAttr('<div class="tt">Also: '+dealTeam(d).slice(1).map(x=>esc(U(x).name)).join(', ')+'</div>')+'>+'+(dealTeam(d).length-1)+'</span>':'')+(isDormant(C(d.clientId))?' <span class="tag" style="border-color:var(--amber);color:var(--amber);font-size:9.5px;padding:1px 5px">dormant</span>':'')+'</span>'+(hideMoney()?'':'<span class="money">'+money(d.revenue)+'</span>')+'</div>'+
         (lk.length?'<div class="link3">⬡ linked ×'+nbiz+' businesses</div>':'')+'</div>'}).join('')+
       '</div></div>'}).join('')+'</div>';
   return h;
@@ -4157,7 +4165,8 @@ function openDeal(id){
   h+='<div class="stagenow">Stage '+(d.stage+1)+' of '+pipe.stages.length+' — <b style="color:var(--ink);font-weight:500">'+pipe.stages[d.stage]+'</b>'+(isFinal(d)&&closedDate(d)?' · closed '+fdate(closedDate(d)):'')+'</div>';
   /* facts */
   h+='<div class="frow"><div><label>Deal type</label><select id="dd-type"'+dis+'>'+pipe.types.map(t=>'<option'+(t===d.type?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
-     '<div><label>Assigned to</label><select id="dd-agent"'+((me.role==='owner'||me.role==='manager')?'':' disabled')+'>'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===d.agentId?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select></div></div>';
+     '<div><label>Assigned to</label><select id="dd-agent"'+((me.role==='owner'||me.role==='manager')?'':' disabled')+'>'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===d.agentId?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select></div></div>'+
+     '<label>Also working this lead</label><div class="coteam" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:2px 0 6px">'+S.users.filter(u=>u.role!=='marketing'&&u.id!==d.agentId).map(u=>'<label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;font-size:13px;margin:0"><input type="checkbox" name="dd-co" value="'+u.id+'" style="width:auto;margin:0"'+((d.coAgents||[]).indexOf(u.id)>-1?' checked':'')+((me.role==='owner'||me.role==='manager')?'':' disabled')+'> '+esc(u.name)+'</label>').join('')+'</div>';
   h+='<label>Property of interest / address</label><input id="dd-prop" value="'+esc(d.propInterest)+'"'+dis+'>';
   if(!hideMoney()){
     h+='<div class="frow"><div><label>Expected revenue</label><input id="dd-rev" type="number" value="'+(d.revenue||'')+'"'+dis+'></div>'+
@@ -4202,6 +4211,12 @@ function saveDeal(id){
   d.type=g('dd-type').value;
   const newAgent=g('dd-agent').value;
   if(newAgent!==d.agentId){logAct(d.id,d.clientId,'Reassigned deal from '+U(d.agentId).name+' to '+U(newAgent).name+'.');d.agentId=newAgent;}
+  {const co=[].slice.call(document.querySelectorAll('input[name=dd-co]:checked')).map(x=>x.value).filter(x=>x&&x!==d.agentId);
+   const oldCo=(d.coAgents||[]).slice();
+   const added=co.filter(x=>oldCo.indexOf(x)<0),removed=oldCo.filter(x=>co.indexOf(x)<0);
+   d.coAgents=co;
+   if(added.length)logAct(d.id,d.clientId,'Added co-assignee'+(added.length>1?'s':'')+': '+added.map(x=>U(x).name).join(', ')+'.');
+   if(removed.length)logAct(d.id,d.clientId,'Removed co-assignee'+(removed.length>1?'s':'')+': '+removed.map(x=>U(x).name).join(', ')+'.');}
   d.propInterest=g('dd-prop').value;
   if(!hideMoney()){d.revenue=parseFloat(g('dd-rev').value)||0;d.budget=parseFloat(g('dd-bud').value)||0;d.down=parseFloat(g('dd-down').value)||0;d.closeDate=g('dd-close').value;}
   d.titleOffice=g('dd-title').value;
@@ -4236,7 +4251,8 @@ function mAddClient(edit){
   '<label>Address / area</label><input id="mc-addr" value="'+esc(c.address)+'">'+
   '<div class="frow"><div><label>Spouse name</label><input id="mc-sname" value="'+esc(c.spouseName)+'"></div><div><label>Spouse phone</label><input id="mc-sphone" value="'+esc(c.spousePhone)+'"></div></div>'+
   '<label>Spouse email</label><input id="mc-semail" value="'+esc(c.spouseEmail)+'">'+
-  (edit?'<label>Assigned to</label><select id="mc-agent">'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===curAssigned?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select>':'<label>Lead source</label><select id="mc-src">'+SOURCES.map(s=>'<option'+(s===c.source?' selected':'')+'>'+s+'</option>').join('')+'</select>')+
+  (edit?'<label>Assigned to</label><select id="mc-agent">'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===curAssigned?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select>'+
+    '<label>Also working this lead</label><div class="coteam" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:2px 0 6px">'+S.users.filter(u=>u.role!=='marketing').map(u=>'<label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;font-size:13px;margin:0"><input type="checkbox" name="mc-co" value="'+u.id+'" style="width:auto;margin:0"'+((c.coAssignees||[]).indexOf(u.id)>-1?' checked':'')+'> '+esc(u.name)+'</label>').join('')+'</div>':'<label>Lead source</label><select id="mc-src">'+SOURCES.map(s=>'<option'+(s===c.source?' selected':'')+'>'+s+'</option>').join('')+'</select>')+
   '<label>Client type <span class="mut" style="font-weight:400">(pick any that apply)</span></label><div id="mc-ctypes" class="chips">'+CTYPES.map(t=>'<span class="ctchip'+(getCtypes(c).indexOf(t)>-1?' on':'')+'" data-val="'+esc(t)+'" onclick="ctToggle(this)">'+t+'</span>').join('')+'</div>'+
   (edit?'':'<label>Route to vertical</label><select id="mc-route"><option value="">— just add the contact —</option>'+
     Object.entries(LEAD_TARGETS).map(([p,l])=>'<option value="'+p+'">'+l+'</option>').join('')+'</select>')+
@@ -4247,7 +4263,7 @@ function mEditClient(id){mAddClient(id)}
 function saveClient(edit){
   const g=x=>document.getElementById(x).value.trim();
   if(!g('mc-name')){toast('Name is required');return}
-  if(edit){const c=C(edit);Object.assign(c,{name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail')});const _ag=document.getElementById('mc-agent');if(_ag&&_ag.value){if(_ag.value!==c.assignedTo)c.assignedAt=new Date().toISOString();c.assignedTo=_ag.value;}c.ctypes=ctSel();delete c.ctype;
+  if(edit){const c=C(edit);Object.assign(c,{name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail')});const _ag=document.getElementById('mc-agent');if(_ag&&_ag.value){if(_ag.value!==c.assignedTo)c.assignedAt=new Date().toISOString();c.assignedTo=_ag.value;}c.coAssignees=[].slice.call(document.querySelectorAll('input[name=mc-co]:checked')).map(x=>x.value).filter(x=>x&&x!==c.assignedTo);c.ctypes=ctSel();delete c.ctype;
     save();closeAll();go('client',edit);toast('Client updated');return}
   const c={id:uid('c'),name:g('mc-name'),phone:g('mc-phone'),email:g('mc-email'),address:g('mc-addr'),spouseName:g('mc-sname'),spousePhone:g('mc-sphone'),spouseEmail:g('mc-semail'),source:g('mc-src'),ctypes:ctSel(),genBy:me.id,createdAt:new Date().toISOString(),docs:[],interests:[]};
   S.clients.unshift(c);logAct(null,c.id,'Client created — source '+c.source+'.');startLeadPlan(c,null,myPipes()[0]);
