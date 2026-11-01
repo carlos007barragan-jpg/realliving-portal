@@ -1390,6 +1390,7 @@ function pagesFor(){
   if(me.role!=='agent')out.push({k:'reports',rep:'perf',label:'Reports',icon:I.rep});
   if(me.role!=='marketing')out.push({k:'commissions',label:'Commissions',icon:I.comm2});
   if(me.role!=='marketing')out.push({k:'followups',label:'Follow-Ups',icon:I.fu});
+  if(me.role==='owner'||me.role==='manager')out.push({k:'dupes',label:'Duplicates',icon:I.contacts});
   if(me.role==='owner'||me.role==='manager')out.push({k:'settings',label:'Settings',icon:I.set});
   if(DEV||REAL_OWNER)out.push({sec:DEV?'Developer':'Ownership'},{k:'devview',label:'Change View',icon:I.set});
   return out;
@@ -1484,7 +1485,7 @@ function enter(){
   renderWho();
   /* restore the page from the URL hash (set by the portal shell) so a browser
      refresh lands back where you were, not on the dashboard */
-  const _OKPAGES={dash:1,biz:1,clients:1,client:1,props:1,prop:1,reports:1,xsearch:1,leads:1,calendar:1,comms:1,commissions:1,followups:1,settings:1};
+  const _OKPAGES={dash:1,biz:1,clients:1,client:1,props:1,prop:1,reports:1,xsearch:1,leads:1,calendar:1,comms:1,commissions:1,followups:1,settings:1,dupes:1};
   let _start='dash',_startArg;
   try{const h=(location.hash||'').replace(/^#/,'');if(h){const i=h.indexOf('/');const pg=i>-1?h.slice(0,i):h;if(_OKPAGES[pg]){_start=pg;_startArg=i>-1?decodeURIComponent(h.slice(i+1)):undefined;}}}catch(_e){}
   page='dash';pipeSel=myPipes()[0]||null;
@@ -1504,7 +1505,7 @@ function go(k,arg){
   try{reportNav(k,arg);}catch(_e){}
   renderNav();closeAll();try{renderBell();}catch(_e){}
   const M=document.getElementById('main');
-  const crumb=k==='biz'?BIZ[arg]:{dash:'Dashboard',xsearch:'Cross-Search',leads:'My Leads',clients:'Contacts',props:'Properties',reports:'Reports',calendar:'Calendar',comms:'Communications',commissions:'Commissions',followups:'Follow-Ups',settings:'Settings',devview:'Change View',client:'Contact Profile',prop:'Property'}[k]||'';
+  const crumb=k==='biz'?BIZ[arg]:{dash:'Dashboard',xsearch:'Cross-Search',leads:'My Leads',clients:'Contacts',props:'Properties',reports:'Reports',calendar:'Calendar',comms:'Communications',commissions:'Commissions',followups:'Follow-Ups',settings:'Settings',dupes:'Duplicates',devview:'Change View',client:'Contact Profile',prop:'Property'}[k]||'';
   document.getElementById('crumb').textContent=crumb;
   if(k==='dash')M.innerHTML=vDash();
   if(k==='biz')M.innerHTML=vBiz(arg);
@@ -1520,6 +1521,7 @@ function go(k,arg){
   if(k==='commissions')M.innerHTML=vCommissions();
   if(k==='followups')M.innerHTML=vFollowups();
   if(k==='settings')M.innerHTML=vSettings();
+  if(k==='dupes')M.innerHTML=vDupes();
   if(k==='devview')M.innerHTML=vDevView();
   M.scrollTop=_keepSc;document.getElementById('main').scrollTop=_keepSc;
 }
@@ -2471,6 +2473,89 @@ function reviewAsk(d){
 /* ================= CLIENTS ================= */
 let clientQ='';let ctypeFilter='';let pipeFilter='';let stageFilter='';
 let payAgent=null;
+/* ---- Duplicate contact merge (Oscar #3) ----
+   Groups contacts that share a 10-digit phone, lets owner/manager fold the
+   extras into one keeper. Every deal, task, note, call and appointment is
+   re-pointed to the keeper; the keeper fills any blank fields from the
+   duplicate; the duplicate is soft-deleted so it syncs away everywhere. */
+function dupeGroups(){
+  const by={};
+  (S.clients||[]).forEach(function(c){
+    if(!c||c.archived)return;
+    const k=digits10(c.phone); if(k.length<10)return;
+    (by[k]=by[k]||[]).push(c);
+  });
+  return Object.keys(by).map(function(k){return by[k];}).filter(function(g){return g.length>1;})
+    .map(function(g){return g.slice().sort(function(a,b){return String(a.createdAt||'').localeCompare(String(b.createdAt||''));});});
+}
+function clientActivity(id){
+  var n=0;
+  ['deals','tasks','acts','touches','appts'].forEach(function(col){ (S[col]||[]).forEach(function(r){ if(r&&r.clientId===id)n++; }); });
+  return n;
+}
+function mergeClients(keepId,dropId){
+  if(keepId===dropId)return;
+  const keep=C(keepId), drop=C(dropId); if(!keep||!drop)return;
+  /* re-point every record that referenced the duplicate */
+  ['deals','tasks','acts','touches','appts'].forEach(function(col){
+    (S[col]||[]).forEach(function(r){ if(r&&r.clientId===dropId)r.clientId=keepId; });
+  });
+  /* fill blanks on the keeper from the duplicate */
+  ['phone','email','address','spouseName','spousePhone','spouseEmail','source'].forEach(function(f){
+    if(!keep[f]&&drop[f])keep[f]=drop[f];
+  });
+  const uniq=function(a){return a.filter(function(v,i){return v&&a.indexOf(v)===i;});};
+  if(drop.docs&&drop.docs.length)keep.docs=(keep.docs||[]).concat(drop.docs);
+  if(drop.interests&&drop.interests.length)keep.interests=(keep.interests||[]).concat(drop.interests);
+  if(drop.ctypes&&drop.ctypes.length)keep.ctypes=uniq([].concat(keep.ctypes||[],drop.ctypes));
+  if(drop.coAssignees&&drop.coAssignees.length)keep.coAssignees=uniq([].concat(keep.coAssignees||[],drop.coAssignees)).filter(function(x){return x!==keep.assignedTo;});
+  if(drop.doNotCall)keep.doNotCall=true;
+  if(drop.createdAt&&(!keep.createdAt||drop.createdAt<keep.createdAt))keep.createdAt=drop.createdAt;
+  logAct(null,keepId,'Merged duplicate "'+(drop.name||'')+'" ('+fmtPhone(drop.phone||'')+') into this contact.');
+  const i=S.clients.findIndex(function(x){return x.id===dropId;});
+  if(i>-1)S.clients.splice(i,1);
+  markDel('clients',dropId);
+}
+function vDupes(){
+  const groups=dupeGroups();
+  let h='<div class="sect-head"><h2>Duplicate contacts</h2><span class="cnt">'+groups.length+' phone number'+(groups.length===1?'':'s')+' with more than one contact</span></div>';
+  h+='<div class="card" style="margin-bottom:12px"><div class="mut" style="font-size:12.5px">Contacts that share the same phone number. Merging folds the duplicates into the oldest record (the <b>keeper</b>) — all deals, notes, tasks, calls and appointments move onto it, and the duplicates are removed.</div></div>';
+  if(!groups.length)return h+'<div class="card"><div style="padding:6px 2px"><span class="sdot g"></span> No duplicate phone numbers found.</div></div>';
+  h+=groups.map(function(g){
+    const keep=g[0];
+    const rows=g.map(function(c,i){
+      const nd=(S.deals||[]).filter(function(d){return d.clientId===c.id;}).length;
+      const na=clientActivity(c.id)-nd;
+      return '<tr>'+
+        '<td><a href="#" onclick="go(\'client\',\''+c.id+'\');return false" style="color:var(--gold2)">'+esc(c.name||'(no name)')+'</a>'+(i===0?' <span class="tag" style="border-color:#2e7d32;color:#2e7d32">keeper</span>':'')+'</td>'+
+        '<td class="mut">'+esc(c.source||'—')+'</td>'+
+        '<td style="text-align:center">'+nd+'</td>'+
+        '<td style="text-align:center">'+na+'</td>'+
+        '<td class="mut">'+(c.createdAt?fdate(c.createdAt):'—')+'</td>'+
+      '</tr>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:12px">'+
+      '<div style="font-weight:600;margin-bottom:8px">'+esc(fmtPhone(keep.phone))+' <span class="mut" style="font-weight:400">· '+g.length+' contacts</span></div>'+
+      '<table class="tbl" style="width:100%;font-size:13px"><thead><tr><th>Contact</th><th>Source</th><th style="text-align:center">Deals</th><th style="text-align:center">Activity</th><th>Added</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div style="margin-top:10px"><button class="btn small" onclick="mMergeGroup([\''+g.map(function(c){return c.id;}).join('\',\'')+'\'])">Merge into '+esc(keep.name||'keeper')+'</button></div>'+
+    '</div>';
+  }).join('');
+  return h;
+}
+function mMergeGroup(ids){
+  if(!ids||ids.length<2)return;
+  const keep=C(ids[0]); if(!keep)return;
+  const nDrop=ids.length-1, nRec=ids.slice(1).reduce(function(s,id){return s+clientActivity(id);},0);
+  modal('<h2>Merge '+ids.length+' contacts?</h2>'+
+    '<p class="mut" style="font-size:13.5px;line-height:1.5">Everything from the '+nDrop+' duplicate'+(nDrop===1?'':'s')+' — '+nRec+' deal'+(nRec===1?'':'s')+', note'+(nRec===1?'':'s')+', task'+(nRec===1?'':'s')+' and call'+(nRec===1?'':'s')+' total — will move onto <b>'+esc(keep.name||'')+'</b>, and the duplicate'+(nDrop===1?'':'s')+' will be removed. This can\'t be undone from here.</p>'+
+    '<div class="mrow" style="margin-top:16px"><button class="btn ghost" onclick="closeAll()">Cancel</button><button class="btn" onclick="doMergeGroup([\''+ids.join('\',\'')+'\'])">Merge contacts</button></div>');
+}
+function doMergeGroup(ids){
+  const keep=ids[0], n=ids.length-1;
+  for(var i=1;i<ids.length;i++)mergeClients(keep,ids[i]);
+  save();closeAll();go('dupes');
+  var kc=C(keep); toast('Merged '+n+' duplicate'+(n===1?'':'s')+' into '+(kc?kc.name:'contact'));
+}
 function vClients(){
   const activeL=S.smartlists.find(x=>x.id===slSel);
   let list=activeL?listMembers(activeL.q):S.clients.slice();
