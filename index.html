@@ -1528,10 +1528,13 @@ function renderDashboard(){
       '<div class="dw-lab">Assign to</div>'+
       '<div class="dw-assign"><select id="svWrapAgent">'+agents.map(a=>'<option value="'+esc2(a.id)+'"'+((a.id===data.curOwner)?' selected':'')+'>'+esc2(a.name)+(a.me?' (me)':'')+'</option>').join('')+'</select>'+
         '<button type="button" class="dw-claim" onclick="suiteVoice.wrapClaim()">Claim to me</button></div>'+
-      '<label class="dw-task"><input type="checkbox" id="svWrapTask"> Follow-up task tomorrow</label>'+
+      (data.deal?'<div class="dw-lab">Stage — '+esc2(data.deal.pipeName)+'</div><div class="dw-assign"><select id="svWrapStage">'+(data.deal.stages||[]).map(function(s,i){return '<option value="'+i+'"'+(i===data.deal.stage?' selected':'')+'>'+esc2(s)+'</option>';}).join('')+'</select></div>':'')+
+      '<label class="dw-task"><input type="checkbox" id="svWrapTask"> Schedule follow-up</label>'+
+      '<div class="dw-assign" style="gap:6px"><input type="date" id="svWrapDate" value="'+(new Date(Date.now()+864e5).toISOString().slice(0,10))+'" style="flex:1"><input type="time" id="svWrapTime" value="09:00" style="flex:1"></div>'+
       '<div class="dw-lab">Note</div>'+
       '<textarea id="svWrapNote" placeholder="What happened on the call?"></textarea>'+
       '<div class="dw-btns"><button type="button" class="go" onclick="suiteVoice.wrapSave()">'+(data.auto?'Save &amp; next':'Save')+'</button>'+
+        (data.deal?'<button type="button" onclick="suiteVoice.wrapDisqualify()">Disqualify</button>':'')+
         '<button type="button" onclick="suiteVoice.wrapSkip()">'+(data.auto?'Skip':'Close')+'</button></div>';
     el.style.display='block';wrapOpen=true;show();
   }
@@ -1543,7 +1546,8 @@ function renderDashboard(){
     ad:function(cmd){try{const f=$v('appFrame');if(f&&f.contentWindow)f.contentWindow.postMessage({rl:'autodial',cmd:cmd},'*');}catch(_e){}},
     wrapTemp:function(t,btn){_wrapTemp=t;try{var p=btn.parentNode;[].forEach.call(p.querySelectorAll('button'),function(b){b.classList.remove('on');});btn.classList.add('on');}catch(_e){}},
     wrapClaim:function(){try{var m=(_wrapData&&(_wrapData.agents||[]).filter(function(a){return a.me;})[0]);var sel=$v('svWrapAgent');if(m&&sel)sel.value=m.id;}catch(_e){}},
-    wrapSave:function(){ if(!_wrapData)return; var payload={cid:_wrapData.cid,temp:_wrapTemp,agentId:(($v('svWrapAgent')||{}).value||''),task:!!(($v('svWrapTask')||{}).checked),note:(($v('svWrapNote')||{}).value||''),auto:!!_wrapData.auto}; postWrap('save',payload,!!_wrapData.auto); hideWrap(); },
+    wrapSave:function(){ if(!_wrapData)return; var stEl=$v('svWrapStage'); var payload={cid:_wrapData.cid,temp:_wrapTemp,agentId:(($v('svWrapAgent')||{}).value||''),task:!!(($v('svWrapTask')||{}).checked),note:(($v('svWrapNote')||{}).value||''),stage:(stEl?Number(stEl.value):null),fuDate:(($v('svWrapDate')||{}).value||''),fuTime:(($v('svWrapTime')||{}).value||''),auto:!!_wrapData.auto}; postWrap('save',payload,!!_wrapData.auto); hideWrap(); },
+    wrapDisqualify:function(){ if(!_wrapData)return; var payload={cid:_wrapData.cid,disqualify:true,note:(($v('svWrapNote')||{}).value||''),auto:!!_wrapData.auto}; postWrap('save',payload,!!_wrapData.auto); hideWrap(); },
     wrapSkip:function(){ var auto=!!(_wrapData&&_wrapData.auto); postWrap('skip',null,auto); hideWrap(); }};
 })();
 </script>
