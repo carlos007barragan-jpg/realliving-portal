@@ -943,7 +943,19 @@ function missedCalls(){
   const cutoff=Date.now()-72*3600e3;
   const outs=S.touches.filter(t=>t.kind==='call_out'||t.kind==='text_out');
   const seen=new Set();const items=[];
-  S.touches.filter(t=>t.kind==='call_in'&&(t.dur||0)<10&&new Date(t.ts)>cutoff)
+  S.touches.filter(t=>{
+      /* A call_in needs a callback when it was NOT connected. Key off the outcome the
+         voice function stamps ('answered' / 'voicemail' / 'no-answer'…), not a raw
+         duration guess — an answered-but-short call isn't a miss, and a row that's
+         still ringing (no outcome, created seconds ago) shouldn't flash as missed
+         before anyone can pick up. dur stays a secondary guard. */
+      if(t.kind!=='call_in')return false;
+      if(!(new Date(t.ts)>cutoff))return false;      /* within the last 72h */
+      if(t.outcome==='answered')return false;        /* connected — handled */
+      if((t.dur||0)>=10)return false;                /* talked ≥10s — handled */
+      if(t.outcome&&t.outcome!=='answered')return true;/* voicemail / no-answer / busy / failed */
+      return (Date.now()-new Date(t.ts).getTime())>120000; /* no outcome yet: only after 2 min */
+    })
     .sort((a,b)=>b.ts.localeCompare(a.ts))
     .forEach(t=>{
       const key=t.clientId||t.from||t.id;
@@ -980,7 +992,11 @@ function callbackItems(){
   const canSeeTeam=me.role==='owner'||me.role==='manager';
   if(canSeeTeam)return all;
   const meId=me.id==='admin'?realUid():me.id;
-  return all.filter(t=>!t.agentId||t.agentId===meId);
+  /* A missed call from an UNKNOWN number (no matched contact) is a fresh inbound lead:
+     the front-desk IVR hunts the whole team for it, so every agent should see it in
+     their callback list — not just whoever ownerAgentFor() defaulted it to. Matched
+     callers stay scoped to their owning agent. */
+  return all.filter(t=>!t.agentId||t.agentId===meId||!t.clientId);
 }
 /* Mark a missed call as handled — records WHO returned it and WHEN, so the loop is auditable.
    Resolves every open missed call from the same caller, not just the one row. */
