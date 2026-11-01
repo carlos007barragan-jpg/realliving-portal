@@ -2275,7 +2275,9 @@ function vBiz(b){
 }
 function renderBoard(pipe,wrapStyle){
   const ds=visibleDeals(pipe);
+  const canBlast=(pipe==='h2m_dispo'||pipe==='h2m_of')&&(me.role==='owner'||me.role==='manager');
   let h='<div class="sect-head"'+(wrapStyle||'')+'><h2>'+PIPES[pipe].name+'</h2><span class="cnt">'+ds.length+' deals'+(me.role==='agent'?' (yours)':'')+'</span><span class="spacer"></span>'+
+     (canBlast?'<button class="btn ghost small" style="margin-right:8px" onclick="mBlast(\''+pipe+'\')">📣 '+(pipe==='h2m_dispo'?'Blast investors':'Blast buyers')+'</button>':'')+
      (me.role!=='marketing'?'<button class="btn small" onclick="mAddDeal(\''+pipe+'\')">+ New deal</button>':'')+'</div>';
   h+='<div id="board">'+PIPES[pipe].stages.map((st,i)=>{
     const col=ds.filter(d=>d.stage===i);
@@ -2327,6 +2329,161 @@ function dropDeal(ev,stage){
   const id=ev.dataTransfer.getData('text');const d=D(id);if(!d||!canEditDeal(d))return;
   if(stage>=PIPES[d.pipe].stages.length-1&&d.stage!==stage){mCloseOut(id,stage);return}
   moveStage(d,stage);refresh();
+}
+/* ============ PIPELINE BLASTS — text + email to a whole pipeline stage ============
+   Two workflows: investors sitting in H2M Dispositions (stage "Investors"), and
+   owner-finance buyers who have finished a consult (stage "Showing houses / Consult
+   done"). Pick the newly-secured property; the numbers (ARV / rehab / price / terms,
+   or down / monthly) auto-fill from its record — that's where the underwriting lives.
+   Nothing sends until an owner/manager confirms the exact counts. Opt-outs are skipped. */
+function blastStageIdx(pipe){
+  if(pipe==='h2m_dispo')return 0;                 /* "Investors" */
+  if(pipe==='h2m_of')return PIPES.h2m_of.stages.indexOf('Showing houses / Consult done');
+  return -1;
+}
+function blastAudience(pipe){
+  const si=blastStageIdx(pipe); if(si<0)return [];
+  const ids=new Set();const out=[];
+  S.deals.filter(d=>d.pipe===pipe&&d.stage===si&&!isLost(d)&&!isArchived(d)).forEach(d=>{
+    if(!d.clientId||ids.has(d.clientId))return; const c=C(d.clientId); if(!c||c.archived)return;
+    ids.add(d.clientId); out.push(c);
+  });
+  return out;
+}
+function blastProps(){
+  return S.properties.filter(p=>!propArchived(p)).slice()
+    .sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+}
+function blastDefaults(pipe,p){
+  const addr=p?p.address:'';
+  const bb=p?[p.beds?p.beds+' bd':'',p.baths?p.baths+' ba':'',p.sqft?Number(p.sqft).toLocaleString()+' sqft':''].filter(Boolean).join(' · '):'';
+  if(pipe==='h2m_dispo'){
+    const price=p?(p.acqPrice||p.listPrice||0):0;
+    const profit=(p&&p.arv)?(p.arv-price-(p.rehab||0)):0;
+    const subject='New investment deal — '+addr;
+    const sms='{first}, new deal just locked up: '+addr+'. '
+      +((p&&p.arv)?'ARV '+money(p.arv)+', ':'')+((p&&p.rehab)?'est. rehab '+money(p.rehab)+', ':'')
+      +(price?'our price '+money(price)+'. ':'')+(profit>0?'Projected spread ~'+money(profit)+'. ':'')
+      +((p&&p.terms)?p.terms+'. ':'')+'Want the full numbers? Reply and we will send the package.';
+    const email='Hi {first},\n\nWe just locked up a new deal and wanted our investor list to see it first.\n\n'
+      +addr+(bb?'\n'+bb:'')+'\n\n'
+      +((p&&p.arv)?'ARV: '+money(p.arv)+'\n':'')
+      +((p&&p.rehab)?'Estimated rehab: '+money(p.rehab)+'\n':'')
+      +(price?'Our price: '+money(price)+'\n':'')
+      +(profit>0?'Projected spread: ~'+money(profit)+'\n':'')
+      +((p&&p.terms)?'Terms: '+p.terms+'\n':'')
+      +'\nFinancing available through 1912 Capital — ask for terms.\n\nReply to this email or text us and we will send the full underwriting package and set up a walkthrough.\n\n— Real Living / H2M';
+    return {subject,sms,email};
+  }
+  const subject='New owner-finance home — '+addr;
+  const sms='{first}, a new owner-finance home just came available: '+addr+'. '
+    +((p&&p.down)?money(p.down)+' down, ':'')+((p&&p.monthly)?money(p.monthly)+'/mo. ':'')
+    +((p&&p.terms)?p.terms+'. ':'')+'Want to see it this week? Reply and we will set up a private showing.';
+  const email='Hi {first},\n\nGreat news — a new owner-finance home just came available that fits what you are looking for.\n\n'
+    +addr+(bb?'\n'+bb:'')+'\n\n'
+    +((p&&p.down)?'Down payment: '+money(p.down)+'\n':'')
+    +((p&&p.monthly)?'Monthly payment: '+money(p.monthly)+'\n':'')
+    +((p&&p.terms)?'Terms: '+p.terms+'\n':'')
+    +'\nHomes like this move fast. Reply to this email or text us and we will set up a private showing this week.\n\n— Real Living / Owner Finance KC';
+  return {subject,sms,email};
+}
+function mBlast(pipe){
+  const aud=blastAudience(pipe);
+  const props=blastProps();
+  if(!props.length){modal('<h2>No property to blast</h2><p class="mut" style="font-size:13.5px">Add the property to inventory first, then run the blast.</p><div class="mrow"><button class="btn" onclick="closeAll()">OK</button></div>');return}
+  const who=pipe==='h2m_dispo'?'investor':'buyer';
+  const where=pipe==='h2m_dispo'?'H2M Dispositions · Investors':'“Showing houses / Consult done”';
+  const pOpts=props.map(p=>'<option value="'+p.id+'">'+esc(p.address)+'</option>').join('');
+  modal('<h2>'+(pipe==='h2m_dispo'?'Blast investors':'Blast buyers')+'</h2>'+
+    '<div class="mut" style="font-size:12.5px;margin:-4px 0 10px">Goes to <b>'+aud.length+'</b> '+who+(aud.length===1?'':'s')+' — everyone in '+esc(where)+'.</div>'+
+    '<label>Property</label><select id="bl-prop" onchange="blastFill(\''+pipe+'\')">'+pOpts+'</select>'+
+    '<div style="display:flex;gap:22px;margin-top:10px"><label style="display:flex;align-items:center;gap:7px;text-transform:none;letter-spacing:0;font-size:13px;margin:0"><input type="checkbox" id="bl-sms" checked style="width:auto;margin:0"> Text message</label>'+
+      '<label style="display:flex;align-items:center;gap:7px;text-transform:none;letter-spacing:0;font-size:13px;margin:0"><input type="checkbox" id="bl-email" checked style="width:auto;margin:0"> Email</label></div>'+
+    '<label>Text message</label><textarea id="bl-sms-body" rows="4" style="resize:vertical"></textarea>'+
+    '<label>Email subject</label><input id="bl-subj">'+
+    '<label>Email message</label><textarea id="bl-email-body" rows="7" style="resize:vertical"></textarea>'+
+    '<div class="mut" style="font-size:11.5px;margin-top:4px">Tip: {first} is replaced with each contact\'s first name. The email shows the property photos automatically.</div>'+
+    '<div id="bl-recap" class="mut" style="font-size:12px;margin-top:8px"></div>'+
+    '<div class="login-err" id="bl-err"></div>'+
+    '<button class="btn" style="margin-top:12px" onclick="mBlastConfirm(\''+pipe+'\')">Review & send</button>');
+  blastFill(pipe);
+}
+function blastFill(pipe){
+  const p=P(document.getElementById('bl-prop').value);
+  const d=blastDefaults(pipe,p);
+  document.getElementById('bl-sms-body').value=d.sms;
+  document.getElementById('bl-subj').value=d.subject;
+  document.getElementById('bl-email-body').value=d.email;
+  blastRecap(pipe);
+}
+function blastRecap(pipe){
+  const aud=blastAudience(pipe);
+  const textable=aud.filter(c=>dialNumber(c.phone)&&!c.smsOptOut).length;
+  const optout=aud.filter(c=>c.smsOptOut).length;
+  const emailable=aud.filter(c=>c.email&&/.@./.test(c.email)).length;
+  const el=document.getElementById('bl-recap'); if(!el)return;
+  el.textContent='Reachable now — '+textable+' by text'+(optout?' ('+optout+' opted out, skipped)':'')+', '+emailable+' by email.';
+}
+function mBlastConfirm(pipe){
+  const sms=document.getElementById('bl-sms').checked, email=document.getElementById('bl-email').checked;
+  const err=document.getElementById('bl-err');
+  if(!sms&&!email){err.textContent='Pick at least one channel.';return}
+  const cfg={pipe,sms,email,smsBody:document.getElementById('bl-sms-body').value.trim(),subject:document.getElementById('bl-subj').value.trim(),emailBody:document.getElementById('bl-email-body').value.trim(),propId:document.getElementById('bl-prop').value};
+  if(sms&&!cfg.smsBody){err.textContent='The text message is empty.';return}
+  if(email&&(!cfg.subject||!cfg.emailBody)){err.textContent='Email needs a subject and a message.';return}
+  const aud=blastAudience(pipe);
+  const nText=sms?aud.filter(c=>dialNumber(c.phone)&&!c.smsOptOut).length:0;
+  const nEmail=email?aud.filter(c=>c.email&&/.@./.test(c.email)).length:0;
+  window._blastCfg=cfg;
+  const parts=[];if(sms)parts.push(nText+' text'+(nText===1?'':'s'));if(email)parts.push(nEmail+' email'+(nEmail===1?'':'s'));
+  modal('<h2>Send this blast?</h2>'+
+    '<p class="mut" style="font-size:13.5px;line-height:1.5">About to send '+parts.join(' and ')+' to the '+aud.length+'-'+(pipe==='h2m_dispo'?'investor':'buyer')+' list. Everything sends from the company number and address and logs to each contact\'s timeline. Contacts who replied STOP are skipped. This cannot be undone.</p>'+
+    '<div class="login-err" id="bl-err2"></div>'+
+    '<div id="bl-prog" class="mut" style="font-size:12.5px;margin-top:6px"></div>'+
+    '<div class="mrow" style="margin-top:14px"><button class="btn ghost" onclick="closeAll()">Cancel</button><button class="btn" id="bl-send" onclick="runBlast()">Send blast</button></div>');
+}
+function blastHtml(text,p){
+  const e=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const photos=(p&&p.photos&&p.photos.length)?p.photos.slice(0,4):((p&&p.photo)?[p.photo]:[]);
+  const cover=photos[0]||'';
+  let h='<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#2a2118;line-height:1.55">';
+  if(cover)h+='<img src="'+e(cover)+'" alt="'+e(p?p.address:'')+'" style="width:100%;border-radius:10px;margin-bottom:14px">';
+  h+='<div style="font-size:15px">'+e(text).replace(/\n/g,'<br>')+'</div>';
+  if(photos.length>1)h+='<div style="margin-top:14px;font-size:0">'+photos.slice(1,4).map(u=>'<img src="'+e(u)+'" style="width:32%;border-radius:6px;margin-right:1.5%;display:inline-block">').join('')+'</div>';
+  h+='<div style="margin-top:18px;padding-top:14px;border-top:1px solid #e7e0d2;font-size:12px;color:#8a7f6a">Real Living Companies · Kansas City · Reply to this email or call/text us anytime.</div></div>';
+  return h;
+}
+async function blastEmail(c,cfg,p,first){
+  const {data:{session}}=await sb.auth.getSession();
+  const bodyText=cfg.emailBody.replace(/\{first\}/g,first);
+  const res=await fetch(EMAIL_FN,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+    body:JSON.stringify({to:c.email,subject:cfg.subject.replace(/\{first\}/g,first),body:bodyText,html:blastHtml(bodyText,p),clientId:c.id})});
+  const out=await res.json();
+  if(!res.ok||out.error)throw new Error(out.error||'send failed');
+  const now=new Date().toISOString();
+  const rows=[{collection:'touches',id:out.touch.id,data:out.touch,updated_at:now,deleted:false}];
+  if(out.act)rows.push({collection:'acts',id:out.act.id,data:out.act,updated_at:now,deleted:false});
+  applyRemote(rows);
+}
+async function runBlast(){
+  const cfg=window._blastCfg; if(!cfg)return;
+  const btn=document.getElementById('bl-send'), prog=document.getElementById('bl-prog');
+  if(!CLOUD||!sb||!SEAT_ID){const e2=document.getElementById('bl-err2');if(e2)e2.textContent='Blasting needs a signed-in cloud session.';return}
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  const p=P(cfg.propId), aud=blastAudience(cfg.pipe);
+  let sentT=0,sentE=0,fail=0,i=0;
+  for(const c of aud){
+    i++;
+    const first=((c.name||'').trim().split(/\s+/)[0])||'there';
+    if(prog)prog.textContent='Sending '+i+' of '+aud.length+' — '+sentT+' texts, '+sentE+' emails sent';
+    if(cfg.sms){
+      const dn=dialNumber(c.phone);
+      if(dn&&!c.smsOptOut){try{await twilioAction({action:'sms',to:c.phone,body:cfg.smsBody.replace(/\{first\}/g,first),clientId:c.id});sentT++;}catch(_e){fail++;}}
+    }
+    if(cfg.email&&c.email&&/.@./.test(c.email)){try{await blastEmail(c,cfg,p,first);sentE++;}catch(_e){fail++;}}
+  }
+  save();closeAll();refresh();
+  toast('Blast sent — '+sentT+' text'+(sentT===1?'':'s')+', '+sentE+' email'+(sentE===1?'':'s')+(fail?' ('+fail+' failed)':''));
 }
 /* ============ CLOSING A DEAL — nobody closes a file without saying what happened ============ */
 const LOSTREASONS=['Not interested — no longer wants to do business','Price / terms too high','Financing fell through','Went with another company','Bought something else','Cannot reach — unresponsive','Not qualified right now','Other'];
