@@ -216,6 +216,11 @@ tr.rowlink:hover td{background:var(--goldsoft)}
 .dcard .s{font-size:12px;color:var(--mut);margin-top:4px}
 .dcard .r{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px}
 .dcard .link3{font-size:10.5px;color:var(--blue);letter-spacing:.06em;margin-top:6px}
+.dcard .dcnext{font-size:11px;color:var(--ink);margin-top:7px;padding-top:7px;border-top:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dcard .dcnext .due{color:var(--mut)}
+.dcard .dcnext.od{color:#c0392b}.dcard .dcnext.od .due{color:#c0392b}
+.dcard .dcnext.tod{color:#b9801f}.dcard .dcnext.tod .due{color:#b9801f}
+.dcard .dcnext.none{color:var(--mut);font-style:italic}
 /* ---------- profile ---------- */
 .back{background:none;border:none;color:var(--mut);font-size:13px;padding:0;margin-bottom:14px;display:inline-flex;align-items:center;gap:6px}
 .back:hover{color:var(--gold2)}
@@ -2281,10 +2286,34 @@ function renderBoard(pipe,wrapStyle){
         return '<div class="dcard" draggable="'+(canEditDeal(d))+'" ondragstart="event.dataTransfer.setData(\'text\',\''+d.id+'\')" onclick="openDeal(\''+d.id+'\')">'+
         '<div class="t">'+esc(dealTitle(d))+'</div><div class="s">'+esc(d.propInterest||d.type)+'</div>'+
         '<div class="r"><span class="mut"><span class="adot '+ast[0]+'"'+tipAttr('<div class="tt">'+ast[1]+'</div>')+'></span>'+esc(U(d.agentId).name.split(' ')[0])+(dealTeam(d).length>1?' <span class="tag" style="border-color:var(--gold2);color:var(--gold2);font-size:9.5px;padding:1px 5px"'+tipAttr('<div class="tt">Also: '+dealTeam(d).slice(1).map(x=>esc(U(x).name)).join(', ')+'</div>')+'>+'+(dealTeam(d).length-1)+'</span>':'')+(isDormant(C(d.clientId))?' <span class="tag" style="border-color:var(--amber);color:var(--amber);font-size:9.5px;padding:1px 5px">dormant</span>':'')+'</span>'+(hideMoney()?'':'<span class="money">'+money(d.revenue)+'</span>')+'</div>'+
+        nextActionLine(d)+
         (lk.length?'<div class="link3">⬡ linked ×'+nbiz+' businesses</div>':'')+'</div>'}).join('')+
       '</div></div>'}).join('')+'</div>';
   return h;
 }
+/* The next thing owed on a deal, shown right on the board card so a rep can read the
+   whole column at a glance instead of opening each deal. Picks the soonest of the open
+   tasks and upcoming appointments for the deal's client; colours by urgency. */
+function nextActionLine(d){
+  if(isLost(d)||isFinal(d))return '';
+  const cid=d.clientId; if(!cid)return '';
+  const todayStr=NOW().toISOString().slice(0,10);
+  const open=S.tasks.filter(t=>t.clientId===cid&&!t.done);
+  const tNext=open.slice().sort((a,b)=>String(a.due||'9999').localeCompare(String(b.due||'9999')))[0];
+  const apNext=S.appts.filter(a=>a.clientId===cid&&!a.done&&new Date(a.dt)>=new Date(NOW().toDateString()))
+                      .sort((a,b)=>new Date(a.dt)-new Date(b.dt))[0];
+  let label='',dueStr='';
+  const tDue=tNext?(tNext.due||'9999-12-31'):null;
+  const aDue=apNext?apNext.dt.slice(0,10):null;
+  if(tNext&&(!apNext||tDue<=aDue)){ label=tNext.title||'Follow up'; dueStr=tDue; }
+  else if(apNext){ label='📅 '+(apNext.title||'Appointment'); dueStr=aDue; }
+  else return '<div class="dcnext none">▸ No next step — add a task</div>';
+  const rel = dueStr<todayStr ? 'overdue' : dueStr===todayStr ? 'today' : fdateShort(dueStr);
+  const cls = dueStr<todayStr ? 'od' : dueStr===todayStr ? 'tod' : '';
+  let t=String(label).replace(/\s*[—–-]\s*$/,''); if(t.length>42)t=t.slice(0,40)+'…';
+  return '<div class="dcnext '+cls+'">▸ '+esc(t)+' <span class="due">· '+rel+'</span></div>';
+}
+function fdateShort(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});}catch(_e){return iso;}}
 function actState(d){
   if(isLost(d))return ['x','Closed out — '+(d.lostReason||'not moving forward')];
   if(isFinal(d))return ['x','Closed'];
