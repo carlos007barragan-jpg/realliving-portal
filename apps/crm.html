@@ -2058,6 +2058,7 @@ function routeLead(c,pipe){
     budget:0,down:0,closeDate:'',titleOffice:'',revenue:0,createdAt:new Date().toISOString(),hist:[{s:0,at:new Date().toISOString()}]};
   S.deals.push(d);
   logAct(d.id,c.id,'Lead routed to '+PIPES[pipe].name+' — now with '+handler.name+'.');
+  if(pipe==='h2m_of')try{ensureOfStageTasks(d,0);}catch(e){}
   firePlaybook(pbKey(pipe)||'rl',c,handler.id);
   return d;
 }
@@ -2645,8 +2646,62 @@ function fireStagePlay(d,prevIdx,idx){
   steps.forEach(function(pp){S.tasks.push({id:uid('t'),title:pp.t,clientId:c?c.id:null,agentId:who,due:new Date(Date.now()+pp.off*864e5).toISOString().slice(0,10),done:false,createdAt:new Date().toISOString(),by:meId,plan:tag});});
   if(c)logAct(d.id,c.id,'Stage workflow \u2014 '+steps.length+' next-step task'+(steps.length===1?'':'s')+' queued for '+to+'.');
 }
+/* ===== Owner Finance Buyer — stage checklists that gate the move forward =====
+   Each forward stage has the tasks that must be done to earn the next stage. They
+   spawn as real tasks when a deal enters the stage (so they show on the board + profile),
+   and a forward move is blocked until they're checked off. Leaving "Appointment scheduled"
+   also requires the buyer intake to be complete. Off-ramps (Disqualified, No show) are
+   never gated. Owner/manager can override. */
+const OF_STAGE_TASKS={
+  0:['Call the lead — text + voicemail if no answer','Qualify: down, monthly budget, income & proof, area, timeline, SSN/ITIN','Book the consultation (date + time)'],
+  2:['Send confirmation + reminders (24h and morning-of)','Hold the consult and confirm budget (down + monthly)','Complete the buyer intake on the profile','Match them to homes that fit'],
+  4:['Send 2–3 matching homes','Complete a showing','Confirm the home they want to move on'],
+  5:['Present the terms (down, monthly, rate, balloon, taxes/ins)','Finalize the numbers with the buyer','Collect updated proof of funds + income docs','Get agreement on the terms'],
+  6:['Get the LOI signed','Collect the earnest money deposit','Draft the agreement the buyer will sign','Confirm down-payment funds are ready','Schedule the notary to sign & close'],
+  7:['Notary signing complete + down payment collected','Record the close date on the profile','Set up monthly payment / servicing','Hand over keys / possession']
+};
+const OF_OFFRAMP=[1,3];
+function ensureOfStageTasks(d,idx){
+  if(!d||d.pipe!=='h2m_of')return;
+  const list=OF_STAGE_TASKS[idx]; if(!list)return;
+  if(S.tasks.some(t=>t.gateDeal===d.id&&t.gateStage===idx))return;
+  const who=d.agentId||(me&&(me.id==='admin'?realUid():me.id));
+  const base=Date.now();
+  list.forEach((title,i)=>S.tasks.push({id:uid('t'),title:title,clientId:d.clientId||null,dealId:d.id,agentId:who,
+    by:(me&&me.id==='admin'?realUid():(me?me.id:who)),due:new Date(base+i*864e5).toISOString().slice(0,10),
+    done:false,createdAt:new Date().toISOString(),plan:'ofgate',gateDeal:d.id,gateStage:idx}));
+}
+function ofGateBlock(d){
+  const idx=d.stage;
+  if(OF_STAGE_TASKS[idx]===undefined)return null;
+  ensureOfStageTasks(d,idx);
+  const open=S.tasks.filter(t=>t.gateDeal===d.id&&t.gateStage===idx&&!t.done).map(t=>t.title);
+  let intake=false,missingList=[];
+  if(idx===2){const c=C(d.clientId);const comp=c?ofbComplete(c):null;if(!comp||!comp.done){intake=true;missingList=comp?comp.missingList:['the whole intake'];}}
+  if(!open.length&&!intake)return null;
+  return {tasks:open,intake:intake,missingList:missingList};
+}
+function showOfGate(d,stage,block){
+  const from=PIPES[d.pipe].stages[d.stage],to=PIPES[d.pipe].stages[stage];
+  const canOvr=me.role==='owner'||me.role==='manager';
+  let items=block.tasks.map(t=>'<li>'+esc(t)+'</li>').join('');
+  if(block.intake)items+='<li>Complete the buyer intake'+(block.missingList&&block.missingList.length?' <span class="mut">— still needs: '+esc(block.missingList.join(', '))+'</span>':'')+'</li>';
+  modal('<h2>Finish this stage first</h2>'+
+    '<div class="mut" style="font-size:13px;margin:-4px 0 12px">Before moving <b>'+esc(from)+'</b> → <b>'+esc(to)+'</b>, complete:</div>'+
+    '<ul style="margin:0;padding-left:20px;font-size:13.5px;line-height:1.7">'+items+'</ul>'+
+    '<div class="mrow" style="margin-top:16px">'+
+      (d.clientId?'<button class="btn" onclick="closeAll();go(\'client\',\''+d.clientId+'\')">Open the checklist</button>':'<button class="btn" onclick="closeAll()">OK</button>')+
+      (canOvr?'<button class="btn ghost" onclick="ofGateOverride(\''+d.id+'\','+stage+')">Move anyway</button>':'')+
+    '</div>');
+}
+function ofGateOverride(did,stage){const d=D(did);if(!d)return;closeAll();moveStage._ovr=true;moveStage(d,stage);}
 function moveStage(d,stage,fromCloseOut){
   if(d.stage===stage)return;
+  if(d.pipe==='h2m_of'&&stage>d.stage&&OF_OFFRAMP.indexOf(stage)<0&&!fromCloseOut&&!moveStage._ovr){
+    const block=ofGateBlock(d);
+    if(block){showOfGate(d,stage,block);return;}
+  }
+  moveStage._ovr=false;
   const prevIdx=d.stage;
   const from=PIPES[d.pipe].stages[d.stage],to=PIPES[d.pipe].stages[stage];
   d.stage=stage;
@@ -2655,6 +2710,7 @@ function moveStage(d,stage,fromCloseOut){
   if(!isFinal(d)&&d.closedAt)delete d.closedAt;
   logAct(d.id,d.clientId,'Moved '+PIPES[d.pipe].name+' deal: '+from+' → '+to+'.');
   try{fireStagePlay(d,prevIdx,stage);}catch(e){}
+  try{ensureOfStageTasks(d,stage);}catch(e){}
   if(isWon(d)&&/closed|won|sold|servicing/i.test(to)&&!/lost|dead/i.test(to))reviewAsk(d);
   save();if(!fromCloseOut)toast('Moved to '+to);
 }
@@ -4807,7 +4863,7 @@ function saveNewDeal(){
   const d={id:uid('d'),clientId:g('md-client')||null,pipe,type:g('md-type'),stage:0,agentId:g('md-agent'),propertyId:g('md-prop')||null,hist:[{s:0,at:new Date().toISOString()}],
     propInterest:g('md-pi')||(g('md-prop')?P(g('md-prop')).address:''),budget:0,down:0,closeDate:'',titleOffice:'',revenue:parseFloat(g('md-rev'))||0,createdAt:new Date().toISOString()};
   if(!d.clientId&&!isCost(pipe)){toast('Pick a client for this pipeline');return}
-  S.deals.push(d);_pbAfter(d);logAct(d.id,d.clientId,'Deal opened in '+PIPES[pipe].name+' — '+d.type+'.');
+  S.deals.push(d);_pbAfter(d);if(pipe==='h2m_of')try{ensureOfStageTasks(d,0);}catch(e){}logAct(d.id,d.clientId,'Deal opened in '+PIPES[pipe].name+' — '+d.type+'.');
   /* a new deal on a parked or past client puts them back in play automatically */
   if(d.clientId){const cc=C(d.clientId);
     if(cc&&cc.dormant){cc.dormant=false;logAct(null,d.clientId,'Reheated automatically — new deal opened.');}}
