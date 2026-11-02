@@ -255,6 +255,14 @@ tr.rowlink:hover td{background:var(--goldsoft)}
 #modal h2{font-size:24px;margin-bottom:4px}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 .ofsec{font-family:var(--disp);font-weight:550;font-size:14px;color:var(--gold2);margin:18px 0 2px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+.gatebox{margin-top:14px;border-color:var(--gold2)}
+.gatelist{list-style:none;margin:0;padding:0}
+.gatelist li{padding:6px 0;border-bottom:1px solid var(--line)}
+.gatelist li:last-child{border-bottom:none}
+.gatelist li label{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;cursor:pointer;margin:0;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)}
+.gatelist li input{width:auto;margin:2px 0 0;flex:0 0 auto;accent-color:var(--gold2)}
+.gatelist li.done span{color:var(--mut);text-decoration:line-through}
+.gate-intake{margin-top:10px;padding:9px 11px;border:1px dashed var(--amber);border-radius:8px;color:var(--amber);font-size:12.5px}
 .mrow{display:flex;align-items:center;gap:10px;margin-top:18px}
 .lnk{background:none;border:0;color:var(--gold);font-size:12.5px;cursor:pointer;padding:2px 4px;text-decoration:underline}
 .pcat{font-size:11px;font-weight:600;border-radius:6px;padding:2px 8px;white-space:nowrap}
@@ -1196,6 +1204,7 @@ async function _cloudEnter(userId,emailFallback){
      so a refresh never resurrects it (this was the "shows Karely, then admin" flash) */
   sessionStorage.removeItem('rl_view');
   try{expireStaleTasks();}catch(e){}
+  try{ofGateBackfill();}catch(e){}
   enter();startSync();
 }
 async function cloudLogin(email,pw){
@@ -2662,14 +2671,26 @@ const OF_STAGE_TASKS={
 };
 const OF_OFFRAMP=[1,3];
 function ensureOfStageTasks(d,idx){
-  if(!d||d.pipe!=='h2m_of')return;
-  const list=OF_STAGE_TASKS[idx]; if(!list)return;
-  if(S.tasks.some(t=>t.gateDeal===d.id&&t.gateStage===idx))return;
+  if(!d||d.pipe!=='h2m_of')return 0;
+  const list=OF_STAGE_TASKS[idx]; if(!list)return 0;
+  if(S.tasks.some(t=>t.gateDeal===d.id&&t.gateStage===idx))return 0;
   const who=d.agentId||(me&&(me.id==='admin'?realUid():me.id));
   const base=Date.now();
   list.forEach((title,i)=>S.tasks.push({id:uid('t'),title:title,clientId:d.clientId||null,dealId:d.id,agentId:who,
     by:(me&&me.id==='admin'?realUid():(me?me.id:who)),due:new Date(base+i*864e5).toISOString().slice(0,10),
     done:false,createdAt:new Date().toISOString(),plan:'ofgate',gateDeal:d.id,gateStage:idx}));
+  return list.length;
+}
+/* One-time backfill: existing OF buyer deals predate this feature and never spawned their
+   stage checklist. Spawn the current stage's tasks for each open OF deal once, so they show
+   up on the board and in the deal without waiting for the next move. */
+function ofGateBackfill(){
+  if(!S||!S.deals)return;
+  if(S.targets&&S.targets.ofGateBackfill)return;
+  let n=0;
+  S.deals.forEach(d=>{ if(d.pipe==='h2m_of'&&!isLost(d)&&!isArchived(d)&&OF_STAGE_TASKS[d.stage]!==undefined) n+=ensureOfStageTasks(d,d.stage)||0; });
+  (S.targets=S.targets||{}).ofGateBackfill=true;
+  save();
 }
 function ofGateBlock(d){
   const idx=d.stage;
@@ -4591,6 +4612,7 @@ function markSoldFromArchive(id){
 function openDeal(id){
   const d=D(id);if(!d)return;const pipe=PIPES[d.pipe];const edit=canEditDeal(d);
   const c=d.clientId?C(d.clientId):null;const lk=linkedDeals(d);const dis=edit?'':' disabled';
+  if(d.pipe==='h2m_of'&&OF_STAGE_TASKS[d.stage]!==undefined&&!isLost(d)&&!isArchived(d)){ if(ensureOfStageTasks(d,d.stage))save(); }
   let h='<button class="close" onclick="closeAll()">×</button>';
   h+='<div class="eyebrow" style="font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--mut)">'+pipe.name+' · '+esc(d.type)+'</div>';
   h+='<h2>'+esc(dealTitle(d))+'</h2>'+(c?'<a style="font-size:13px;cursor:pointer" onclick="go(\'client\',\''+d.clientId+'\');closeAll()">Open full profile →</a>':'');
@@ -4616,6 +4638,17 @@ function openDeal(id){
   /* stage stepper */
   h+='<div class="stepper">'+pipe.stages.map((st,i)=>'<div class="step'+(i<=d.stage?' on':'')+(edit?' next':'')+'"'+(edit?' onclick="stepMove(\''+d.id+'\','+i+')"':'')+tipAttr('<div class="tt">'+st+'</div>'+(edit?'<div class="tr"><span>Click to move here</span></div>':''))+'></div>').join('')+'</div>';
   h+='<div class="stagenow">Stage '+(d.stage+1)+' of '+pipe.stages.length+' — <b style="color:var(--ink);font-weight:500">'+pipe.stages[d.stage]+'</b>'+(isFinal(d)&&closedDate(d)?' · closed '+fdate(closedDate(d)):'')+'</div>';
+  if(d.pipe==='h2m_of'&&OF_STAGE_TASKS[d.stage]!==undefined&&!isLost(d)&&!isArchived(d)){
+    const gt=S.tasks.filter(t=>t.gateDeal===d.id&&t.gateStage===d.stage);
+    const doneN=gt.filter(t=>t.done).length;
+    let intakeNote='';
+    if(d.stage===2){const comp=c?ofbComplete(c):null;if(!comp||!comp.done)intakeNote='<div class="gate-intake">▸ Complete the buyer intake'+(comp&&comp.missingList.length?' — needs: '+esc(comp.missingList.join(', ')):'')+(d.clientId?' <button class="btn ghost small" style="margin-left:4px" onclick="closeAll();go(\'client\',\''+d.clientId+'\')">Open intake</button>':'')+'</div>';}
+    const nextStage=pipe.stages[d.stage+1];
+    h+='<div class="card gatebox"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:14px">Checklist to advance'+(nextStage?' → '+esc(nextStage):'')+'</h2><span class="cnt">'+doneN+'/'+gt.length+' done</span></div>'+
+      '<ul class="gatelist">'+gt.map(t=>'<li'+(t.done?' class="done"':'')+'><label><input type="checkbox"'+(t.done?' checked':'')+(edit?'':' disabled')+' onclick="toggleTask(\''+t.id+'\');openDeal(\''+d.id+'\')"><span>'+esc(t.title)+'</span></label></li>').join('')+'</ul>'+
+      intakeNote+
+      '<div class="mut" style="font-size:11.5px;margin-top:8px">These must be checked off before the deal can move to the next stage.</div></div>';
+  }
   /* facts */
   h+='<div class="frow"><div><label>Deal type</label><select id="dd-type"'+dis+'>'+pipe.types.map(t=>'<option'+(t===d.type?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
      '<div><label>Assigned to</label><select id="dd-agent"'+((me.role==='owner'||me.role==='manager')?'':' disabled')+'>'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===d.agentId?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select></div></div>'+
