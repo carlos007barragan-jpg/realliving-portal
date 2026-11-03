@@ -607,7 +607,7 @@ const PIPES={
   h2m_acq:{biz:'H2M',name:'H2M · Acquisitions',stages:['Lead','Hot lead','Under contract / Find a buyer','Buyer found / Buyer\'s side under contract','Closed','Post close'],types:['Acquisition','Assignment','Double Close']},
   h2m_dispo:{biz:'H2M',name:'H2M · Dispositions',stages:['Investors','Showing scheduled','Negotiation / terms','Under contract','EMD submitted','Closed','Post close / Under rehab'],types:['Owner Finance (CFD)','Cash Sale','Retail Sale']},
   h2m_of:{biz:'H2M',name:'H2M · Owner Finance — Buyers',stages:['New number (no contact)','Not Interested / Disqualified','Appointment scheduled','No show','Showing houses / Consult done','Found house / terms / negotiations','LOI / EMD / Under contract','Closed','Post close'],types:['Contract for Deed','Lease Option','Note Sale']},
-  h2m_of_sell:{biz:'H2M',name:'H2M · Owner Finance — Sellers',stages:['Inquiry / new leads','Numbers / paperwork','Photos / access','Marketing','Showings','LOI / negotiations','Under contract / EMD','Closing','Post close'],types:['Contract for Deed','Lease Option','Note Sale']},
+  h2m_of_sell:{biz:'H2M',name:'H2M · Owner Finance — Sellers',stages:['Inquiry / new leads','Didn\'t list / withdrew','Numbers / paperwork','Photos / access','Marketing','Showings','LOI / negotiations','Under contract / EMD','Closing','Post close'],types:['Contract for Deed','Lease Option','Note Sale']},
   rl_buy:{biz:'RL',name:'RL Team · Buy Side',stages:['Lead','Consult','Pre-Approved','Showing','Under Contract','Closed'],types:['Buyer Representation']},
   rl_list:{biz:'RL',name:'RL Team · List Side',stages:['Lead','Listing Appt','Listed','Under Contract','Closed'],types:['Listing']},
   tc:{biz:'TC',name:'Transaction Coordination',stages:['File Opened','Contract Executed','Contingencies','Clear to Close','Closed','Fee Collected'],types:['In-House File','Outside Agent File']}
@@ -2672,6 +2672,24 @@ const OF_STAGE_TASKS={
   6:['Get the LOI signed','Collect the earnest money deposit','Draft the agreement the buyer will sign','Confirm down-payment funds are ready','Schedule the notary to sign & close'],
   7:['Notary signing complete + down payment collected','Record the close date on the profile','Set up monthly payment / servicing','Hand over keys / possession']
 };
+/* Owner Finance SELLERS. Stage 1 "Didn't list / withdrew" is the off-ramp. */
+const SELL_STAGE_TASKS={
+  0:['Call the seller back — text + voicemail if no answer','Get property basics: address, beds/baths, condition, sqft','Get the situation: why selling, timeline, who’s on title, occupancy (owner/tenant/vacant)','Get the money picture: mortgage balance or free & clear, target price, liens / back taxes / HOA','Confirm it fits owner finance and set expectations'],
+  2:['Work up the numbers to market: purchase price, down payment, interest rate, amortization (30-yr), taxes, insurance — confirm the PITI payment','Present the terms to the seller and get a yes','Get copies of the contracts the seller uses, for us to review','Ask if they have any inspection reports (optional)'],
+  3:['Get photos done','Get a video tour','Set up access (lockbox / showing instructions) + confirm occupancy'],
+  4:['Build the listing — photos, video, description, owner-finance terms','Post to Instagram, Facebook, FB Marketplace, TikTok, and the website','Confirm the listing is live everywhere'],
+  5:['Coordinate showings with the buyer side','Collect feedback after showings','Keep the seller updated on activity'],
+  6:['Present the offer / LOI to the seller','Negotiate and finalize the terms','Get the seller’s written acceptance'],
+  7:['Buyer signs the agreement (contract for deed)','Collect the earnest money deposit','Confirm the buyer’s down-payment funds are ready','Any inspection / walkthrough agreed to','Schedule the notary to sign & close'],
+  8:['Notary signing complete; down payment collected & disbursed','Record the close date on the deal','Keys / possession handled']
+};
+/* Per-pipeline gate config: which stage checklists apply, which stages are off-ramps
+   (never gated), and which stage (if any) also requires the buyer intake. */
+const GATE_CFG={
+  h2m_of:{tasks:OF_STAGE_TASKS,offramp:[1,3],intakeStage:2},
+  h2m_of_sell:{tasks:SELL_STAGE_TASKS,offramp:[1],intakeStage:-1}
+};
+function gateCfg(pipe){return GATE_CFG[pipe]||null;}
 const OF_OFFRAMP=[1,3];
 /* The single person responsible for a (possibly shared) lead. Automated tasks go to them,
    never duplicated across every agent on the profile. Falls back sensibly when unset. */
@@ -2683,17 +2701,17 @@ function leadAgentOf(c,d){
   return c?c.genBy:null;
 }
 function ensureOfStageTasks(d,idx){
-  if(!d||d.pipe!=='h2m_of')return 0;
-  const list=OF_STAGE_TASKS[idx]; if(!list)return 0;
+  const cfg=d&&gateCfg(d.pipe); if(!cfg)return 0;
+  const list=cfg.tasks[idx]; if(!list)return 0;
   const cid=d.clientId||null;
-  /* dedup by CLIENT + stage, not per deal — a shared lead with two OF deals gets one checklist */
-  if(S.tasks.some(t=>t.plan==='ofgate'&&t.gateStage===idx&&!t.done&&((cid&&t.clientId===cid)||t.gateDeal===d.id)))return 0;
+  /* dedup by CLIENT + stage + pipe, not per deal — a shared lead with two OF deals gets one checklist */
+  if(S.tasks.some(t=>t.plan==='ofgate'&&t.gateStage===idx&&(t.gatePipe||'h2m_of')===d.pipe&&!t.done&&((cid&&t.clientId===cid)||t.gateDeal===d.id)))return 0;
   const c=cid?C(cid):null;
   const who=leadAgentOf(c,d)||(me&&(me.id==='admin'?realUid():me.id));
   const base=Date.now();
   list.forEach((title,i)=>S.tasks.push({id:uid('t'),title:title,clientId:cid,dealId:d.id,agentId:who,
     by:(me&&me.id==='admin'?realUid():(me?me.id:who)),due:new Date(base+i*864e5).toISOString().slice(0,10),
-    done:false,createdAt:new Date().toISOString(),plan:'ofgate',gateDeal:d.id,gateClient:cid,gateStage:idx}));
+    done:false,createdAt:new Date().toISOString(),plan:'ofgate',gateDeal:d.id,gateClient:cid,gateStage:idx,gatePipe:d.pipe}));
   return list.length;
 }
 /* Remove duplicate open ofgate tasks for one client (same stage + title), keeping the earliest. */
@@ -2727,19 +2745,20 @@ function ofGateDedupe(){
    up on the board and in the deal without waiting for the next move. */
 function ofGateBackfill(){
   if(!S||!S.deals)return;
-  if(S.targets&&S.targets.ofGateBackfill)return;
+  if(S.targets&&S.targets.ofGateBackfill2)return;
   let n=0;
-  S.deals.forEach(d=>{ if(d.pipe==='h2m_of'&&!isLost(d)&&!isArchived(d)&&OF_STAGE_TASKS[d.stage]!==undefined) n+=ensureOfStageTasks(d,d.stage)||0; });
-  (S.targets=S.targets||{}).ofGateBackfill=true;
+  S.deals.forEach(d=>{ const cfg=gateCfg(d.pipe); if(cfg&&!isLost(d)&&!isArchived(d)&&cfg.tasks[d.stage]!==undefined) n+=ensureOfStageTasks(d,d.stage)||0; });
+  (S.targets=S.targets||{}).ofGateBackfill=true;(S.targets=S.targets||{}).ofGateBackfill2=true;
   save();
 }
 function ofGateBlock(d){
+  const cfg=gateCfg(d.pipe); if(!cfg)return null;
   const idx=d.stage;
-  if(OF_STAGE_TASKS[idx]===undefined)return null;
+  if(cfg.tasks[idx]===undefined)return null;
   ensureOfStageTasks(d,idx);
-  const open=S.tasks.filter(t=>t.gateDeal===d.id&&t.gateStage===idx&&!t.done).map(t=>t.title);
+  const open=S.tasks.filter(t=>t.plan==='ofgate'&&(t.gatePipe||'h2m_of')===d.pipe&&t.gateStage===idx&&!t.done&&(t.clientId===d.clientId||t.gateDeal===d.id)).map(t=>t.title);
   let intake=false,missingList=[];
-  if(idx===2){const c=C(d.clientId);const comp=c?ofbComplete(c):null;if(!comp||!comp.done){intake=true;missingList=comp?comp.missingList:['the whole intake'];}}
+  if(idx===cfg.intakeStage){const c=C(d.clientId);const comp=c?ofbComplete(c):null;if(!comp||!comp.done){intake=true;missingList=comp?comp.missingList:['the whole intake'];}}
   if(!open.length&&!intake)return null;
   return {tasks:open,intake:intake,missingList:missingList};
 }
@@ -2759,10 +2778,11 @@ function showOfGate(d,stage,block){
 function ofGateOverride(did,stage){const d=D(did);if(!d)return;closeAll();moveStage._ovr=true;moveStage(d,stage);}
 function moveStage(d,stage,fromCloseOut){
   if(d.stage===stage)return;
-  if(d.pipe==='h2m_of'&&stage>d.stage&&OF_OFFRAMP.indexOf(stage)<0&&!fromCloseOut&&!moveStage._ovr){
-    const block=ofGateBlock(d);
-    if(block){showOfGate(d,stage,block);return;}
-  }
+  {const cfg=gateCfg(d.pipe);
+   if(cfg&&stage>d.stage&&cfg.offramp.indexOf(stage)<0&&!fromCloseOut&&!moveStage._ovr){
+     const block=ofGateBlock(d);
+     if(block){showOfGate(d,stage,block);return;}
+   }}
   moveStage._ovr=false;
   const prevIdx=d.stage;
   const from=PIPES[d.pipe].stages[d.stage],to=PIPES[d.pipe].stages[stage];
@@ -2807,14 +2827,21 @@ function clientAutos(cid,horizonDays){
   const horizon=addDays(today,horizonDays||90);
   const c=C(cid); const out={drip:null,upcoming:[]}; if(!c)return out;
   const NOSHOW=[0,1,3,5,7,14,21,30],DISQ=[1,3,7,14,30,60,90];
-  const closeOf=d=>{const h=d.hist||[];const hit=h.filter(x=>+x.s>=7).map(x=>String(x.at)).sort()[0];return hit?hit.slice(0,10):(d.closedAt?String(d.closedAt).slice(0,10):null);};
+  const closeOf=(d,th)=>{const h=d.hist||[];const hit=h.filter(x=>+x.s>=(th||7)).map(x=>String(x.at)).sort()[0];return hit?hit.slice(0,10):(d.closedAt?String(d.closedAt).slice(0,10):null);};
   const enteredOf=(d,idx)=>{const h=d.hist||[];const hit=h.filter(x=>+x.s===idx).map(x=>String(x.at)).sort().pop();return hit?hit.slice(0,10):null;};
   const sent=key=>S.touches.some(t=>t.clientId===cid&&t.campKey===key);
   const between=(a,b)=>Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/864e5);
   if(c.dob){let dt=today.slice(0,4)+'-'+mmd(c.dob);if(dt<today)dt=(+today.slice(0,4)+1)+'-'+mmd(c.dob);if(dt<=horizon&&!sent('bday-'+dt.slice(0,4)))out.upcoming.push({date:dt,camp:'Birthday',channel:'Text + Email'});}
-  S.deals.filter(d=>d.pipe==='h2m_of'&&d.clientId===cid&&!isLost(d)&&!isArchived(d)).forEach(d=>{
+  S.deals.filter(d=>(d.pipe==='h2m_of'||d.pipe==='h2m_of_sell')&&d.clientId===cid&&!isLost(d)&&!isArchived(d)).forEach(d=>{
+    if(d.pipe==='h2m_of_sell'){
+      if(d.stage===1){const ent=enteredOf(d,1);if(ent){out.drip={type:'Withdrawn seller',ent:ent,days:between(ent,today)};DISQ.forEach(day=>{const dt=addDays(ent,day);if(dt>=today&&dt<=horizon){const key='selldq-'+ent+'-d'+day;if(!sent(key))out.upcoming.push({date:dt,camp:'Seller nurture · day '+day,channel:'Text'});}});}return;}
+      if(d.stage===4||d.stage===5){const ent=enteredOf(d,4);if(ent){for(let w=1;w<=12;w++){const dt=addDays(ent,7*w);if(dt>=today&&dt<=horizon){const key='sellupd-'+ent+'-w'+w;if(!sent(key))out.upcoming.push({date:dt,camp:'Seller update · week '+w,channel:'Text'});}}}return;}
+      const cd=closeOf(d,8);if(!cd)return;
+      const rev=addDays(cd,2);if(rev>=today&&rev<=horizon&&between(cd,today)<=14&&!sent('review-'+d.id))out.upcoming.push({date:rev,camp:'Review ask',channel:'Text + Email'});
+      return;
+    }
     if(d.stage===3||d.stage===1){const idx=d.stage,ent=enteredOf(d,idx);if(ent){out.drip={type:idx===3?'No-show':'Disqualified',ent:ent,days:between(ent,today)};const cad=idx===3?NOSHOW:DISQ;cad.forEach(day=>{const dt=addDays(ent,day);if(dt>=today&&dt<=horizon){const key=(idx===3?'noshow-':'disq-')+ent+'-d'+day;if(!sent(key))out.upcoming.push({date:dt,camp:(idx===3?'No-show drip':'Disqualified drip')+' · day '+day,channel:'Text'});}});}return;}
-    const cd=closeOf(d);if(!cd)return;
+    const cd=closeOf(d,7);if(!cd)return;
     const rev=addDays(cd,2);if(rev>=today&&rev<=horizon&&between(cd,today)<=14&&!sent('review-'+d.id))out.upcoming.push({date:rev,camp:'Review ask',channel:'Text + Email'});
     [30,60,90].forEach(n=>{const dt=addDays(cd,n);if(dt>=today&&dt<=horizon&&!sent('post'+n+'-'+d.id))out.upcoming.push({date:dt,camp:'Post-close '+n+'-day',channel:'Text'});});
     let adt=today.slice(0,4)+'-'+mmd(cd);if(adt<today)adt=(+today.slice(0,4)+1)+'-'+mmd(cd);const years=(+adt.slice(0,4))-(+cd.slice(0,4));if(years>=1&&adt<=horizon&&!sent('anniv-'+adt.slice(0,4)+'-'+d.id))out.upcoming.push({date:adt,camp:'Home anniversary ('+years+' yr)',channel:'Text + Email'});
@@ -2841,7 +2868,7 @@ function vAutomations(){
   const armed=!!(S.targets&&S.targets.campaigns);
   const reviewLink=(S.targets&&S.targets.reviewLink)||'';
   const NOSHOW=[0,1,3,5,7,14,21,30],DISQ=[1,3,7,14,30,60,90];
-  const closeOf=d=>{const h=d.hist||[];const hit=h.filter(x=>+x.s>=7).map(x=>String(x.at)).sort()[0];return hit?hit.slice(0,10):(d.closedAt?String(d.closedAt).slice(0,10):null);};
+  const closeOf=(d,th)=>{const h=d.hist||[];const hit=h.filter(x=>+x.s>=(th||7)).map(x=>String(x.at)).sort()[0];return hit?hit.slice(0,10):(d.closedAt?String(d.closedAt).slice(0,10):null);};
   const enteredOf=(d,idx)=>{const h=d.hist||[];const hit=h.filter(x=>+x.s===idx).map(x=>String(x.at)).sort().pop();return hit?hit.slice(0,10):null;};
   const sent=(cid,key)=>S.touches.some(t=>t.clientId===cid&&t.campKey===key);
   const between=(a,b)=>Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/864e5);
@@ -2851,19 +2878,24 @@ function vAutomations(){
   S.clients.forEach(c=>{ if(!c||c.archived||!c.dob)return; const md=mmd(c.dob),yr=today.slice(0,4);
     let dt=yr+'-'+md; if(dt<today)dt=(+yr+1)+'-'+md;
     if(dt>=today&&dt<=horizon&&!sent(c.id,'bday-'+dt.slice(0,4)))push(dt,c.id,'Birthday','Text + Email'); });
-  S.deals.forEach(d=>{ if(d.pipe!=='h2m_of'||!d.clientId)return; const c=C(d.clientId); if(!c||c.archived)return;
-    if((d.stage===3||d.stage===1)&&!isLost(d)&&!isArchived(d)){ const idx=d.stage,ent=enteredOf(d,idx); if(!ent)return; const cad=idx===3?NOSHOW:DISQ;
+  S.deals.forEach(d=>{ if((d.pipe!=='h2m_of'&&d.pipe!=='h2m_of_sell')||!d.clientId)return; const c=C(d.clientId); if(!c||c.archived||isLost(d)||isArchived(d))return;
+    if(d.pipe==='h2m_of_sell'){
+      if(d.stage===1){ const ent=enteredOf(d,1); if(!ent)return; DISQ.forEach(day=>{ const dt=addDays(ent,day); if(dt>=today&&dt<=horizon){ const key='selldq-'+ent+'-d'+day; if(!sent(c.id,key))push(dt,c.id,'Seller nurture · day '+day,'Text'); } }); return; }
+      if(d.stage===4||d.stage===5){ const ent=enteredOf(d,4); if(!ent)return; for(let w=1;w<=12;w++){ const dt=addDays(ent,7*w); if(dt>=today&&dt<=horizon){ const key='sellupd-'+ent+'-w'+w; if(!sent(c.id,key))push(dt,c.id,'Seller update · week '+w,'Text'); } } return; }
+      const cds=closeOf(d,8); if(!cds)return; const revs=addDays(cds,2); if(revs>=today&&revs<=horizon&&between(cds,today)<=14&&!sent(c.id,'review-'+d.id))push(revs,c.id,'Review ask',reviewLink?'Text + Email':'Text'); return;
+    }
+    if(d.stage===3||d.stage===1){ const idx=d.stage,ent=enteredOf(d,idx); if(!ent)return; const cad=idx===3?NOSHOW:DISQ;
       cad.forEach(day=>{ const dt=addDays(ent,day); if(dt>=today&&dt<=horizon){ const key=(idx===3?'noshow-':'disq-')+ent+'-d'+day; if(!sent(c.id,key))push(dt,c.id,(idx===3?'No-show drip':'Disqualified drip')+' · day '+day,'Text'); } });
       return; }
-    const cd=closeOf(d); if(!cd)return;
+    const cd=closeOf(d,7); if(!cd)return;
     const rev=addDays(cd,2); if(rev>=today&&rev<=horizon&&between(cd,today)<=14&&!sent(c.id,'review-'+d.id))push(rev,c.id,'Review ask',reviewLink?'Text + Email':'Text');
     [30,60,90].forEach(n=>{const dt=addDays(cd,n); if(dt>=today&&dt<=horizon&&!sent(c.id,'post'+n+'-'+d.id))push(dt,c.id,'Post-close '+n+'-day','Text');});
     const yr=today.slice(0,4); let adt=yr+'-'+mmd(cd); if(adt<today)adt=(+yr+1)+'-'+mmd(cd);
     const years=(+adt.slice(0,4))-(+cd.slice(0,4)); if(years>=1&&adt>=today&&adt<=horizon&&!sent(c.id,'anniv-'+adt.slice(0,4)+'-'+d.id))push(adt,c.id,'Home anniversary ('+years+' yr)','Text + Email');
   });
   items.sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
-  const drips=S.deals.filter(d=>d.pipe==='h2m_of'&&(d.stage===1||d.stage===3)&&!isLost(d)&&!isArchived(d))
-    .map(d=>{const c=C(d.clientId);const idx=d.stage;const ent=enteredOf(d,idx);return {c,idx,ent,days:ent?between(ent,today):null};})
+  const drips=S.deals.filter(d=>((d.pipe==='h2m_of'&&(d.stage===1||d.stage===3))||(d.pipe==='h2m_of_sell'&&d.stage===1))&&!isLost(d)&&!isArchived(d))
+    .map(d=>{const c=C(d.clientId);const idx=d.stage;const ent=enteredOf(d,idx);const type=d.pipe==='h2m_of_sell'?'Withdrawn seller':(idx===3?'No-show':'Disqualified');return {c,type,ent,days:ent?between(ent,today):null};})
     .filter(x=>x.c&&x.ent).sort((a,b)=>b.days-a.days);
   let h='<div class="sect-head"><h2>Automations</h2><span class="cnt">what’s scheduled to go out · next '+horizonDays+' days</span><span class="spacer"></span><span class="tag" style="border-color:'+(armed?'#2e7d32':'var(--amber)')+';color:'+(armed?'#2e7d32':'var(--amber)')+'">'+(armed?'ON — sending live':'Preview — not sending yet')+'</span></div>';
   h+='<div class="card" style="margin-bottom:12px"><div class="mut" style="font-size:12.5px">Each morning the system sends these automatically (once automations are turned on): birthdays, home anniversaries, the review ask after a close, post-close 30/60/90-day check-ins, and the no-show / disqualified follow-up drips. Every message goes out in the contact’s language and skips anyone who replied STOP.</div></div>';
@@ -2871,7 +2903,7 @@ function vAutomations(){
     (items.length?items.map(it=>'<tr><td>'+fdate(it.date)+'</td><td><span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+it.cid+'\')">'+esc(it.name)+'</span></td><td>'+esc(it.camp)+'</td><td class="mut">'+it.channel+'</td><td>'+it.lang+'</td></tr>').join(''):'<tr><td colspan="5" class="mut" style="padding:14px">Nothing scheduled in the next '+horizonDays+' days. Birthdays and anniversaries fill in as buyer date-of-birth and close dates get entered.</td></tr>')+'</table></div>';
   h+='<div class="sect-head" style="margin-top:4px"><h2 style="font-size:16px">Active follow-up drips</h2><span class="cnt">'+drips.length+' running now</span></div>';
   h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Contact</th><th>Drip</th><th>Entered</th><th>Days in</th></tr>'+
-    (drips.length?drips.map(x=>'<tr><td><span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+x.c.id+'\')">'+esc(x.c.name)+'</span></td><td>'+(x.idx===3?'No-show':'Disqualified')+'</td><td class="mut">'+fdate(x.ent)+'</td><td>'+x.days+'d</td></tr>').join(''):'<tr><td colspan="4" class="mut" style="padding:14px">No leads in the No-show or Disqualified stages right now.</td></tr>')+'</table></div>';
+    (drips.length?drips.map(x=>'<tr><td><span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+x.c.id+'\')">'+esc(x.c.name)+'</span></td><td>'+esc(x.type)+'</td><td class="mut">'+fdate(x.ent)+'</td><td>'+x.days+'d</td></tr>').join(''):'<tr><td colspan="4" class="mut" style="padding:14px">No leads in a drip stage right now.</td></tr>')+'</table></div>';
   return h;
 }
 /* ---- Duplicate contact merge (Oscar #3) ----
@@ -4737,7 +4769,7 @@ function markSoldFromArchive(id){
 function openDeal(id){
   const d=D(id);if(!d)return;const pipe=PIPES[d.pipe];const edit=canEditDeal(d);
   const c=d.clientId?C(d.clientId):null;const lk=linkedDeals(d);const dis=edit?'':' disabled';
-  if(d.pipe==='h2m_of'&&OF_STAGE_TASKS[d.stage]!==undefined&&!isLost(d)&&!isArchived(d)){ if(ensureOfStageTasks(d,d.stage))save(); }
+  if(gateCfg(d.pipe)&&gateCfg(d.pipe).tasks[d.stage]!==undefined&&!isLost(d)&&!isArchived(d)){ if(ensureOfStageTasks(d,d.stage))save(); }
   let h='<button class="close" onclick="closeAll()">×</button>';
   h+='<div class="eyebrow" style="font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--mut)">'+pipe.name+' · '+esc(d.type)+'</div>';
   h+='<h2>'+esc(dealTitle(d))+'</h2>'+(c?'<a style="font-size:13px;cursor:pointer" onclick="go(\'client\',\''+d.clientId+'\');closeAll()">Open full profile →</a>':'');
@@ -4763,11 +4795,12 @@ function openDeal(id){
   /* stage stepper */
   h+='<div class="stepper">'+pipe.stages.map((st,i)=>'<div class="step'+(i<=d.stage?' on':'')+(edit?' next':'')+'"'+(edit?' onclick="stepMove(\''+d.id+'\','+i+')"':'')+tipAttr('<div class="tt">'+st+'</div>'+(edit?'<div class="tr"><span>Click to move here</span></div>':''))+'></div>').join('')+'</div>';
   h+='<div class="stagenow">Stage '+(d.stage+1)+' of '+pipe.stages.length+' — <b style="color:var(--ink);font-weight:500">'+pipe.stages[d.stage]+'</b>'+(isFinal(d)&&closedDate(d)?' · closed '+fdate(closedDate(d)):'')+'</div>';
-  if(d.pipe==='h2m_of'&&OF_STAGE_TASKS[d.stage]!==undefined&&!isLost(d)&&!isArchived(d)){
-    const gt=S.tasks.filter(t=>t.gateDeal===d.id&&t.gateStage===d.stage);
+  if(gateCfg(d.pipe)&&gateCfg(d.pipe).tasks[d.stage]!==undefined&&!isLost(d)&&!isArchived(d)){
+    const _cfg=gateCfg(d.pipe);
+    const gt=S.tasks.filter(t=>t.plan==='ofgate'&&(t.gatePipe||'h2m_of')===d.pipe&&t.gateStage===d.stage&&(t.clientId===d.clientId||t.gateDeal===d.id));
     const doneN=gt.filter(t=>t.done).length;
     let intakeNote='';
-    if(d.stage===2){const comp=c?ofbComplete(c):null;if(!comp||!comp.done)intakeNote='<div class="gate-intake">▸ Complete the buyer intake'+(comp&&comp.missingList.length?' — needs: '+esc(comp.missingList.join(', ')):'')+(d.clientId?' <button class="btn ghost small" style="margin-left:4px" onclick="closeAll();go(\'client\',\''+d.clientId+'\')">Open intake</button>':'')+'</div>';}
+    if(d.stage===_cfg.intakeStage){const comp=c?ofbComplete(c):null;if(!comp||!comp.done)intakeNote='<div class="gate-intake">▸ Complete the buyer intake'+(comp&&comp.missingList.length?' — needs: '+esc(comp.missingList.join(', ')):'')+(d.clientId?' <button class="btn ghost small" style="margin-left:4px" onclick="closeAll();go(\'client\',\''+d.clientId+'\')">Open intake</button>':'')+'</div>';}
     const nextStage=pipe.stages[d.stage+1];
     h+='<div class="card gatebox"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:14px">Checklist to advance'+(nextStage?' → '+esc(nextStage):'')+'</h2><span class="cnt">'+doneN+'/'+gt.length+' done</span></div>'+
       '<ul class="gatelist">'+gt.map(t=>'<li'+(t.done?' class="done"':'')+'><label><input type="checkbox"'+(t.done?' checked':'')+(edit?'':' disabled')+' onclick="toggleTask(\''+t.id+'\');openDeal(\''+d.id+'\')"><span>'+esc(t.title)+'</span></label></li>').join('')+'</ul>'+
