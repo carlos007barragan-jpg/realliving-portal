@@ -1205,6 +1205,7 @@ async function _cloudEnter(userId,emailFallback){
   sessionStorage.removeItem('rl_view');
   try{expireStaleTasks();}catch(e){}
   try{ofGateBackfill();}catch(e){}
+  try{ofGateDedupe();}catch(e){}
   enter();startSync();
 }
 async function cloudLogin(email,pw){
@@ -2672,16 +2673,54 @@ const OF_STAGE_TASKS={
   7:['Notary signing complete + down payment collected','Record the close date on the profile','Set up monthly payment / servicing','Hand over keys / possession']
 };
 const OF_OFFRAMP=[1,3];
+/* The single person responsible for a (possibly shared) lead. Automated tasks go to them,
+   never duplicated across every agent on the profile. Falls back sensibly when unset. */
+function leadAgentOf(c,d){
+  if(c&&c.leadAgent)return c.leadAgent;
+  if(c&&c.assignedTo)return c.assignedTo;
+  if(d&&d.agentId)return d.agentId;
+  if(c){const ds=S.deals.filter(x=>x.clientId===c.id&&x.agentId&&!isLost(x)).sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')));if(ds[0])return ds[0].agentId;}
+  return c?c.genBy:null;
+}
 function ensureOfStageTasks(d,idx){
   if(!d||d.pipe!=='h2m_of')return 0;
   const list=OF_STAGE_TASKS[idx]; if(!list)return 0;
-  if(S.tasks.some(t=>t.gateDeal===d.id&&t.gateStage===idx))return 0;
-  const who=d.agentId||(me&&(me.id==='admin'?realUid():me.id));
+  const cid=d.clientId||null;
+  /* dedup by CLIENT + stage, not per deal — a shared lead with two OF deals gets one checklist */
+  if(S.tasks.some(t=>t.plan==='ofgate'&&t.gateStage===idx&&!t.done&&((cid&&t.clientId===cid)||t.gateDeal===d.id)))return 0;
+  const c=cid?C(cid):null;
+  const who=leadAgentOf(c,d)||(me&&(me.id==='admin'?realUid():me.id));
   const base=Date.now();
-  list.forEach((title,i)=>S.tasks.push({id:uid('t'),title:title,clientId:d.clientId||null,dealId:d.id,agentId:who,
+  list.forEach((title,i)=>S.tasks.push({id:uid('t'),title:title,clientId:cid,dealId:d.id,agentId:who,
     by:(me&&me.id==='admin'?realUid():(me?me.id:who)),due:new Date(base+i*864e5).toISOString().slice(0,10),
-    done:false,createdAt:new Date().toISOString(),plan:'ofgate',gateDeal:d.id,gateStage:idx}));
+    done:false,createdAt:new Date().toISOString(),plan:'ofgate',gateDeal:d.id,gateClient:cid,gateStage:idx}));
   return list.length;
+}
+/* Remove duplicate open ofgate tasks for one client (same stage + title), keeping the earliest. */
+function dedupeOfGateForClient(cid){
+  const groups={},kill=[];
+  S.tasks.forEach(t=>{ if(t.plan!=='ofgate'||t.done||t.clientId!==cid)return; const k=t.gateStage+'|'+t.title; (groups[k]=groups[k]||[]).push(t); });
+  Object.keys(groups).forEach(k=>{ const arr=groups[k].sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||''))); arr.slice(1).forEach(x=>{markDel('tasks',x.id);kill.push(x.id);}); });
+  if(kill.length)S.tasks=S.tasks.filter(t=>kill.indexOf(t.id)<0);
+  return kill.length;
+}
+/* Set the lead agent for a shared profile: reassign this client's open automated tasks to them
+   and drop any duplicates that two deals/agents created. */
+function setLeadAgent(cid,uid){
+  const c=C(cid);if(!c)return;
+  c.leadAgent=uid||'';
+  S.tasks.forEach(t=>{ if(t.clientId===cid&&!t.done&&(t.plan==='ofgate'||String(t.plan||'').indexOf('pb-')===0)&&uid)t.agentId=uid; });
+  dedupeOfGateForClient(cid);
+  logAct(null,cid,'Lead agent set to '+(uid?U(uid).name:'auto')+' — automated tasks now go to them.');
+  save();go('client',cid);toast('Lead agent updated');
+}
+/* One-time cleanup: de-duplicate existing ofgate tasks across every client and point each
+   client's set at its lead agent (fixes the two-deals-two-agents duplication). */
+function ofGateDedupe(){
+  if(!S||!S.tasks)return; if(S.targets&&S.targets.ofGateDedupe)return;
+  const cids=new Set(); S.tasks.forEach(t=>{ if(t.plan==='ofgate'&&!t.done&&t.clientId)cids.add(t.clientId); });
+  cids.forEach(cid=>{ const lead=leadAgentOf(C(cid),null); if(lead)S.tasks.forEach(t=>{ if(t.plan==='ofgate'&&!t.done&&t.clientId===cid)t.agentId=lead; }); dedupeOfGateForClient(cid); });
+  (S.targets=S.targets||{}).ofGateDedupe=true; save();
 }
 /* One-time backfill: existing OF buyer deals predate this feature and never spawned their
    stage checklist. Spawn the current stage's tasks for each open OF deal once, so they show
@@ -2759,6 +2798,40 @@ let payAgent=null;
    Mirrors the server-side campaigns logic so owner/manager can see what is going out on
    schedule — birthdays, anniversaries, review asks, post-close check-ins, and the no-show /
    disqualified drips — before and after SMS marketing is armed. Computed from the same data. */
+/* Per-client automation schedule — same rules as vAutomations, scoped to one contact,
+   so a lead's own profile shows what's queued for them and whether they're on a drip. */
+function clientAutos(cid,horizonDays){
+  const today=NOW().toISOString().slice(0,10);
+  const addDays=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+  const mmd=iso=>String(iso||'').slice(5,10);
+  const horizon=addDays(today,horizonDays||90);
+  const c=C(cid); const out={drip:null,upcoming:[]}; if(!c)return out;
+  const NOSHOW=[0,1,3,5,7,14,21,30],DISQ=[1,3,7,14,30,60,90];
+  const closeOf=d=>{const h=d.hist||[];const hit=h.filter(x=>+x.s>=7).map(x=>String(x.at)).sort()[0];return hit?hit.slice(0,10):(d.closedAt?String(d.closedAt).slice(0,10):null);};
+  const enteredOf=(d,idx)=>{const h=d.hist||[];const hit=h.filter(x=>+x.s===idx).map(x=>String(x.at)).sort().pop();return hit?hit.slice(0,10):null;};
+  const sent=key=>S.touches.some(t=>t.clientId===cid&&t.campKey===key);
+  const between=(a,b)=>Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/864e5);
+  if(c.dob){let dt=today.slice(0,4)+'-'+mmd(c.dob);if(dt<today)dt=(+today.slice(0,4)+1)+'-'+mmd(c.dob);if(dt<=horizon&&!sent('bday-'+dt.slice(0,4)))out.upcoming.push({date:dt,camp:'Birthday',channel:'Text + Email'});}
+  S.deals.filter(d=>d.pipe==='h2m_of'&&d.clientId===cid&&!isLost(d)&&!isArchived(d)).forEach(d=>{
+    if(d.stage===3||d.stage===1){const idx=d.stage,ent=enteredOf(d,idx);if(ent){out.drip={type:idx===3?'No-show':'Disqualified',ent:ent,days:between(ent,today)};const cad=idx===3?NOSHOW:DISQ;cad.forEach(day=>{const dt=addDays(ent,day);if(dt>=today&&dt<=horizon){const key=(idx===3?'noshow-':'disq-')+ent+'-d'+day;if(!sent(key))out.upcoming.push({date:dt,camp:(idx===3?'No-show drip':'Disqualified drip')+' · day '+day,channel:'Text'});}});}return;}
+    const cd=closeOf(d);if(!cd)return;
+    const rev=addDays(cd,2);if(rev>=today&&rev<=horizon&&between(cd,today)<=14&&!sent('review-'+d.id))out.upcoming.push({date:rev,camp:'Review ask',channel:'Text + Email'});
+    [30,60,90].forEach(n=>{const dt=addDays(cd,n);if(dt>=today&&dt<=horizon&&!sent('post'+n+'-'+d.id))out.upcoming.push({date:dt,camp:'Post-close '+n+'-day',channel:'Text'});});
+    let adt=today.slice(0,4)+'-'+mmd(cd);if(adt<today)adt=(+today.slice(0,4)+1)+'-'+mmd(cd);const years=(+adt.slice(0,4))-(+cd.slice(0,4));if(years>=1&&adt<=horizon&&!sent('anniv-'+adt.slice(0,4)+'-'+d.id))out.upcoming.push({date:adt,camp:'Home anniversary ('+years+' yr)',channel:'Text + Email'});
+  });
+  out.upcoming.sort((a,b)=>a.date.localeCompare(b.date));
+  return out;
+}
+function vClientAutos(c){
+  const a=clientAutos(c.id,90);
+  if(!a.drip&&!a.upcoming.length)return '';
+  const armed=!!(S.targets&&S.targets.campaigns);
+  let h='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Automations</h2><span class="cnt">'+(armed?'live':'preview — not sending yet')+'</span></div>';
+  if(a.drip)h+='<div class="gate-intake" style="border-color:var(--gold2);color:var(--gold2);margin-bottom:10px">On the <b>'+esc(a.drip.type)+' drip</b> — day '+a.drip.days+', started '+fdate(a.drip.ent)+'. Stops automatically when the deal moves stage.</div>';
+  if(a.upcoming.length)h+='<div class="kv">'+a.upcoming.map(u=>'<div><small>'+fdate(u.date)+' · '+u.channel+'</small>'+esc(u.camp)+'</div>').join('')+'</div>';
+  else h+='<div class="mut" style="font-size:12.5px">No scheduled messages in the next 90 days.</div>';
+  return h+'</div>';
+}
 function vAutomations(){
   const today=NOW().toISOString().slice(0,10);
   const horizonDays=30;
@@ -3028,6 +3101,9 @@ function vClient(id){
     kv('Generated by',U(c.genBy).name)+kv('Assigned to',assignedName)+kv('Date created',fdate(c.createdAt))+
     (c.oldCalls?kv('Calls (previous CRM)',c.oldCalls+(c.oldLastCall?' · last '+fdate(c.oldLastCall):'')):'')+
     (hideMoney()||me.role==='agent'?'':kv('Lifetime revenue',won.length?money(life):'—'))+kv('Deals won',String(won.length))+'</div>'+
+    ((me.role==='owner'||me.role==='manager')
+      ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"><label style="margin:0 0 5px">Lead agent · handles this shared lead</label><select onchange="setLeadAgent(\''+c.id+'\',this.value)"><option value="">— Auto ('+(leadAgentOf(c,null)?esc(U(leadAgentOf(c,null)).name):'unassigned')+') —</option>'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(c.leadAgent===u.id?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select><div class="mut" style="font-size:11.5px;margin-top:4px">All automated tasks and follow-ups for this lead go to this person — never duplicated across the team.</div></div>'
+      : (c.leadAgent?'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"><div class="kv">'+kv('Lead agent',U(c.leadAgent).name)+'</div></div>':''))+
     '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)"><div class="mut" style="font-size:12px;margin-bottom:6px">Spouse / co-borrower</div>'+
     (c.spouseName?'<div class="kv">'+kv('Name',c.spouseName)+kv('Phone',c.spousePhone)+kv('Email',c.spouseEmail)+'</div>':'<div class="mut" style="font-size:12.5px">None on file — add via Edit.</div>')+'</div></div>';
   if(isOfBuyer(c,ds)){
@@ -3044,6 +3120,7 @@ function vClient(id){
         : '<div class="mut" style="font-size:12.5px">Capture the buyer’s qualifying details at the consult — language, birthday, income, down payment, monthly budget and home criteria. This needs to be complete before the deal moves past the consult stage.</div>')+
     '</div>';
   }
+  h+=vClientAutos(c);
   h+=vScript(c,open);
   /* imported lead profile — only the fields that actually have values */
   if(c.profile&&c.profile.length){
