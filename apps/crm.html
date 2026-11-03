@@ -3127,8 +3127,10 @@ function vClient(id){
   })();
   if(open.length){(function(){
     const d=open[0],p=PIPES[d.pipe];
+    if(gateCfg(d.pipe)&&gateCfg(d.pipe).tasks[d.stage]!==undefined&&!isLost(d)&&!isArchived(d)){ if(ensureOfStageTasks(d,d.stage))save(); }
     h+='<div class="card dealtl"><div class="sect-head" style="margin-bottom:14px"><h2 style="font-size:17px">'+esc(p.name)+' \u2014 '+esc(d.type)+'</h2><span class="cnt">'+esc(p.stages[d.stage])+'</span><span class="spacer"></span>'+(open.length>1?'<span class="mut" style="font-size:12px;margin-right:10px">+'+(open.length-1)+' more open</span>':'')+'<button class="btn ghost small" onclick="openDeal(\''+d.id+'\')">Open deal</button></div>'+
       '<div class="steps">'+p.stages.map((st,i)=>'<div class="step'+(i<d.stage?' done':i===d.stage?' cur':'')+'" title="Move to '+esc(st)+'" onclick="(function(){var dd=S.deals.find(x=>x.id===\''+d.id+'\');if(dd){moveStage(dd,'+i+');go(\'client\',\''+c.id+'\')}})()"><span class="dot">'+(i<d.stage?'\u2713':(i+1))+'</span><span class="slab">'+esc(st)+'</span></div>').join('')+'</div></div>';
+    h+=stageChecklistHTML(d);
   })();}
   h+='<div class="prof3">';
   /* ---- LEFT: about the person ---- */
@@ -3253,9 +3255,9 @@ function vClient(id){
     (me.role!=='marketing'?'<button class="btn ghost small" onclick="mAddInterest(\''+c.id+'\')">+ Add</button>':'')+'</div>'+
     (props||'<div class="empty" style="padding:10px 0">None yet — add one, or set it on a deal.</div>')+'</div>';
   /* open tasks */
-  const ctasks=S.tasks.filter(t=>t.clientId===id&&!t.done).sort((a,b)=>a.due.localeCompare(b.due));
-  h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:17px">Tasks</h2><span class="cnt">'+(ctasks.length?ctasks.length+' open':'all done')+'</span></div>'+(function(){
-    if(!ctasks.length)return '<div class="empty" style="padding:10px 0">No open tasks — nice work.</div>';
+  const ctasks=S.tasks.filter(t=>t.clientId===id&&!t.done&&t.plan!=='ofgate').sort((a,b)=>a.due.localeCompare(b.due));
+  h+='<div class="card" style="margin-top:14px"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:17px">Other tasks</h2><span class="cnt">'+(ctasks.length?ctasks.length+' open':'all done')+'</span></div>'+(function(){
+    if(!ctasks.length)return '<div class="empty" style="padding:10px 0">No other open tasks — the stage checklist is above.</div>';
     const cur=ctasks[0],rest=ctasks.slice(1),shown=taskFull?rest:rest.slice(0,2),more=rest.length-shown.length;
     const row=(t,isCur)=>'<div class="trow'+(isCur?' cur':'')+'"><input type="checkbox" onchange="toggleTask(\''+t.id+'\')"><div class="tbody"><div class="tt">'+taskLabel(t)+'</div><small>'+(isCur?'<b style="color:var(--gold2)">Do now</b> · ':'')+'due '+fdate(t.due)+' · '+esc(U(t.agentId).name)+'</small></div></div>';
     let o=row(cur,true);
@@ -4807,18 +4809,7 @@ function openDeal(id){
   /* stage stepper */
   h+='<div class="stepper">'+pipe.stages.map((st,i)=>'<div class="step'+(i<=d.stage?' on':'')+(edit?' next':'')+'"'+(edit?' onclick="stepMove(\''+d.id+'\','+i+')"':'')+tipAttr('<div class="tt">'+st+'</div>'+(edit?'<div class="tr"><span>Click to move here</span></div>':''))+'></div>').join('')+'</div>';
   h+='<div class="stagenow">Stage '+(d.stage+1)+' of '+pipe.stages.length+' — <b style="color:var(--ink);font-weight:500">'+pipe.stages[d.stage]+'</b>'+(isFinal(d)&&closedDate(d)?' · closed '+fdate(closedDate(d)):'')+'</div>';
-  if(gateCfg(d.pipe)&&gateCfg(d.pipe).tasks[d.stage]!==undefined&&!isLost(d)&&!isArchived(d)){
-    const _cfg=gateCfg(d.pipe);
-    const gt=S.tasks.filter(t=>t.plan==='ofgate'&&(t.gatePipe||'h2m_of')===d.pipe&&t.gateStage===d.stage&&(t.clientId===d.clientId||t.gateDeal===d.id));
-    const doneN=gt.filter(t=>t.done).length;
-    let intakeNote='';
-    if(d.stage===_cfg.intakeStage){const comp=c?ofbComplete(c):null;if(!comp||!comp.done)intakeNote='<div class="gate-intake">▸ Complete the buyer intake'+(comp&&comp.missingList.length?' — needs: '+esc(comp.missingList.join(', ')):'')+(d.clientId?' <button class="btn ghost small" style="margin-left:4px" onclick="closeAll();go(\'client\',\''+d.clientId+'\')">Open intake</button>':'')+'</div>';}
-    const nextStage=pipe.stages[d.stage+1];
-    h+='<div class="card gatebox"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:14px">Checklist to advance'+(nextStage?' → '+esc(nextStage):'')+'</h2><span class="cnt">'+doneN+'/'+gt.length+' done</span></div>'+
-      '<ul class="gatelist">'+gt.map(t=>'<li'+(t.done?' class="done"':'')+'><label><input type="checkbox"'+(t.done?' checked':'')+(edit?'':' disabled')+' onclick="toggleTask(\''+t.id+'\');openDeal(\''+d.id+'\')"><span>'+esc(t.title)+'</span></label></li>').join('')+'</ul>'+
-      intakeNote+
-      '<div class="mut" style="font-size:11.5px;margin-top:8px">These must be checked off before the deal can move to the next stage.</div></div>';
-  }
+  h+=stageChecklistHTML(d,edit);
   /* facts */
   h+='<div class="frow"><div><label>Deal type</label><select id="dd-type"'+dis+'>'+pipe.types.map(t=>'<option'+(t===d.type?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
      '<div><label>Assigned to</label><select id="dd-agent"'+((me.role==='owner'||me.role==='manager')?'':' disabled')+'>'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===d.agentId?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select></div></div>'+
@@ -4857,6 +4848,33 @@ function stepMove(id,i){
   const d=D(id);if(!d||!canEditDeal(d)||i===d.stage)return;
   if(i>=PIPES[d.pipe].stages.length-1){mCloseOut(id,i);return}
   moveStage(d,i);refresh();openDeal(id);
+}
+/* The next FORWARD stage, skipping off-ramps (Disqualified / No show), so advancing a
+   lead never defaults into an off-ramp. */
+function nextForwardStage(d){
+  const cfg=gateCfg(d.pipe),n=PIPES[d.pipe].stages.length;
+  for(let i=d.stage+1;i<n;i++){ if(!cfg||cfg.offramp.indexOf(i)<0)return i; }
+  return -1;
+}
+/* Toggle a gate task and re-render whichever view is open (deal drawer or profile). */
+function gateToggle(tid,did){ toggleTask(tid); const dr=document.getElementById('drawer'); if(dr&&dr.classList.contains('on'))openDeal(did); }
+/* ONE checklist, shared by the deal drawer and the full profile, so both show the same
+   tasks. Advancing uses the next real stage; the off-ramps are deliberate side buttons. */
+function stageChecklistHTML(d,edit){
+  const cfg=gateCfg(d.pipe); if(!cfg||cfg.tasks[d.stage]===undefined||isLost(d)||isArchived(d))return '';
+  if(edit===undefined)edit=canEditDeal(d);
+  const c=d.clientId?C(d.clientId):null;
+  const gt=S.tasks.filter(t=>t.plan==='ofgate'&&(t.gatePipe||'h2m_of')===d.pipe&&t.gateStage===d.stage&&(t.clientId===d.clientId||t.gateDeal===d.id));
+  const doneN=gt.filter(t=>t.done).length, nf=nextForwardStage(d);
+  let intakeNote='';
+  if(d.stage===cfg.intakeStage){const comp=c?ofbComplete(c):null;if(!comp||!comp.done)intakeNote='<div class="gate-intake">▸ Complete the buyer intake'+(comp&&comp.missingList.length?' — needs: '+esc(comp.missingList.join(', ')):'')+(d.clientId?' <button class="btn ghost small" style="margin-left:4px" onclick="closeAll();go(\'client\',\''+d.clientId+'\')">Open intake</button>':'')+'</div>';}
+  const offBtns=edit?cfg.offramp.filter(oi=>oi!==d.stage).map(oi=>'<button class="btn ghost small" style="margin:12px 0 0 6px;border-color:var(--mut);color:var(--mut)" onclick="stepMove(\''+d.id+'\','+oi+')">Mark: '+esc(PIPES[d.pipe].stages[oi])+'</button>').join(''):'';
+  const advBtn=(edit&&nf>=0)?'<button class="btn small" style="margin-top:12px" onclick="stepMove(\''+d.id+'\','+nf+')">Advance to → '+esc(PIPES[d.pipe].stages[nf])+'</button>':'';
+  return '<div class="card gatebox"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:14px">Checklist to advance'+(nf>=0?' → '+esc(PIPES[d.pipe].stages[nf]):'')+'</h2><span class="cnt">'+doneN+'/'+gt.length+' done</span></div>'+
+    '<ul class="gatelist">'+gt.map(t=>'<li'+(t.done?' class="done"':'')+'><label><input type="checkbox"'+(t.done?' checked':'')+(edit?'':' disabled')+' onclick="gateToggle(\''+t.id+'\',\''+d.id+'\')"><span>'+esc(t.title)+'</span></label></li>').join('')+'</ul>'+
+    intakeNote+
+    '<div>'+advBtn+offBtns+'</div>'+
+    '<div class="mut" style="font-size:11.5px;margin-top:8px">Check these off, then Advance. Not interested or a no-show? Use the grey buttons.</div></div>';
 }
 function addDealNote(id){
   const d=D(id);const el=document.getElementById('dn-in');const v=el.value.trim();if(!v)return;
