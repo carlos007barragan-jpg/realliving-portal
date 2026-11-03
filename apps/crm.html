@@ -3697,6 +3697,12 @@ function vProp(id){
      '<div class="card"><div class="eyebrow">'+(p.category==='Commercial'?'Commercial':'Listing')+'</div><div class="big" style="font-size:19px">'+esc(p.terms||(p.category==='On-market'?'On-market sale':'For sale'))+'</div></div></div>'+
      '<div class="mut" style="font-size:12px;margin-top:8px">Priced, not underwritten — we sell this one, we don\'t hold it, so there is no acquisition, rehab or ARV.</div>';
   }
+  h+='<div class="sect"><div class="sect-head"><h2>Showing feedback</h2><span class="cnt">what buyers said about this house</span></div>'+
+    '<div class="card"><div style="display:flex;gap:8px;margin-bottom:'+((p.feedback&&p.feedback.length)?'12px':'0')+'"><input id="pf-in" placeholder="Feedback from a showing — price, condition, layout, objections…" onkeydown="if(event.key===\'Enter\')addPropFeedback(\''+p.id+'\')"><button class="btn small" onclick="addPropFeedback(\''+p.id+'\')">Add</button></div>'+
+    ((p.feedback&&p.feedback.length)
+      ? '<ul class="tl" style="margin-top:2px">'+p.feedback.slice().sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).map(f=>'<li>'+esc(f.text)+'<small>'+esc(U(f.by).name)+' · '+fdate(f.ts)+((canSeeWholeBook()||f.by===(me.id==='admin'?realUid():me.id))?' · <span style="cursor:pointer;color:var(--red)" onclick="rmPropFeedback(\''+p.id+'\',\''+f.id+'\')">remove</span>':'')+'</small></li>').join('')+'</ul>'
+      : '<div class="empty" style="padding:4px 0">No feedback yet — add what buyers said after a showing.</div>')+
+    '</div></div>';
   h+='<div class="sect"><div class="sect-head"><h2>Transactions on this property</h2><span class="cnt">every business touching it</span></div>'+
     (ds.length?ds.map(d=>'<div class="deal-row" onclick="openDeal(\''+d.id+'\')"><div class="a">'+esc(PIPES[d.pipe].name)+' — '+esc(d.type)+(d.clientId?' · '+esc(C(d.clientId).name):'')+'<small>'+esc(U(d.agentId).name)+(d.closeDate?' · closes '+fdate(d.closeDate):'')+'</small></div>'+
     '<div style="text-align:right"><span class="tag'+(isFinal(d)?' gr':'')+'">'+PIPES[d.pipe].stages[d.stage]+'</span>'+(hideMoney()||isCost(d.pipe)?'':'<div class="money" style="margin-top:5px;font-size:13px">'+money(d.revenue)+'</div>')+'</div></div>').join(''):'<div class="empty">No transactions linked yet.</div>')+'</div>';
@@ -4852,6 +4858,15 @@ function stepMove(id,i){
 function addDealNote(id){
   const d=D(id);const el=document.getElementById('dn-in');const v=el.value.trim();if(!v)return;
   logAct(d.id,d.clientId,v);save();openDeal(id);toast('Note added to deal');
+}
+function addPropFeedback(pid){
+  const p=P(pid);if(!p)return;const el=document.getElementById('pf-in');const v=(el&&el.value||'').trim();if(!v)return;
+  (p.feedback=p.feedback||[]).push({id:uid('pf'),by:(me.id==='admin'?realUid():me.id),ts:new Date().toISOString(),text:v});
+  save();go('prop',pid);toast('Feedback added');
+}
+function rmPropFeedback(pid,fid){
+  const p=P(pid);if(!p||!p.feedback)return;
+  p.feedback=p.feedback.filter(f=>f.id!==fid);save();go('prop',pid);toast('Removed');
 }
 function saveDeal(id){
   const d=D(id);const g=x=>document.getElementById(x);
