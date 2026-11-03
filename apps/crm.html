@@ -1003,7 +1003,7 @@ function fmtPhone(p){const d=digits10(p);return d.length===10?'('+d.slice(0,3)+'
    owners and managers see the whole board. A missed call is a hot lead: someone reached out. */
 function callbackItems(){
   const all=missedCalls();
-  const canSeeTeam=me.role==='owner'||me.role==='manager';
+  const canSeeTeam=me.role==='owner'||me.role==='manager'||(me&&me.allLeads);
   if(canSeeTeam)return all;
   const meId=me.id==='admin'?realUid():me.id;
   /* A missed call from an UNKNOWN number (no matched contact) is a fresh inbound lead:
@@ -1335,6 +1335,9 @@ function realUid(){return SEAT_ID||(me&&me.id!=='admin'?me.id:'u1')}
 const hideMoney=()=>me.role==='marketing'||me.role==='va'||me.role==='agent';
 const moneyEntryHidden=()=>me.role==='marketing'||me.role==='va';
 const dealMoneyHidden=d=>hideMoney()||(me.role==='agent'&&!onDeal(d,me.id));
+/* An agent is normally scoped to their own leads/deals. A VA like Oscar can be given
+   the allLeads flag to see (and dial) the whole book without becoming a manager. */
+const agentScoped=()=>me.role==='agent'&&!(me&&me.allLeads);
 /* Only our own Twilio line truly can't be dialed (a call from it to itself loops and fails).
    Everything else — including personal cells used for test calls — is allowed. */
 const NO_DIAL=['9135132656'];
@@ -1376,7 +1379,7 @@ function canEditDeal(d){
 function visibleDeals(pipe){
   /* closed-out (lost) files drop off the board — they live on the client profile instead */
   let ds=S.deals.filter(d=>d.pipe===pipe&&!isLost(d)&&!isArchived(d));
-  if(me.role==='agent')ds=ds.filter(d=>onDeal(d,me.id));
+  if(agentScoped())ds=ds.filter(d=>onDeal(d,me.id));
   return ds;
 }
 const PIPELABEL={asap:'ASAP Pipeline',h2m_acq:'Acquisitions',h2m_dispo:'Dispositions',h2m_of:'Owner Finance — Buyers',h2m_of_sell:'Owner Finance — Sellers',rl_buy:'Buy Side',rl_list:'List Side',tc:'TC Dashboard'};
@@ -3050,7 +3053,7 @@ function matchPipeStage(c){
   if(!pipeFilter)return true;
   const ds=S.deals.filter(d=>d.clientId===c.id&&d.pipe===pipeFilter&&!isLost(d)&&!isArchived(d)&&(stageFilter===''||d.stage===+stageFilter));
   if(!ds.length)return false;
-  if(me.role==='agent')return ds.some(d=>onDeal(d,me.id));
+  if(agentScoped())return ds.some(d=>onDeal(d,me.id));
   return true;
 }
 function pipeStageLabel(){
