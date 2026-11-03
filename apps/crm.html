@@ -1421,6 +1421,7 @@ function pagesFor(){
   if(me.role!=='agent')out.push({k:'reports',rep:'perf',label:'Reports',icon:I.rep});
   if(me.role!=='marketing')out.push({k:'commissions',label:'Commissions',icon:I.comm2});
   if(me.role!=='marketing')out.push({k:'followups',label:'Follow-Ups',icon:I.fu});
+  if(me.role==='owner'||me.role==='manager')out.push({k:'autos',label:'Automations',icon:I.fu});
   if(me.role==='owner'||me.role==='manager')out.push({k:'dupes',label:'Duplicates',icon:I.contacts});
   if(me.role==='owner'||me.role==='manager')out.push({k:'settings',label:'Settings',icon:I.set});
   if(DEV||REAL_OWNER)out.push({sec:DEV?'Developer':'Ownership'},{k:'devview',label:'Change View',icon:I.set});
@@ -1516,7 +1517,7 @@ function enter(){
   renderWho();
   /* restore the page from the URL hash (set by the portal shell) so a browser
      refresh lands back where you were, not on the dashboard */
-  const _OKPAGES={dash:1,biz:1,clients:1,client:1,props:1,prop:1,reports:1,xsearch:1,leads:1,calendar:1,comms:1,commissions:1,followups:1,settings:1,dupes:1};
+  const _OKPAGES={dash:1,biz:1,clients:1,client:1,props:1,prop:1,reports:1,xsearch:1,leads:1,calendar:1,comms:1,commissions:1,followups:1,settings:1,dupes:1,autos:1};
   let _start='dash',_startArg;
   try{const h=(location.hash||'').replace(/^#/,'');if(h){const i=h.indexOf('/');const pg=i>-1?h.slice(0,i):h;if(_OKPAGES[pg]){_start=pg;_startArg=i>-1?decodeURIComponent(h.slice(i+1)):undefined;}}}catch(_e){}
   page='dash';pipeSel=myPipes()[0]||null;
@@ -1536,7 +1537,7 @@ function go(k,arg){
   try{reportNav(k,arg);}catch(_e){}
   renderNav();closeAll();try{renderBell();}catch(_e){}
   const M=document.getElementById('main');
-  const crumb=k==='biz'?BIZ[arg]:{dash:'Dashboard',xsearch:'Cross-Search',leads:'My Leads',clients:'Contacts',props:'Properties',reports:'Reports',calendar:'Calendar',comms:'Communications',commissions:'Commissions',followups:'Follow-Ups',settings:'Settings',dupes:'Duplicates',devview:'Change View',client:'Contact Profile',prop:'Property'}[k]||'';
+  const crumb=k==='biz'?BIZ[arg]:{dash:'Dashboard',xsearch:'Cross-Search',leads:'My Leads',clients:'Contacts',props:'Properties',reports:'Reports',calendar:'Calendar',comms:'Communications',commissions:'Commissions',followups:'Follow-Ups',settings:'Settings',dupes:'Duplicates',autos:'Automations',devview:'Change View',client:'Contact Profile',prop:'Property'}[k]||'';
   document.getElementById('crumb').textContent=crumb;
   if(k==='dash')M.innerHTML=vDash();
   if(k==='biz')M.innerHTML=vBiz(arg);
@@ -1553,6 +1554,7 @@ function go(k,arg){
   if(k==='followups')M.innerHTML=vFollowups();
   if(k==='settings')M.innerHTML=vSettings();
   if(k==='dupes')M.innerHTML=vDupes();
+  if(k==='autos')M.innerHTML=vAutomations();
   if(k==='devview')M.innerHTML=vDevView();
   M.scrollTop=_keepSc;document.getElementById('main').scrollTop=_keepSc;
 }
@@ -2753,6 +2755,52 @@ function reviewAsk(d){
 /* ================= CLIENTS ================= */
 let clientQ='';let ctypeFilter='';let pipeFilter='';let stageFilter='';
 let payAgent=null;
+/* ---- Automations schedule (read-only view of what the campaigns runner will send) ----
+   Mirrors the server-side campaigns logic so owner/manager can see what is going out on
+   schedule — birthdays, anniversaries, review asks, post-close check-ins, and the no-show /
+   disqualified drips — before and after SMS marketing is armed. Computed from the same data. */
+function vAutomations(){
+  const today=NOW().toISOString().slice(0,10);
+  const horizonDays=30;
+  const addDays=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+  const mmd=iso=>String(iso||'').slice(5,10);
+  const horizon=addDays(today,horizonDays);
+  const armed=!!(S.targets&&S.targets.campaigns);
+  const reviewLink=(S.targets&&S.targets.reviewLink)||'';
+  const NOSHOW=[0,1,3,5,7,14,21,30],DISQ=[1,3,7,14,30,60,90];
+  const closeOf=d=>{const h=d.hist||[];const hit=h.filter(x=>+x.s>=7).map(x=>String(x.at)).sort()[0];return hit?hit.slice(0,10):(d.closedAt?String(d.closedAt).slice(0,10):null);};
+  const enteredOf=(d,idx)=>{const h=d.hist||[];const hit=h.filter(x=>+x.s===idx).map(x=>String(x.at)).sort().pop();return hit?hit.slice(0,10):null;};
+  const sent=(cid,key)=>S.touches.some(t=>t.clientId===cid&&t.campKey===key);
+  const between=(a,b)=>Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/864e5);
+  const langLabel=l=>l==='es'?'ES':'EN';
+  const items=[];
+  const push=(date,cid,camp,channel)=>{const c=C(cid);if(!c)return;items.push({date,cid,name:c.name,camp,channel,lang:langLabel(c.lang)});};
+  S.clients.forEach(c=>{ if(!c||c.archived||!c.dob)return; const md=mmd(c.dob),yr=today.slice(0,4);
+    let dt=yr+'-'+md; if(dt<today)dt=(+yr+1)+'-'+md;
+    if(dt>=today&&dt<=horizon&&!sent(c.id,'bday-'+dt.slice(0,4)))push(dt,c.id,'Birthday','Text + Email'); });
+  S.deals.forEach(d=>{ if(d.pipe!=='h2m_of'||!d.clientId)return; const c=C(d.clientId); if(!c||c.archived)return;
+    if((d.stage===3||d.stage===1)&&!isLost(d)&&!isArchived(d)){ const idx=d.stage,ent=enteredOf(d,idx); if(!ent)return; const cad=idx===3?NOSHOW:DISQ;
+      cad.forEach(day=>{ const dt=addDays(ent,day); if(dt>=today&&dt<=horizon){ const key=(idx===3?'noshow-':'disq-')+ent+'-d'+day; if(!sent(c.id,key))push(dt,c.id,(idx===3?'No-show drip':'Disqualified drip')+' · day '+day,'Text'); } });
+      return; }
+    const cd=closeOf(d); if(!cd)return;
+    const rev=addDays(cd,2); if(rev>=today&&rev<=horizon&&between(cd,today)<=14&&!sent(c.id,'review-'+d.id))push(rev,c.id,'Review ask',reviewLink?'Text + Email':'Text');
+    [30,60,90].forEach(n=>{const dt=addDays(cd,n); if(dt>=today&&dt<=horizon&&!sent(c.id,'post'+n+'-'+d.id))push(dt,c.id,'Post-close '+n+'-day','Text');});
+    const yr=today.slice(0,4); let adt=yr+'-'+mmd(cd); if(adt<today)adt=(+yr+1)+'-'+mmd(cd);
+    const years=(+adt.slice(0,4))-(+cd.slice(0,4)); if(years>=1&&adt>=today&&adt<=horizon&&!sent(c.id,'anniv-'+adt.slice(0,4)+'-'+d.id))push(adt,c.id,'Home anniversary ('+years+' yr)','Text + Email');
+  });
+  items.sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
+  const drips=S.deals.filter(d=>d.pipe==='h2m_of'&&(d.stage===1||d.stage===3)&&!isLost(d)&&!isArchived(d))
+    .map(d=>{const c=C(d.clientId);const idx=d.stage;const ent=enteredOf(d,idx);return {c,idx,ent,days:ent?between(ent,today):null};})
+    .filter(x=>x.c&&x.ent).sort((a,b)=>b.days-a.days);
+  let h='<div class="sect-head"><h2>Automations</h2><span class="cnt">what’s scheduled to go out · next '+horizonDays+' days</span><span class="spacer"></span><span class="tag" style="border-color:'+(armed?'#2e7d32':'var(--amber)')+';color:'+(armed?'#2e7d32':'var(--amber)')+'">'+(armed?'ON — sending live':'Preview — not sending yet')+'</span></div>';
+  h+='<div class="card" style="margin-bottom:12px"><div class="mut" style="font-size:12.5px">Each morning the system sends these automatically (once automations are turned on): birthdays, home anniversaries, the review ask after a close, post-close 30/60/90-day check-ins, and the no-show / disqualified follow-up drips. Every message goes out in the contact’s language and skips anyone who replied STOP.</div></div>';
+  h+='<div class="card" style="padding:0;overflow:auto;margin-bottom:16px"><table><tr><th>Date</th><th>Contact</th><th>Campaign</th><th>Channel</th><th>Lang</th></tr>'+
+    (items.length?items.map(it=>'<tr><td>'+fdate(it.date)+'</td><td><span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+it.cid+'\')">'+esc(it.name)+'</span></td><td>'+esc(it.camp)+'</td><td class="mut">'+it.channel+'</td><td>'+it.lang+'</td></tr>').join(''):'<tr><td colspan="5" class="mut" style="padding:14px">Nothing scheduled in the next '+horizonDays+' days. Birthdays and anniversaries fill in as buyer date-of-birth and close dates get entered.</td></tr>')+'</table></div>';
+  h+='<div class="sect-head" style="margin-top:4px"><h2 style="font-size:16px">Active follow-up drips</h2><span class="cnt">'+drips.length+' running now</span></div>';
+  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Contact</th><th>Drip</th><th>Entered</th><th>Days in</th></tr>'+
+    (drips.length?drips.map(x=>'<tr><td><span style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+x.c.id+'\')">'+esc(x.c.name)+'</span></td><td>'+(x.idx===3?'No-show':'Disqualified')+'</td><td class="mut">'+fdate(x.ent)+'</td><td>'+x.days+'d</td></tr>').join(''):'<tr><td colspan="4" class="mut" style="padding:14px">No leads in the No-show or Disqualified stages right now.</td></tr>')+'</table></div>';
+  return h;
+}
 /* ---- Duplicate contact merge (Oscar #3) ----
    Groups contacts that share a 10-digit phone, lets owner/manager fold the
    extras into one keeper. Every deal, task, note, call and appointment is
