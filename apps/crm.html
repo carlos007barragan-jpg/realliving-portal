@@ -2704,12 +2704,14 @@ function ensureOfStageTasks(d,idx){
   const cfg=d&&gateCfg(d.pipe); if(!cfg)return 0;
   const list=cfg.tasks[idx]; if(!list)return 0;
   const cid=d.clientId||null;
-  /* dedup by CLIENT + stage + pipe, not per deal — a shared lead with two OF deals gets one checklist */
-  if(S.tasks.some(t=>t.plan==='ofgate'&&t.gateStage===idx&&(t.gatePipe||'h2m_of')===d.pipe&&!t.done&&((cid&&t.clientId===cid)||t.gateDeal===d.id)))return 0;
+  /* dedup by CLIENT + stage + pipe (done OR open) so a stage's checklist is spawned once ever */
+  if(S.tasks.some(t=>t.plan==='ofgate'&&t.gateStage===idx&&(t.gatePipe||'h2m_of')===d.pipe&&((cid&&t.clientId===cid)||t.gateDeal===d.id)))return 0;
   const c=cid?C(cid):null;
   const who=leadAgentOf(c,d)||(me&&(me.id==='admin'?realUid():me.id));
   const base=Date.now();
-  list.forEach((title,i)=>S.tasks.push({id:uid('t'),title:title,clientId:cid,dealId:d.id,agentId:who,
+  /* DETERMINISTIC id: two sessions spawning the same stage before syncing write the SAME id,
+     so the cloud upsert collapses them into one row instead of creating duplicates. */
+  list.forEach((title,i)=>S.tasks.push({id:'ofg-'+d.pipe+'-'+(cid||d.id)+'-'+idx+'-'+i,title:title,clientId:cid,dealId:d.id,agentId:who,
     by:(me&&me.id==='admin'?realUid():(me?me.id:who)),due:new Date(base+i*864e5).toISOString().slice(0,10),
     done:false,createdAt:new Date().toISOString(),plan:'ofgate',gateDeal:d.id,gateClient:cid,gateStage:idx,gatePipe:d.pipe}));
   return list.length;
@@ -2717,8 +2719,9 @@ function ensureOfStageTasks(d,idx){
 /* Remove duplicate open ofgate tasks for one client (same stage + title), keeping the earliest. */
 function dedupeOfGateForClient(cid){
   const groups={},kill=[];
-  S.tasks.forEach(t=>{ if(t.plan!=='ofgate'||t.done||t.clientId!==cid)return; const k=t.gateStage+'|'+t.title; (groups[k]=groups[k]||[]).push(t); });
-  Object.keys(groups).forEach(k=>{ const arr=groups[k].sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||''))); arr.slice(1).forEach(x=>{markDel('tasks',x.id);kill.push(x.id);}); });
+  /* group ALL ofgate tasks (done or open) for this client by pipe+stage+title */
+  S.tasks.forEach(t=>{ if(t.plan!=='ofgate'||t.clientId!==cid)return; const k=(t.gatePipe||'h2m_of')+'|'+t.gateStage+'|'+t.title; (groups[k]=groups[k]||[]).push(t); });
+  Object.keys(groups).forEach(k=>{ const arr=groups[k].sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||''))); const anyDone=arr.some(x=>x.done); const keep=arr[0]; if(anyDone&&!keep.done){keep.done=true;keep.doneAt=keep.doneAt||new Date().toISOString();} arr.slice(1).forEach(x=>{markDel('tasks',x.id);kill.push(x.id);}); });
   if(kill.length)S.tasks=S.tasks.filter(t=>kill.indexOf(t.id)<0);
   return kill.length;
 }
@@ -2735,10 +2738,10 @@ function setLeadAgent(cid,uid){
 /* One-time cleanup: de-duplicate existing ofgate tasks across every client and point each
    client's set at its lead agent (fixes the two-deals-two-agents duplication). */
 function ofGateDedupe(){
-  if(!S||!S.tasks)return; if(S.targets&&S.targets.ofGateDedupe)return;
-  const cids=new Set(); S.tasks.forEach(t=>{ if(t.plan==='ofgate'&&!t.done&&t.clientId)cids.add(t.clientId); });
+  if(!S||!S.tasks)return; if(S.targets&&S.targets.ofGateDedupe2)return;
+  const cids=new Set(); S.tasks.forEach(t=>{ if(t.plan==='ofgate'&&t.clientId)cids.add(t.clientId); });
   cids.forEach(cid=>{ const lead=leadAgentOf(C(cid),null); if(lead)S.tasks.forEach(t=>{ if(t.plan==='ofgate'&&!t.done&&t.clientId===cid)t.agentId=lead; }); dedupeOfGateForClient(cid); });
-  (S.targets=S.targets||{}).ofGateDedupe=true; save();
+  (S.targets=S.targets||{}).ofGateDedupe=true;(S.targets=S.targets||{}).ofGateDedupe2=true; save();
 }
 /* One-time backfill: existing OF buyer deals predate this feature and never spawned their
    stage checklist. Spawn the current stage's tasks for each open OF deal once, so they show
