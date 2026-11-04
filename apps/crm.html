@@ -3700,6 +3700,13 @@ function vProp(id){
      '<div class="eyebrow" style="margin:0">🔒 Access</div>'+(p.access?'<span style="font-size:13px">'+esc(p.access)+'</span>':'<span class="mut" style="font-size:12px">No lockbox / access set — add it on Edit</span>')+
      '<span class="mut" style="font-size:11px">internal only</span>'+
      '</div>';
+  h+='<div class="card" style="margin-top:12px"><div class="sect-head" style="margin-bottom:8px"><h2 style="font-size:15px">Features &amp; notes</h2><span class="cnt">basement, garage, condition, cash offers…</span></div>'+
+     '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:'+((p.features&&p.features.length)?'12px':(canEditProps()?'10px':'0'))+'">'+
+     ((p.features&&p.features.length)?p.features.map((f,i)=>'<span class="tag" style="padding:3px 9px;font-size:12px">'+esc(f)+(canEditProps()?' <span style="cursor:pointer;color:var(--red);margin-left:3px" onclick="rmPropFeature(\''+p.id+'\','+i+')">✕</span>':'')+'</span>').join(''):'<span class="mut" style="font-size:12.5px">No features listed yet.</span>')+
+     '</div>'+
+     (canEditProps()?'<div style="display:flex;gap:8px;margin-bottom:9px"><input id="pfeat-in" placeholder="Add a feature…" onkeydown="if(event.key===\'Enter\')addPropFeature(\''+p.id+'\')"><button class="btn small" onclick="addPropFeature(\''+p.id+'\')">Add</button></div>'+
+       '<div style="display:flex;flex-wrap:wrap;gap:5px">'+PROP_FEATURE_PRESETS.map((x,i)=>'<button class="btn ghost small" style="font-size:11px;padding:2px 8px" onclick="addPropFeaturePreset(\''+p.id+'\','+i+')">+ '+esc(x)+'</button>').join('')+'</div>':'')+
+     '</div>';
   if(live||p.photos&&p.photos.length||p.desc){
     h+='<div class="card" style="margin-top:16px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Website listing</h2><span class="cnt">'+(live?'visible on reallivingkc + Mi Casa':'not visible — set status to In Inventory — Marketed to publish')+'</span></div>'+
       '<div class="kv">'+kv('Headline',p.title)+kv('List price',p.listPrice?money(p.listPrice):(p.arv?money(p.arv)+' (from ARV)':'—'))+kv('Area',p.area)+kv('Photos',(p.photos&&p.photos.length?p.photos.length+' attached':'none yet — add them below'))+'</div>'+
@@ -4934,6 +4941,21 @@ function addPropFeedback(pid){
 function rmPropFeedback(pid,fid){
   const p=P(pid);if(!p||!p.feedback)return;
   p.feedback=p.feedback.filter(f=>f.id!==fid);save();go('prop',pid);toast('Removed');
+}
+const PROP_FEATURE_PRESETS=['Unfinished basement','Finished basement','No basement','2-car garage','1-car garage','No garage','Needs work','Move-in ready','Takes cash offers','Tenant occupied','Vacant','New roof','New HVAC','Corner lot','Fenced yard'];
+function addPropFeature(pid){
+  const p=P(pid);if(!p)return;const el=document.getElementById('pfeat-in');const v=(el&&el.value||'').trim();if(!v)return;
+  p.features=p.features||[];if(p.features.indexOf(v)<0)p.features.push(v);
+  save();go('prop',pid);
+}
+function addPropFeaturePreset(pid,idx){
+  const p=P(pid);if(!p)return;const v=PROP_FEATURE_PRESETS[idx];if(!v)return;
+  p.features=p.features||[];if(p.features.indexOf(v)<0)p.features.push(v);
+  save();go('prop',pid);toast('Added '+v);
+}
+function rmPropFeature(pid,idx){
+  const p=P(pid);if(!p||!p.features)return;
+  p.features.splice(idx,1);save();go('prop',pid);
 }
 function mPropOwner(pid){
   const p=P(pid);if(!p)return;
