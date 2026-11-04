@@ -1205,6 +1205,7 @@ async function _cloudEnter(userId,emailFallback){
   sessionStorage.removeItem('rl_view');
   try{expireStaleTasks();}catch(e){}
   try{ofGateBackfill();}catch(e){}
+  try{syncSellerPipeline();}catch(e){}
   try{ofGateDedupe();}catch(e){}
   enter();startSync();
 }
@@ -2751,6 +2752,38 @@ function ofGateDedupe(){
 /* One-time backfill: existing OF buyer deals predate this feature and never spawned their
    stage checklist. Spawn the current stage's tasks for each open OF deal once, so they show
    up on the board and in the deal without waiting for the next move. */
+/* Keep the Owner-Finance SELLER pipeline in lockstep with marketed residential inventory.
+   A marketed residential house always has one active seller deal (photos → Showings, no
+   photos → Photos/access); when a house is sold, archived, un-marketed or deleted its deal
+   drops off the board; a house re-marketed brings its deal back. The owner link stays synced.
+   Deterministic id per property (dofs-<propId>) so two sessions can't double-create. */
+function isMarketedResProp(p){ return p&&!p.archived&&String(p.category||'').trim().toLowerCase()==='residential'&&/inventory.*marketed/i.test(p.status||''); }
+function syncSellerPipeline(){
+  if(!S||!S.properties||!S.deals)return 0;
+  let changed=0;
+  const byProp={};
+  S.deals.forEach(d=>{ if(d.pipe==='h2m_of_sell'&&d.propertyId){ (byProp[d.propertyId]=byProp[d.propertyId]||[]).push(d); } });
+  S.properties.forEach(p=>{
+    const deals=byProp[p.id]||[];
+    if(isMarketedResProp(p)){
+      let live=deals.find(d=>!isLost(d)&&!d.boardHidden);
+      if(!live){
+        const hidden=deals.find(d=>!isLost(d)&&d.boardHidden);
+        if(hidden){ hidden.boardHidden=false; live=hidden; changed++; }
+        else{ const st=(p.photos&&p.photos.length>0)?5:3;
+          live={id:'dofs-'+p.id,clientId:p.ownerId||null,pipe:'h2m_of_sell',type:'Contract for Deed',stage:st,agentId:'u3',propertyId:p.id,propInterest:p.address||'',budget:0,down:0,closeDate:'',titleOffice:'',revenue:0,hist:[{s:st,at:new Date().toISOString()}],createdAt:new Date().toISOString()};
+          S.deals.push(live); changed++; }
+      }
+      if(live&&p.ownerId&&live.clientId!==p.ownerId){ live.clientId=p.ownerId; changed++; }
+    } else {
+      deals.forEach(d=>{ if(!d.boardHidden&&!isLost(d)){ d.boardHidden=true; changed++; } });
+    }
+  });
+  /* orphans: seller deal whose property was deleted */
+  Object.keys(byProp).forEach(pid=>{ if(!P(pid))byProp[pid].forEach(d=>{ if(!d.boardHidden){ d.boardHidden=true; changed++; } }); });
+  if(changed)save();
+  return changed;
+}
 function ofGateBackfill(){
   if(!S||!S.deals)return;
   if(S.targets&&S.targets.ofGateBackfill2)return;
@@ -3521,7 +3554,7 @@ function rmProp(id){
     if(!confirm(p.address+'\n\nThis property is attached to '+ds.length+' transaction'+(ds.length>1?'s':'')+
       (live?' ('+live+' still open)':'')+'. Deleting it unlinks them — the deals themselves stay on their clients.\n\nDelete anyway? Archive keeps the record and the history.'))return;
   } else if(!confirm('Delete '+p.address+' permanently? Archive keeps it out of the way without losing it.'))return;
-  S.deals.forEach(d=>{if(d.propertyId===p.id){d.propertyId=null;if(!d.propInterest)d.propInterest=p.address}});
+  S.deals.forEach(d=>{if(d.propertyId===p.id){ if(d.pipe==='h2m_of_sell'){d.boardHidden=true;if(!d.propInterest)d.propInterest=p.address;} else {d.propertyId=null;if(!d.propInterest)d.propInterest=p.address;} }});
   S.properties=S.properties.filter(x=>x.id!==p.id);markDel('properties',p.id);
   (S.deletedProps=S.deletedProps||[]).push({id:p.id,address:p.address,by:me.id,at:new Date().toISOString()});
   logAct(null,null,'Property deleted by '+me.name+' — '+p.address+(ds.length?' ('+ds.length+' transaction(s) unlinked)':'')+'.');
@@ -3645,6 +3678,7 @@ function togglePropArchive(id){
   const wasArch=propArchived(p);
   p.archived=!wasArch;
   if(!p.archived&&/^\s*sold\s*$/i.test(p.status||''))p.status='In Inventory — Marketed';
+  try{syncSellerPipeline();}catch(e){}
   save();toast(p.archived?'Archived — hidden from the inventory view':'Restored to inventory');go('prop',id);
 }
 function vProp(id){
@@ -3662,6 +3696,9 @@ function vProp(id){
        ? '<b style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+p.ownerId+'\')">'+esc(C(p.ownerId).name)+'</b>'+(C(p.ownerId).phone?'<span class="mut" style="font-size:12px">'+esc(C(p.ownerId).phone)+'</span>':'')
        : '<span style="color:var(--amber);font-size:13px">No owner attached</span>')+
      (canEditProps()?'<span class="spacer"></span><button class="btn ghost small" onclick="mPropOwner(\''+p.id+'\')">'+(p.ownerId?'Change owner':'Attach owner')+'</button>':'')+
+     '<div style="flex-basis:100%;height:0"></div>'+
+     '<div class="eyebrow" style="margin:0">🔒 Access</div>'+(p.access?'<span style="font-size:13px">'+esc(p.access)+'</span>':'<span class="mut" style="font-size:12px">No lockbox / access set — add it on Edit</span>')+
+     '<span class="mut" style="font-size:11px">internal only</span>'+
      '</div>';
   if(live||p.photos&&p.photos.length||p.desc){
     h+='<div class="card" style="margin-top:16px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Website listing</h2><span class="cnt">'+(live?'visible on reallivingkc + Mi Casa':'not visible — set status to In Inventory — Marketed to publish')+'</span></div>'+
@@ -5181,6 +5218,7 @@ function mAddProp(editId){
   '<div class="eyebrow" style="margin:18px 0 2px;padding-top:14px;border-top:1px solid var(--line)">Website marketing — shows on the sites when status is In Inventory — Marketed</div>'+
   '<div class="frow"><div><label>Neighborhood / area</label><input id="mp-area" value="'+esc(v('area'))+'" placeholder="e.g. Historic Northeast, KC MO"></div>'+
   '<div><label>Listing headline</label><input id="mp-title" value="'+esc(v('title'))+'" placeholder="e.g. Fully renovated 3-bed ranch"></div></div>'+
+  '<label>Lockbox / access <span style="text-transform:none;letter-spacing:0;color:var(--mut);font-weight:400">— internal only, never published</span></label><input id="mp-access" value="'+esc(v('access'))+'" placeholder="e.g. Lockbox on front door, code 4417 · supra · gate code #1234">'+
   '<div style="display:flex;align-items:center;gap:10px;margin:12px 0 2px;flex-wrap:wrap">'+
     '<button class="btn ghost small" id="mp-ai-go" onclick="aiListing()">\u2728 Write the listing for me</button>'+
     '<span class="mut" style="font-size:12px">Uses the address, beds and baths, and what kind of deal it is \u2014 you can edit anything it writes.</span></div>'+
@@ -5342,7 +5380,7 @@ function readPropForm(p){
   p.listPrice=+g('mp-list')||0;p.sqft=+g('mp-sqft')||0;
   p.area=g('mp-area').trim();p.title=g('mp-title').trim();
   p.desc=g('mp-desc').trim();p.descEs=g('mp-descEs').trim();
-  txt('mp-drive','driveUrl');
+  txt('mp-drive','driveUrl');txt('mp-access','access');
   p.photos=g('mp-photos').split(/\n+/).map(x=>x.trim()).filter(Boolean);
   p.photo=p.photos[0]||null;
   const st=document.getElementById('mp-status');if(st)p.status=st.value;
@@ -5356,6 +5394,7 @@ function saveProp(editId){
     const p=P(editId);if(!p)return;
     readPropForm(p);
     logAct(null,null,'Property updated — '+p.address+(/marketed/i.test(p.status)?' (live on the websites)':'')+'.');
+    try{syncSellerPipeline();}catch(e){}
     save();closeAll();go('prop',p.id);toast(/marketed/i.test(p.status)?'Saved — live on the websites':'Property saved');return;
   }
   const p=readPropForm({id:uid('p'),status:'Acquisition — Off-Market Lead',createdAt:new Date().toISOString()});
@@ -5365,6 +5404,7 @@ function saveProp(editId){
   if(pipe&&PIPES[pipe]){
     S.deals.push({id:uid('d'),clientId:null,pipe:pipe,type:(PIPES[pipe].types||['Acquisition'])[0],stage:0,agentId:me.id,propertyId:p.id,hist:[{s:0,at:new Date().toISOString()}],propInterest:p.address,budget:0,down:0,closeDate:'',titleOffice:'',revenue:0,createdAt:new Date().toISOString()});
   }
+  try{syncSellerPipeline();}catch(e){}
   save();closeAll();go('prop',p.id);
   toast(pipe&&PIPES[pipe]?('Property added — deal opened in '+PIPES[pipe].name):'Property added to the list');
 }
