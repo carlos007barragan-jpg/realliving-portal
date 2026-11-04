@@ -2293,7 +2293,8 @@ function vBiz(b){
 function renderBoard(pipe,wrapStyle){
   const ds=visibleDeals(pipe);
   const canBlast=(pipe==='h2m_dispo'||pipe==='h2m_of')&&(me.role==='owner'||me.role==='manager');
-  let h='<div class="sect-head"'+(wrapStyle||'')+'><h2>'+PIPES[pipe].name+'</h2><span class="cnt">'+ds.length+' deals'+(me.role==='agent'?' (yours)':'')+'</span><span class="spacer"></span>'+
+  const noOwner=pipe==='h2m_of_sell'?ds.filter(d=>!d.clientId).length:0;
+  let h='<div class="sect-head"'+(wrapStyle||'')+'><h2>'+PIPES[pipe].name+'</h2><span class="cnt">'+ds.length+' deals'+(me.role==='agent'?' (yours)':'')+(noOwner?' · <span style="color:#c0392b">'+noOwner+' missing owner</span>':'')+'</span><span class="spacer"></span>'+
      (canBlast?'<button class="btn ghost small" style="margin-right:8px" onclick="mBlast(\''+pipe+'\')">📣 '+(pipe==='h2m_dispo'?'Blast investors':'Blast buyers')+'</button>':'')+
      (me.role!=='marketing'?'<button class="btn small" onclick="mAddDeal(\''+pipe+'\')">+ New deal</button>':'')+'</div>';
   h+='<div id="board">'+PIPES[pipe].stages.map((st,i)=>{
@@ -2304,6 +2305,7 @@ function renderBoard(pipe,wrapStyle){
         const ast=actState(d);
         return '<div class="dcard" draggable="'+(canEditDeal(d))+'" ondragstart="event.dataTransfer.setData(\'text\',\''+d.id+'\')" onclick="openDeal(\''+d.id+'\')">'+
         '<div class="t">'+esc(dealTitle(d))+'</div><div class="s">'+esc(d.propInterest||d.type)+'</div>'+
+        (d.pipe==='h2m_of_sell'&&!d.clientId?'<div style="margin-top:4px"><span class="tag" style="border-color:#c0392b;color:#c0392b;font-size:9.5px;padding:1px 6px">⚠ No owner</span></div>':'')+
         '<div class="r"><span class="mut"><span class="adot '+ast[0]+'"'+tipAttr('<div class="tt">'+ast[1]+'</div>')+'></span>'+esc(U(d.agentId).name.split(' ')[0])+(dealTeam(d).length>1?' <span class="tag" style="border-color:var(--gold2);color:var(--gold2);font-size:9.5px;padding:1px 5px"'+tipAttr('<div class="tt">Also: '+dealTeam(d).slice(1).map(x=>esc(U(x).name)).join(', ')+'</div>')+'>+'+(dealTeam(d).length-1)+'</span>':'')+(isDormant(C(d.clientId))?' <span class="tag" style="border-color:var(--amber);color:var(--amber);font-size:9.5px;padding:1px 5px">dormant</span>':'')+'</span>'+(hideMoney()?'':'<span class="money">'+money(d.revenue)+'</span>')+'</div>'+
         nextActionLine(d)+
         (lk.length?'<div class="link3">⬡ linked ×'+nbiz+' businesses</div>':'')+'</div>'}).join('')+
