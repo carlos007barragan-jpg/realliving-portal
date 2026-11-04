@@ -3687,13 +3687,14 @@ function vProp(id){
        '<div class="card"><div class="eyebrow">Buyer spread</div><div class="big">'+money(buyerSpread(p))+'</div><div class="sub">ARV − price − rehab</div></div></div>';
   } else if(kindOf(p)==='of'){
     const dn=p.down||0, price=propPrice(p), esc_=v=>v;
-    const ti=(+p.taxes||0)+(+p.insurance||0);
+    const ti=(+p.taxes||0)+(+p.insurance||0), tiMo=Math.round(ti/12), pi=+p.monthly||0, piti=pi+tiMo;
     h+='<div class="grid cards4" style="margin-top:18px"><div class="card"><div class="eyebrow">Sales price</div><div class="big">'+(price?money(price):'—')+'</div></div>'+
      '<div class="card"><div class="eyebrow">Down payment</div><div class="big">'+(dn?money(dn):'—')+'</div><div class="sub">'+(dn&&price?Math.round(dn/price*100)+'% down':'set on Edit')+'</div></div>'+
-     '<div class="card"><div class="eyebrow">Monthly payment</div><div class="big">'+(p.monthly?money(p.monthly):'—')+'</div>'+(p.rate?'<div class="sub">'+p.rate+'% interest</div>':'')+'</div>'+
-     '<div class="card"><div class="eyebrow">Taxes + insurance</div><div class="big">'+(ti?money(Math.round(ti/12)):'—')+'</div><div class="sub">'+(ti?'a month · '+money(ti)+' a year':'not set')+'</div></div></div>'+
+     '<div class="card" style="border-color:var(--gold2)"><div class="eyebrow">Total payment · PITI</div><div class="big">'+(pi?money(piti):'—')+'</div><div class="sub">'+(pi?'principal, interest, taxes & insurance / mo':'set monthly on Edit')+'</div></div>'+
+     '<div class="card"><div class="eyebrow">Principal &amp; interest</div><div class="big">'+(pi?money(pi):'—')+'</div><div class="sub">'+(p.rate?p.rate+'% interest':'P &amp; I / mo')+'</div></div>'+
+     '<div class="card"><div class="eyebrow">Taxes &amp; insurance</div><div class="big">'+(ti?money(tiMo):'—')+'</div><div class="sub">'+(ti?'a month · '+money(ti)+' a year':'not set')+'</div></div></div>'+
      '<div class="mut" style="font-size:12px;margin-top:8px">Owner finance'+(p.terms?' · '+esc(p.terms):'')+
-       ((p.monthly&&ti)?' · all in about '+money(Math.round((+p.monthly||0)+ti/12))+' a month with taxes and insurance':'')+'</div>';
+       ((pi&&ti)?' · '+money(piti)+'/mo all in ('+money(pi)+' P&I + '+money(tiMo)+' T&I)':'')+'</div>';
   } else {
     const price=propPrice(p);
     h+='<div class="grid cards4" style="margin-top:18px"><div class="card"><div class="eyebrow">Sales price</div><div class="big">'+(price?money(price):'—')+'</div></div>'+
@@ -5270,7 +5271,7 @@ function mpMoney(){
     h=head('Owner finance — the terms we sell it on')+
       '<div class="frow"><div><label>Sales price ($)</label><input id="mp-list" type="number" value="'+esc(v('list'))+'"></div>'+
       '<div><label>Down payment ($)</label><input id="mp-down" type="number" value="'+esc(v('down'))+'"></div>'+
-      '<div><label>Monthly payment ($)</label><input id="mp-monthly" type="number" value="'+esc(v('monthly'))+'"></div></div>'+
+      '<div><label>Principal &amp; interest ($/mo)</label><input id="mp-monthly" type="number" value="'+esc(v('monthly'))+'"></div></div>'+
       '<div class="frow"><div><label>Interest rate (%)</label><input id="mp-rate" type="number" step="0.01" value="'+esc(v('rate'))+'"></div>'+
       '<div><label>Taxes — yearly ($)</label><input id="mp-taxes" type="number" value="'+esc(v('taxes'))+'"></div>'+
       '<div><label>Insurance — yearly ($)</label><input id="mp-ins" type="number" value="'+esc(v('ins'))+'"></div></div>'+
@@ -5286,10 +5287,11 @@ function mpMoney(){
   if(kind==='of'){
     const upd=()=>{
       const t=+((document.getElementById('mp-taxes')||{}).value)||0, i=+((document.getElementById('mp-ins')||{}).value)||0;
+      const pi=+((document.getElementById('mp-monthly')||{}).value)||0, tiMo=Math.round((t+i)/12);
       const el=document.getElementById('mp-piti');
-      if(el)el.textContent=(t||i)?'Taxes and insurance run '+money(Math.round((t+i)/12))+' a month on top of the payment.':'';
+      if(el)el.textContent=(pi||t||i)?'Full payment (PITI): '+money(pi+tiMo)+'/mo  =  '+money(pi)+' principal & interest  +  '+money(tiMo)+' taxes & insurance.':'';
     };
-    ['mp-taxes','mp-ins'].forEach(id=>{const el=document.getElementById(id);if(el)el.oninput=upd});
+    ['mp-taxes','mp-ins','mp-monthly'].forEach(id=>{const el=document.getElementById(id);if(el)el.oninput=upd});
     upd();
   }
 }
