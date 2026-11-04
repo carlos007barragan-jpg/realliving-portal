@@ -3655,6 +3655,12 @@ function vProp(id){
      (canSeeWholeBook()?'<button class="btn ghost small" onclick="togglePropArchive(\''+p.id+'\')">'+(propArchived(p)?'Restore to inventory':'Archive')+'</button> ':'')+
      (canEditProps()?'<button class="btn ghost small" style="border-color:var(--red);color:var(--red)" onclick="rmProp(\''+p.id+'\')">Delete</button> '+
       '<button class="btn small" onclick="mEditProp(\''+p.id+'\')">Edit property</button>':'')+'</div>';
+  h+='<div class="card" style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="eyebrow" style="margin:0">Owner</div>'+
+     ((p.ownerId&&C(p.ownerId))
+       ? '<b style="cursor:pointer;color:var(--gold2)" onclick="go(\'client\',\''+p.ownerId+'\')">'+esc(C(p.ownerId).name)+'</b>'+(C(p.ownerId).phone?'<span class="mut" style="font-size:12px">'+esc(C(p.ownerId).phone)+'</span>':'')
+       : '<span style="color:var(--amber);font-size:13px">No owner attached</span>')+
+     (canEditProps()?'<span class="spacer"></span><button class="btn ghost small" onclick="mPropOwner(\''+p.id+'\')">'+(p.ownerId?'Change owner':'Attach owner')+'</button>':'')+
+     '</div>';
   if(live||p.photos&&p.photos.length||p.desc){
     h+='<div class="card" style="margin-top:16px"><div class="sect-head" style="margin-bottom:6px"><h2 style="font-size:17px">Website listing</h2><span class="cnt">'+(live?'visible on reallivingkc + Mi Casa':'not visible — set status to In Inventory — Marketed to publish')+'</span></div>'+
       '<div class="kv">'+kv('Headline',p.title)+kv('List price',p.listPrice?money(p.listPrice):(p.arv?money(p.arv)+' (from ARV)':'—'))+kv('Area',p.area)+kv('Photos',(p.photos&&p.photos.length?p.photos.length+' attached':'none yet — add them below'))+'</div>'+
@@ -4889,6 +4895,31 @@ function addPropFeedback(pid){
 function rmPropFeedback(pid,fid){
   const p=P(pid);if(!p||!p.feedback)return;
   p.feedback=p.feedback.filter(f=>f.id!==fid);save();go('prop',pid);toast('Removed');
+}
+function mPropOwner(pid){
+  const p=P(pid);if(!p)return;
+  const opts=S.clients.filter(c=>!c.archived).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))).map(c=>'<option value="'+c.id+'"'+(p.ownerId===c.id?' selected':'')+'>'+esc(c.name)+(c.phone?' — '+esc(c.phone):'')+'</option>').join('');
+  modal('<h2>Owner — '+esc(p.address)+'</h2>'+
+    '<label>Existing contact</label><select id="po-existing"><option value="">— pick a contact —</option>'+opts+'</select>'+
+    '<div class="mut" style="font-size:12px;margin:12px 0 4px">…or create a new owner</div>'+
+    '<div class="frow"><div><label>Name</label><input id="po-name"></div><div><label>Phone</label><input id="po-phone"></div></div>'+
+    '<label>Email</label><input id="po-email">'+
+    '<div class="mrow" style="margin-top:16px">'+(p.ownerId?'<button class="btn ghost" onclick="setPropOwner(\''+pid+'\',\'\')">Remove owner</button>':'')+'<button class="btn" onclick="savePropOwner(\''+pid+'\')">Attach owner</button></div>');
+}
+function savePropOwner(pid){
+  const g=x=>{const el=document.getElementById(x);return el?el.value.trim():'';};
+  let cid=g('po-existing');
+  if(!cid){ const nm=g('po-name'); if(nm){ cid=uid('c'); S.clients.push({id:cid,name:nm,phone:g('po-phone'),email:g('po-email'),address:'',spouseName:'',spousePhone:'',spouseEmail:'',lang:'en',dob:'',source:'Property owner',ctypes:['Seller — Owner Finance'],genBy:(me.id==='admin'?realUid():me.id),createdAt:new Date().toISOString(),docs:[],interests:[]}); } }
+  if(!cid){toast('Pick a contact or enter a name');return}
+  setPropOwner(pid,cid);
+}
+function setPropOwner(pid,cid){
+  const p=P(pid);if(!p)return;
+  p.ownerId=cid||'';
+  const sd=S.deals.find(d=>d.pipe==='h2m_of_sell'&&d.propertyId===pid&&!isLost(d)&&!isArchived(d));
+  if(sd)sd.clientId=cid||null;
+  if(cid&&C(cid))logAct(null,cid,'Attached as owner of '+p.address+'.');
+  save();go('prop',pid);toast(cid?'Owner attached':'Owner removed');
 }
 function saveDeal(id){
   const d=D(id);const g=x=>document.getElementById(x);
