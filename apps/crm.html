@@ -3688,12 +3688,19 @@ async function maybeConvertHeic(f){
   }catch(e){return f;}
 }
 async function addPhotos(pid,input){
-  const p=P(pid);if(!p||!canEditProps())return;
+  const p0=P(pid);if(!p0||!canEditProps())return;
   const files=[...(input.files||[])];if(!files.length)return;
   window.__uploading=true;
   const blocked=await storageReady();
   if(blocked){window.__uploading=false;toast(blocked);input.value='';return}
-  p.photos=p.photos||[];let done=0,failed=0,lastErr='';
+  let done=0,failed=0,lastErr='';
+  /* Collect uploaded URLs locally rather than pushing them onto the property object as we go.
+     A big batch takes a minute+, and a background sync landing mid-upload REPLACES the property
+     object in S (applyRemote does arr[i]=r.data), stranding the reference we captured — every
+     push after that goes to a detached object and the final save persists the server's shorter
+     list. That truncation (e.g. 24 uploaded, 12 saved) is fixed by merging at the END against the
+     LIVE record and unioning in everything uploaded, so nothing is lost regardless of sync timing. */
+  const added=[];
   let _tok='';try{let _s=(await sb.auth.getSession()).data.session;if(!_s||!_s.access_token){try{_s=(await sb.auth.refreshSession()).data.session;}catch(_e){}}_tok=(_s&&_s.access_token)||'';}catch(_e){}
   for(let f of files){
     f=await maybeConvertHeic(f);
@@ -3713,12 +3720,23 @@ async function addPhotos(pid,input){
       if(!res.ok){let m='';try{m=(await res.json()).message||'';}catch(_){}error={message:m||('HTTP '+res.status)};}
     }catch(e){error={message:String(e&&e.message||e)}}
     if(error){lastErr=uploadHint(error.message);failed++;continue}
-    p.photos.push(SUPABASE_URL+'/storage/v1/object/public/'+PHOTO_BUCKET+'/'+_enc);done++;
+    added.push(SUPABASE_URL+'/storage/v1/object/public/'+PHOTO_BUCKET+'/'+_enc);done++;
   }
-  p.photo=p.photos[0]||null;
-  if(done)logAct(null,null,done+' photo'+(done>1?'s':'')+' added to '+p.address+' by '+me.name+'.');
+  if(added.length){
+    /* Re-resolve the LIVE record (it may have been swapped by a sync during the upload) and
+       union the uploaded URLs in — keep whatever is already there, append the new ones. */
+    const p=P(pid)||p0;
+    const have=Array.isArray(p.photos)?p.photos.slice():[];
+    added.forEach(u=>{if(have.indexOf(u)<0)have.push(u);});
+    p.photos=have;p.photo=p.photos[0]||null;
+    logAct(null,null,done+' photo'+(done>1?'s':'')+' added to '+p.address+' by '+me.name+'.');
+    /* save() stamps this record as a pending local change, which makes applyRemote's pendingLocal
+       guard skip any incoming server copy for it — so a sync can't clobber the merge. Flush the
+       full list to the cloud now, BEFORE releasing the upload lock, so it's authoritative. */
+    save();
+    try{await pushChanges();}catch(_e){}
+  }
   input.value='';window.__uploading=false;
-  if(done)save();
   go('prop',pid);
   toast(done
     ? done+' photo'+(done>1?'s':'')+' added'+(failed?' · '+failed+' failed: '+lastErr:'')
