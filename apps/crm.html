@@ -5156,6 +5156,25 @@ function editorOpen(){
   const m=document.getElementById('modal');
   return !!(m&&m.classList.contains('on'));
 }
+/* Is a call recording (or any media) actively playing? A background sync that re-renders the page
+   destroys and recreates the <audio> element, which snaps playback back to 0 and cuts it off — the
+   "it randomly restarts" bug. Hold the re-render while something is playing. */
+function mediaPlaying(){
+  try{ const m=document.querySelectorAll('audio,video');
+    for(let i=0;i<m.length;i++){ const el=m[i]; if(!el.paused&&!el.ended&&el.currentTime>0&&el.readyState>2)return true; } }
+  catch(e){}
+  return false;
+}
+let _deferT=null;
+/* While a re-render is being held (editor open or media playing), poll so the page catches up to
+   the latest data the moment it's safe, without needing the user to navigate. */
+function scheduleDeferFlush(){
+  if(_deferT)return;
+  _deferT=setInterval(function(){
+    if(!_deferRefresh){clearInterval(_deferT);_deferT=null;return;}
+    if(!editorOpen()&&!mediaPlaying()){_deferRefresh=false;clearInterval(_deferT);_deferT=null;try{refresh();}catch(e){}}
+  },2000);
+}
 function closeAll(){var _bp=document.getElementById('bellpanel');if(_bp)_bp.style.display='none';document.getElementById('drawer').classList.remove('on');document.getElementById('modal').classList.remove('on');document.getElementById('ovl').style.display='none';document.getElementById('gresults').style.display='none';
   /* a sync arrived while the editor was open — bring the page up to date now that it is safe */
   if(_deferRefresh){_deferRefresh=false;setTimeout(refresh,0);}}
@@ -6189,7 +6208,7 @@ async function pullAll(first){
          teammate's change syncing while someone is halfway through a property would wipe
          the form and everything typed into it. It reads as the box timing out and closing.
          Take the data, hold the re-render until the editor is closed. */
-      if(me&&!first){ if(editorOpen())_deferRefresh=true; else refresh(); }
+      if(me&&!first){ if(editorOpen()||mediaPlaying()){_deferRefresh=true;scheduleDeferFlush();} else refresh(); }
     }
     setSyncDot('ok','Synced · live');
   }catch(e){console.error('[sync pull]',e);setSyncDot('err','Offline — using local copy');}
