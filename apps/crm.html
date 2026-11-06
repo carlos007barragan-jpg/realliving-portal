@@ -1373,6 +1373,7 @@ function leadTeam(c){ const a=[]; const pri=c&&(c.assignedTo||c.genBy); if(pri)a
 function onLead(c,uid){ return leadTeam(c).indexOf(uid)>-1; }
 function canEditDeal(d){
   if(me.role==='owner')return true;
+  if(me&&me.allEdit)return true; /* a VA (e.g. Oscar) granted full edit across every pipeline */
   if(me.role==='manager')return allowedPipes(me).includes(d.pipe);
   if(me.role==='agent')return onDeal(d,me.id);
   return false;
@@ -5006,7 +5007,7 @@ function openDeal(id){
   h+=stageChecklistHTML(d,edit);
   /* facts */
   h+='<div class="frow"><div><label>Deal type</label><select id="dd-type"'+dis+'>'+pipe.types.map(t=>'<option'+(t===d.type?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
-     '<div><label>Assigned to</label><select id="dd-agent"'+((me.role==='owner'||me.role==='manager')?'':' disabled')+'>'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===d.agentId?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select></div></div>'+
+     '<div><label>Assigned to</label><select id="dd-agent"'+((me.role==='owner'||me.role==='manager'||(me&&me.allEdit))?'':' disabled')+'>'+S.users.filter(u=>u.role!=='marketing').map(u=>'<option value="'+u.id+'"'+(u.id===d.agentId?' selected':'')+'>'+esc(u.name)+'</option>').join('')+'</select></div></div>'+
      '<label>Also working this lead</label><div class="coteam" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin:2px 0 6px">'+S.users.filter(u=>u.role!=='marketing'&&u.id!==d.agentId).map(u=>'<label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;font-size:13px;margin:0"><input type="checkbox" name="dd-co" value="'+u.id+'" style="width:auto;margin:0"'+((d.coAgents||[]).indexOf(u.id)>-1?' checked':'')+((me.role==='owner'||me.role==='manager')?'':' disabled')+'> '+esc(u.name)+'</label>').join('')+'</div>';
   h+='<label>Property of interest / address</label><input id="dd-prop" value="'+esc(d.propInterest)+'"'+dis+'>';
   if(!hideMoney()){
@@ -5354,7 +5355,7 @@ const isInvestProp=p=>!p.category||INVEST_CATS.includes(p.category);
    Everyone else (dispo included) works off sale price, rehab and ARV. */
 const canSeeAcq=()=>me.role==='owner'||me.id==='admin'||(myPipes().includes('h2m_acq'));
 /* anyone who works H2M inventory can add and edit properties — same gate as the Properties tab */
-const canEditProps=()=>me.role!=='marketing'&&(me.role==='owner'||me.role==='manager'||me.id==='admin'||myPipes().some(p=>PIPES[p]&&PIPES[p].biz==='H2M'));
+const canEditProps=()=>me.role!=='marketing'&&(me.role==='owner'||me.role==='manager'||me.id==='admin'||(me&&me.allEdit)||myPipes().some(p=>PIPES[p]&&PIPES[p].biz==='H2M'));
 /* whoever can work the inventory sees the whole book: available, in the works, archive.
    An RL- or ASAP-only agent still sees just what's marketed and sellable. */
 const canSeeWholeBook=()=>canEditProps();
