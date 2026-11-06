@@ -2812,8 +2812,15 @@ function syncSellerPipeline(){
           S.deals.push(live); changed++; }
       }
       if(live&&p.ownerId&&live.clientId!==p.ownerId){ live.clientId=p.ownerId; changed++; }
-    } else {
+    } else if(/sold/i.test(p.status||'')||p.archived){
+      /* Truly off the books — sold or archived. Hide the seller deal(s). */
       deals.forEach(d=>{ if(!d.boardHidden&&!isLost(d)){ d.boardHidden=true; changed++; } });
+    } else {
+      /* Still owned, just not in active-"Marketed" status (Under Contract, Rehab, etc.). The
+         seller pipeline has stages BEYOND marketing — Showings, LOI, Under contract/EMD, Closing,
+         Post close — so a house that progressed past "Marketed" must STAY on the board instead of
+         vanishing. Keep existing deals visible; don't mint new ones for non-marketed inventory. */
+      deals.forEach(d=>{ if(d.boardHidden&&!isLost(d)){ d.boardHidden=false; changed++; } });
     }
   });
   /* orphans: seller deal whose property was deleted */
