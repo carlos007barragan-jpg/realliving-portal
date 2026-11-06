@@ -2822,6 +2822,10 @@ function syncSellerPipeline(){
          vanishing. Keep existing deals visible; don't mint new ones for non-marketed inventory. */
       deals.forEach(d=>{ if(d.boardHidden&&!isLost(d)){ d.boardHidden=false; changed++; } });
     }
+    /* Copy the property's owner onto any seller deal that's missing one — for ALL statuses, not
+       just marketed — so an under-contract or rehab house inherits its owner too (that gap left
+       the "No owner" flag stuck on deals whose property already had an owner set). */
+    if(p.ownerId) deals.forEach(d=>{ if(!isLost(d)&&!d.clientId){ d.clientId=p.ownerId; changed++; } });
   });
   /* orphans: seller deal whose property was deleted */
   Object.keys(byProp).forEach(pid=>{ if(!P(pid))byProp[pid].forEach(d=>{ if(!d.boardHidden){ d.boardHidden=true; changed++; } }); });
