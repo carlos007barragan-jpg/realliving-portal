@@ -2882,6 +2882,7 @@ function moveStage(d,stage,fromCloseOut){
   logAct(d.id,d.clientId,'Moved '+PIPES[d.pipe].name+' deal: '+from+' → '+to+'.');
   try{fireStagePlay(d,prevIdx,stage);}catch(e){}
   try{ensureOfStageTasks(d,stage);}catch(e){}
+  try{syncPropFromSellerDeal(d);}catch(e){}
   if(isWon(d)&&/closed|won|sold|servicing/i.test(to)&&!/lost|dead/i.test(to))reviewAsk(d);
   save();if(!fromCloseOut)toast('Moved to '+to);
 }
@@ -3466,15 +3467,18 @@ async function rmDoc(cid,i){
 /* ================= PROPERTIES (H2M) ================= */
 function vProps(){
   const all=S.properties;
-  const avail=all.filter(propAvailable), arch=all.filter(propArchived);
-  const pipeline=all.filter(p=>!propArchived(p)&&!propAvailable(p));
+  const isUC=p=>!propArchived(p)&&/under contract/i.test(p.status||'');
+  const avail=all.filter(p=>propAvailable(p)&&!isUC(p)), arch=all.filter(propArchived);
+  const under=all.filter(isUC);
+  const pipeline=all.filter(p=>!propArchived(p)&&!propAvailable(p)&&!isUC(p));
   if(!canSeeWholeBook())propTab='avail';
-  let list=propTab==='arch'?arch:(propTab==='pipe'?pipeline:avail);
-  const sub=propTab==='arch'?'sold &amp; archived files — kept for the record':(propTab==='pipe'?'acquired / in rehab — not yet marketed':'live and marketable right now');
-  let h='<div class="sect-head"><h2>H2M Inventory</h2><span class="cnt">'+list.length+' '+(propTab==='arch'?'archived':propTab==='pipe'?'in the works':'available')+' — '+sub+'</span><span class="spacer"></span>'+
+  let list=propTab==='arch'?arch:(propTab==='pipe'?pipeline:(propTab==='uc'?under:avail));
+  const sub=propTab==='arch'?'sold &amp; archived files — kept for the record':(propTab==='pipe'?'acquired / in rehab — not yet marketed':(propTab==='uc'?'under contract — off the website, still tracked on the seller pipeline':'live and marketable right now'));
+  let h='<div class="sect-head"><h2>H2M Inventory</h2><span class="cnt">'+list.length+' '+(propTab==='arch'?'archived':propTab==='pipe'?'in the works':propTab==='uc'?'under contract':'available')+' — '+sub+'</span><span class="spacer"></span>'+
     (canEditProps()?'<button class="btn small" onclick="mAddProp()">+ New property</button>':'')+'</div>';
   if(canSeeWholeBook())h+='<div class="ttabs" style="margin:2px 0 14px">'+
     '<button class="ttab'+(propTab==='avail'?' on':'')+'" onclick="propTab=\'avail\';go(\'props\')">Available · '+avail.length+'</button>'+
+    '<button class="ttab'+(propTab==='uc'?' on':'')+'" onclick="propTab=\'uc\';go(\'props\')">Under contract · '+under.length+'</button>'+
     '<button class="ttab'+(propTab==='pipe'?' on':'')+'" onclick="propTab=\'pipe\';go(\'props\')">In the works · '+pipeline.length+'</button>'+
     '<button class="ttab'+(propTab==='arch'?' on':'')+'" onclick="propTab=\'arch\';go(\'props\')">Archive · '+arch.length+'</button></div>';
   if(!list.length)return h+'<div class="empty">Nothing here'+(propTab==='avail'?' — mark a property “In Inventory — Marketed” to make it available.':'.')+'</div>';
@@ -3781,6 +3785,38 @@ function togglePropArchive(id){
   try{syncSellerPipeline();}catch(e){}
   save();toast(p.archived?'Archived — hidden from the inventory view':'Restored to inventory');go('prop',id);
 }
+const UC_STAGE=()=>PIPES.h2m_of_sell.stages.indexOf('Under contract / EMD');
+/* Property is "under contract" — off the website and out of available inventory, but NOT archived,
+   so its seller deal STAYS on the pipeline. This is the control that replaces archiving a house
+   the moment it goes under contract. */
+function markUnderContract(id){
+  const p=P(id);if(!p||!canSeeWholeBook())return;
+  p.status='Under Contract';p.archived=false;
+  const uc=UC_STAGE();
+  S.deals.filter(d=>d.pipe==='h2m_of_sell'&&d.propertyId===p.id&&!isLost(d)).forEach(d=>{
+    delete d.boardHidden;
+    if(d.stage<uc){ d.stage=uc; (d.hist=d.hist||[{s:0,at:d.createdAt}]).push({s:uc,at:new Date().toISOString()}); }
+  });
+  try{syncSellerPipeline();}catch(e){}
+  save();toast('Marked under contract — off the website, still on the seller pipeline');go('prop',id);
+}
+function markBackToMarketed(id){
+  const p=P(id);if(!p||!canSeeWholeBook())return;
+  p.status='In Inventory — Marketed';p.archived=false;
+  try{syncSellerPipeline();}catch(e){}
+  save();toast('Back on the market');go('prop',id);
+}
+/* Two-way link: when a seller deal is moved to "Under contract / EMD" or "Closing", reflect it on
+   the property (status → Under Contract, never archived) so the house and its deal stay in step.
+   Final close (Post close) and losses are handled by the close-out flow, so this leaves those. */
+function syncPropFromSellerDeal(d){
+  if(!d||d.pipe!=='h2m_of_sell'||!d.propertyId)return;
+  const p=P(d.propertyId);if(!p)return;
+  const uc=UC_STAGE(),last=PIPES.h2m_of_sell.stages.length-1;
+  if(d.stage>=uc&&d.stage<last&&!isLost(d)){
+    if(!/under contract/i.test(p.status||'')||p.archived){ p.status='Under Contract';p.archived=false; }
+  }
+}
 function vProp(id){
   const p=P(id);if(!p)return '<div class="empty">Property not found.</div>';
   if(!canSeeWholeBook()&&!propAvailable(p))return '<button class="back" onclick="go(\'props\')">← Inventory</button><div class="empty">That property isn\'t in the available inventory. Ask a manager if you need it.</div>';
@@ -3788,6 +3824,11 @@ function vProp(id){
   let h='<button class="back" onclick="go(\'props\')">← Inventory</button>';
   const live=/inventory — marketed|in inventory/i.test(p.status||'')&&/marketed/i.test(p.status||'');
   h+='<div class="prof-head"><div style="flex:1"><h1 style="font-size:28px">'+esc(p.address)+'</h1><div class="meta">'+p.beds+' bd / '+p.baths+' ba'+(p.sqft?' · '+p.sqft.toLocaleString()+' sqft':'')+' · <b>'+esc(p.status)+'</b>'+(p.category?' · <span class="tag">'+esc(p.category)+'</span>':'')+(live?' <span class="tag gr">LIVE on the websites</span>':'')+'</div></div>'+
+     (canSeeWholeBook()&&!propArchived(p)&&!/^\s*sold\s*$/i.test(p.status||'')?
+        (/under contract/i.test(p.status||'')
+          ? '<button class="btn ghost small" onclick="markBackToMarketed(\''+p.id+'\')">Back to marketed</button> '
+          : '<button class="btn ghost small" style="border-color:var(--gold2);color:var(--gold2)" onclick="markUnderContract(\''+p.id+'\')">Mark under contract</button> ')
+       :'')+
      (canSeeWholeBook()?'<button class="btn ghost small" onclick="togglePropArchive(\''+p.id+'\')">'+(propArchived(p)?'Restore to inventory':'Archive')+'</button> ':'')+
      (canEditProps()?'<button class="btn ghost small" style="border-color:var(--red);color:var(--red)" onclick="rmProp(\''+p.id+'\')">Delete</button> '+
       '<button class="btn small" onclick="mEditProp(\''+p.id+'\')">Edit property</button>':'')+'</div>';
@@ -5321,7 +5362,7 @@ const canSeeWholeBook=()=>canEditProps();
 const buyerSpread=p=>(p.arv||0)-(propPrice(p)||0)-(p.rehab||0);
 const ourSpread=p=>(p.arv||0)-(p.acqPrice||0)-(p.rehab||0);
 const propPrice=p=>p.listPrice||(isInvestProp(p)?p.arv:0)||0;
-const PSTATUSES=['Acquisition — Off-Market Lead','Acquisition — Due Diligence','In Inventory — Rehab','In Inventory — Marketed','Under Contract (Dispo)','Sold'];
+const PSTATUSES=['Acquisition — Off-Market Lead','Acquisition — Due Diligence','In Inventory — Rehab','In Inventory — Marketed','Under Contract','Sold'];
 function mAddProp(editId){
   MP_EDIT=editId||null;
   const p=editId?P(editId):null;
