@@ -3654,6 +3654,39 @@ function uploadHint(msg){
   if(m.indexOf('mime')>-1)return 'That file type isn\'t accepted — use a JPG, PNG or HEIC.';
   return msg;
 }
+/* iPhones shoot HEIC/HEIF by default. HEIC uploads fine but NO browser except Safari
+   can display it, so the photo showed as "image unavailable". Convert HEIC->JPEG in the
+   browser before upload. heic2any is loaded on demand (only when a HEIC file appears) so
+   it never slows a normal page load. */
+function isHeic(f){
+  const t=(f.type||'').toLowerCase();
+  const ext=(f.name||'').split('.').pop().toLowerCase();
+  return t.indexOf('heic')>-1||t.indexOf('heif')>-1||ext==='heic'||ext==='heif';
+}
+function ensureHeic2any(){
+  if(window.heic2any)return Promise.resolve(true);
+  if(window.__heic2anyLoading)return window.__heic2anyLoading;
+  window.__heic2anyLoading=new Promise(res=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+    s.onload=()=>res(!!window.heic2any);
+    s.onerror=()=>res(false);
+    document.head.appendChild(s);
+  });
+  return window.__heic2anyLoading;
+}
+async function maybeConvertHeic(f){
+  if(!isHeic(f))return f;
+  toast('Converting '+f.name+' from HEIC…');
+  const ok=await ensureHeic2any();
+  if(!ok||!window.heic2any)return f; // library unavailable — upload as-is (no worse than before)
+  try{
+    let out=await window.heic2any({blob:f,toType:'image/jpeg',quality:0.85});
+    if(Array.isArray(out))out=out[0];
+    const nm=(f.name||'photo').replace(/\.(heic|heif)$/i,'')+'.jpg';
+    return new File([out],nm,{type:'image/jpeg'});
+  }catch(e){return f;}
+}
 async function addPhotos(pid,input){
   const p=P(pid);if(!p||!canEditProps())return;
   const files=[...(input.files||[])];if(!files.length)return;
@@ -3662,7 +3695,8 @@ async function addPhotos(pid,input){
   if(blocked){window.__uploading=false;toast(blocked);input.value='';return}
   p.photos=p.photos||[];let done=0,failed=0,lastErr='';
   let _tok='';try{let _s=(await sb.auth.getSession()).data.session;if(!_s||!_s.access_token){try{_s=(await sb.auth.refreshSession()).data.session;}catch(_e){}}_tok=(_s&&_s.access_token)||'';}catch(_e){}
-  for(const f of files){
+  for(let f of files){
+    f=await maybeConvertHeic(f);
     const mime=guessMime(f);
     if(!mime){toast('"'+f.name+'" doesn\'t look like a photo — skipped');failed++;continue}
     toast('Uploading '+(done+failed+1)+' of '+files.length+' — '+f.name);
