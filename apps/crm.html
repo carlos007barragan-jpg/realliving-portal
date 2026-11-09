@@ -1344,7 +1344,7 @@ const agentScoped=()=>me.role==='agent'&&!(me&&me.allLeads);
 const NO_DIAL=['9135132656'];
 function isOwnLine(num){return NO_DIAL.includes(digits10(num));}
 /* inventory archive: sold or explicitly archived files live in Archive (owners/managers only) */
-const propArchived=p=>p.archived===true||/^\s*sold\s*$/i.test(p.status||'');
+const propArchived=p=>p.archived===true||/\bsold\b/i.test(p.status||'');
 const propAvailable=p=>!propArchived(p)&&/marketed/i.test(p.status||'');
 /* only ownership sets what a closed file was worth — everyone else records the sale itself */
 const canSetNumbers=()=>me.role==='owner'||me.id==='admin';
