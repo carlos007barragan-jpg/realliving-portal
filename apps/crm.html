@@ -1385,7 +1385,9 @@ function canEditDeal(d){
 function visibleDeals(pipe){
   /* closed-out (lost) files drop off the board — they live on the client profile instead */
   let ds=S.deals.filter(d=>d.pipe===pipe&&!isLost(d)&&!isArchived(d));
-  if(agentScoped())ds=ds.filter(d=>onDeal(d,me.id));
+  /* A scoped agent sees only their own deals — EXCEPT on a universal pipeline (Owner Finance —
+     Sellers), which is open to the whole team so everyone can see every seller deal. */
+  if(agentScoped()&&UNIVERSAL_PIPES.indexOf(pipe)<0)ds=ds.filter(d=>onDeal(d,me.id));
   return ds;
 }
 const PIPELABEL={asap:'ASAP Pipeline',h2m_acq:'Acquisitions',h2m_dispo:'Dispositions',h2m_of:'Owner Finance — Buyers',h2m_of_sell:'Owner Finance — Sellers',rl_buy:'Buy Side',rl_list:'List Side',tc:'TC Dashboard'};
