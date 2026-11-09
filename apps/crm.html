@@ -3871,6 +3871,24 @@ function mMarkSold(id){
     '<button class="btn ghost" onclick="markSoldBy(\''+p.id+'\',\'other\')">Sold — other party</button></div>'+
     '<div class="mrow" style="margin-top:10px"><button class="btn ghost" onclick="closeAll()">Cancel</button></div>');
 }
+/* One-tap mover: send a house to any inventory bucket from the property page. */
+function propBucket(p){
+  if(/sold/i.test(p.status||''))return p.soldBy==='other'?'soldother':(p.soldBy==='us'?'soldus':'archive');
+  if(p.archived===true)return 'archive';
+  if(/under contract/i.test(p.status||''))return 'uc';
+  if(/marketed/i.test(p.status||''))return 'avail';
+  return 'rehab';
+}
+function quickMove(id,to){
+  const p=P(id);if(!p||!canSeeWholeBook())return;
+  if(to===propBucket(p))return;
+  if(to==='avail')return markBackToMarketed(id);
+  if(to==='uc')return markUnderContract(id);
+  if(to==='soldus')return markSoldBy(id,'us');
+  if(to==='soldother')return markSoldBy(id,'other');
+  if(to==='rehab'){ p.status='In Inventory — Rehab';p.archived=false;delete p.soldBy;delete p.soldAt; try{syncSellerPipeline();}catch(e){} save();toast('Moved to In the works');return go('prop',id); }
+  if(to==='archive'){ p.archived=true; try{syncSellerPipeline();}catch(e){} save();toast('Archived');return go('prop',id); }
+}
 /* Two-way link: when a seller deal is moved to "Under contract / EMD" or "Closing", reflect it on
    the property (status → Under Contract, never archived) so the house and its deal stay in step.
    Final close (Post close) and losses are handled by the close-out flow, so this leaves those. */
@@ -3889,14 +3907,10 @@ function vProp(id){
   let h='<button class="back" onclick="go(\'props\')">← Inventory</button>';
   const live=/inventory — marketed|in inventory/i.test(p.status||'')&&/marketed/i.test(p.status||'');
   h+='<div class="prof-head"><div style="flex:1"><h1 style="font-size:28px">'+esc(p.address)+'</h1><div class="meta">'+p.beds+' bd / '+p.baths+' ba'+(p.sqft?' · '+p.sqft.toLocaleString()+' sqft':'')+' · <b>'+esc(p.status)+'</b>'+(p.category?' · <span class="tag">'+esc(p.category)+'</span>':'')+(live?' <span class="tag gr">LIVE on the websites</span>':'')+'</div></div>'+
-     (canSeeWholeBook()&&!propArchived(p)&&!/sold/i.test(p.status||'')?
-        (/under contract/i.test(p.status||'')
-          ? '<button class="btn ghost small" onclick="markBackToMarketed(\''+p.id+'\')">Back to marketed</button> '
-          : '<button class="btn ghost small" style="border-color:var(--gold2);color:var(--gold2)" onclick="markUnderContract(\''+p.id+'\')">Mark under contract</button> ')
-       :'')+
-     (canSeeWholeBook()&&!/sold/i.test(p.status||'')?'<button class="btn ghost small" onclick="mMarkSold(\''+p.id+'\')">Mark sold</button> ':'')+
-     (canSeeWholeBook()&&/sold/i.test(p.status||'')?'<button class="btn ghost small" onclick="markBackToMarketed(\''+p.id+'\')">Un-sell → back to inventory</button> ':'')+
-     (canSeeWholeBook()?'<button class="btn ghost small" onclick="togglePropArchive(\''+p.id+'\')">'+(propArchived(p)?'Restore to inventory':'Archive')+'</button> ':'')+
+     (canSeeWholeBook()?'<label class="mut" style="font-size:11px;margin-right:6px">Move to</label><select class="btn ghost small" style="width:auto;padding:6px 26px 6px 10px;margin-right:6px" onchange="quickMove(\''+p.id+'\',this.value)">'+
+        [['avail','Available'],['uc','Under contract'],['rehab','In the works'],['soldus','Sold — by us'],['soldother','Sold — Other Party'],['archive','Archive']]
+          .map(o=>'<option value="'+o[0]+'"'+(propBucket(p)===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+
+        '</select> ':'')+
      (canEditProps()?'<button class="btn ghost small" style="border-color:var(--red);color:var(--red)" onclick="rmProp(\''+p.id+'\')">Delete</button> '+
       '<button class="btn small" onclick="mEditProp(\''+p.id+'\')">Edit property</button>':'')+'</div>';
   h+='<div class="card" style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="eyebrow" style="margin:0">Owner</div>'+
