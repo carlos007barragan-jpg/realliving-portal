@@ -2796,6 +2796,17 @@ function ofGateDedupe(){
    drops off the board; a house re-marketed brings its deal back. The owner link stays synced.
    Deterministic id per property (dofs-<propId>) so two sessions can't double-create. */
 function isMarketedResProp(p){ return p&&!p.archived&&String(p.category||'').trim().toLowerCase()==='residential'&&/inventory.*marketed/i.test(p.status||''); }
+/* Every house we still own (residential, not sold, not archived) belongs on the sellers board, so
+   the Properties tab and the Owner-Finance Sellers pipeline always hold the SAME set of houses.
+   This is the superset of "marketed" — it also covers Rehab, Under Contract, Acquisition, etc. */
+function isActiveResProp(p){ return p&&!p.archived&&String(p.category||'').trim().toLowerCase()==='residential'&&!/^\s*sold/i.test(p.status||'')&&!/sold/i.test(p.status||''); }
+/* Where a NEW seller deal starts, by the property's status (existing deals keep their own stage). */
+function defaultSellerStage(p){
+  const SS=PIPES.h2m_of_sell.stages, has=p.photos&&p.photos.length>0;
+  if(/under contract/i.test(p.status||''))return SS.indexOf('Under contract / EMD');
+  if(/inventory.*marketed/i.test(p.status||''))return has?SS.indexOf('Showings'):SS.indexOf('Photos / access');
+  return has?SS.indexOf('Photos / access'):SS.indexOf('Numbers / paperwork'); /* rehab / acquisition / prep */
+}
 function syncSellerPipeline(){
   if(!S||!S.properties||!S.deals)return 0;
   let changed=0;
@@ -2803,29 +2814,21 @@ function syncSellerPipeline(){
   S.deals.forEach(d=>{ if(d.pipe==='h2m_of_sell'&&d.propertyId){ (byProp[d.propertyId]=byProp[d.propertyId]||[]).push(d); } });
   S.properties.forEach(p=>{
     const deals=byProp[p.id]||[];
-    if(isMarketedResProp(p)){
+    if(isActiveResProp(p)){
       let live=deals.find(d=>!isLost(d)&&!d.boardHidden);
       if(!live){
         const hidden=deals.find(d=>!isLost(d)&&d.boardHidden);
         if(hidden){ hidden.boardHidden=false; live=hidden; changed++; }
-        else{ const st=(p.photos&&p.photos.length>0)?5:3;
+        else{ const st=defaultSellerStage(p);
           live={id:'dofs-'+p.id,clientId:p.ownerId||null,pipe:'h2m_of_sell',type:'Contract for Deed',stage:st,agentId:'u3',propertyId:p.id,propInterest:p.address||'',budget:0,down:0,closeDate:'',titleOffice:'',revenue:0,hist:[{s:st,at:new Date().toISOString()}],createdAt:new Date().toISOString()};
           S.deals.push(live); changed++; }
       }
       if(live&&p.ownerId&&live.clientId!==p.ownerId){ live.clientId=p.ownerId; changed++; }
-    } else if(/sold/i.test(p.status||'')||p.archived){
-      /* Truly off the books — sold or archived. Hide the seller deal(s). */
-      deals.forEach(d=>{ if(!d.boardHidden&&!isLost(d)){ d.boardHidden=true; changed++; } });
     } else {
-      /* Still owned, just not in active-"Marketed" status (Under Contract, Rehab, etc.). The
-         seller pipeline has stages BEYOND marketing — Showings, LOI, Under contract/EMD, Closing,
-         Post close — so a house that progressed past "Marketed" must STAY on the board instead of
-         vanishing. Keep existing deals visible; don't mint new ones for non-marketed inventory. */
-      deals.forEach(d=>{ if(d.boardHidden&&!isLost(d)){ d.boardHidden=false; changed++; } });
+      /* Sold or archived — off the books. Hide its seller deal(s). */
+      deals.forEach(d=>{ if(!d.boardHidden&&!isLost(d)){ d.boardHidden=true; changed++; } });
     }
-    /* Copy the property's owner onto any seller deal that's missing one — for ALL statuses, not
-       just marketed — so an under-contract or rehab house inherits its owner too (that gap left
-       the "No owner" flag stuck on deals whose property already had an owner set). */
+    /* Copy the property's owner onto any seller deal that's missing one. */
     if(p.ownerId) deals.forEach(d=>{ if(!isLost(d)&&!d.clientId){ d.clientId=p.ownerId; changed++; } });
   });
   /* orphans: seller deal whose property was deleted */
