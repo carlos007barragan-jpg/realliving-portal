@@ -3469,18 +3469,28 @@ async function rmDoc(cid,i){
 function vProps(){
   const all=S.properties;
   const isUC=p=>!propArchived(p)&&/under contract/i.test(p.status||'');
-  const avail=all.filter(p=>propAvailable(p)&&!isUC(p)), arch=all.filter(propArchived);
-  const under=all.filter(isUC);
+  const isSold=p=>/sold/i.test(p.status||'');
+  const soldUs=all.filter(p=>isSold(p)&&p.soldBy==='us');
+  const soldOther=all.filter(p=>isSold(p)&&p.soldBy==='other');
+  const avail=all.filter(p=>propAvailable(p)&&!isUC(p)), under=all.filter(isUC);
   const pipeline=all.filter(p=>!propArchived(p)&&!propAvailable(p)&&!isUC(p));
+  /* Archive = manually-archived + legacy sold files with no soldBy tag. Houses explicitly tagged
+     "sold by us" or "sold — other party" live in their own tabs, not here. */
+  const arch=all.filter(p=>propArchived(p)&&p.soldBy!=='us'&&p.soldBy!=='other');
+  const owned=avail.length+under.length+pipeline.length; /* what we still hold — not any single tab */
   if(!canSeeWholeBook())propTab='avail';
-  let list=propTab==='arch'?arch:(propTab==='pipe'?pipeline:(propTab==='uc'?under:avail));
-  const sub=propTab==='arch'?'sold &amp; archived files — kept for the record':(propTab==='pipe'?'acquired / in rehab — not yet marketed':(propTab==='uc'?'under contract — off the website, still tracked on the seller pipeline':'live and marketable right now'));
-  let h='<div class="sect-head"><h2>H2M Inventory</h2><span class="cnt">'+list.length+' '+(propTab==='arch'?'archived':propTab==='pipe'?'in the works':propTab==='uc'?'under contract':'available')+' — '+sub+'</span><span class="spacer"></span>'+
+  const pick={avail:avail,uc:under,pipe:pipeline,soldus:soldUs,soldother:soldOther,arch:arch};
+  let list=pick[propTab]||avail;
+  const sub={avail:'live and marketable right now',uc:'under contract — off the website, still on the seller pipeline',pipe:'acquired / in rehab — not yet marketed',soldus:'we sold these — counts toward our closings',soldother:'sold, but not our deal — not counted as our sale',arch:'archived &amp; legacy sold files — kept for the record'}[propTab]||'';
+  const lbl={avail:'available',uc:'under contract',pipe:'in the works',soldus:'sold by us',soldother:'sold — other party',arch:'archived'}[propTab]||'';
+  let h='<div class="sect-head"><h2>H2M Inventory</h2><span class="cnt">'+list.length+' '+lbl+' — '+sub+'  ·  <b>'+owned+'</b> owned total</span><span class="spacer"></span>'+
     (canEditProps()?'<button class="btn small" onclick="mAddProp()">+ New property</button>':'')+'</div>';
   if(canSeeWholeBook())h+='<div class="ttabs" style="margin:2px 0 14px">'+
     '<button class="ttab'+(propTab==='avail'?' on':'')+'" onclick="propTab=\'avail\';go(\'props\')">Available · '+avail.length+'</button>'+
     '<button class="ttab'+(propTab==='uc'?' on':'')+'" onclick="propTab=\'uc\';go(\'props\')">Under contract · '+under.length+'</button>'+
     '<button class="ttab'+(propTab==='pipe'?' on':'')+'" onclick="propTab=\'pipe\';go(\'props\')">In the works · '+pipeline.length+'</button>'+
+    '<button class="ttab'+(propTab==='soldus'?' on':'')+'" onclick="propTab=\'soldus\';go(\'props\')">Sold by us · '+soldUs.length+'</button>'+
+    '<button class="ttab'+(propTab==='soldother'?' on':'')+'" onclick="propTab=\'soldother\';go(\'props\')">Sold — other party · '+soldOther.length+'</button>'+
     '<button class="ttab'+(propTab==='arch'?' on':'')+'" onclick="propTab=\'arch\';go(\'props\')">Archive · '+arch.length+'</button></div>';
   if(!list.length)return h+'<div class="empty">Nothing here'+(propTab==='avail'?' — mark a property “In Inventory — Marketed” to make it available.':'.')+'</div>';
   /* category chips — how Carlos groups the book of business */
@@ -3803,9 +3813,29 @@ function markUnderContract(id){
 }
 function markBackToMarketed(id){
   const p=P(id);if(!p||!canSeeWholeBook())return;
-  p.status='In Inventory — Marketed';p.archived=false;
+  p.status='In Inventory — Marketed';p.archived=false;delete p.soldBy;delete p.soldAt;
   try{syncSellerPipeline();}catch(e){}
   save();toast('Back on the market');go('prop',id);
+}
+/* Mark a house sold, tagging WHO sold it so wins (ours) and losses (someone else's) stay apart.
+   by='us' → counts as our closing; by='other' → sold but not our deal. */
+function markSoldBy(id,by){
+  const p=P(id);if(!p||!canSeeWholeBook())return;
+  p.status='Sold';p.soldBy=by;p.archived=false;p.soldAt=new Date().toISOString();
+  const last=PIPES.h2m_of_sell.stages.length-1;
+  S.deals.filter(d=>d.pipe==='h2m_of_sell'&&d.propertyId===p.id&&!isLost(d)).forEach(d=>{
+    if(by==='other'){ d.lost=true;d.lostAt=new Date().toISOString();d.outcome='lost';d.lostReason='Sold by another party'; }
+    else { d.outcome='sold';d.lost=false;d.stage=last;(d.hist=d.hist||[{s:0,at:d.createdAt}]).push({s:last,at:new Date().toISOString()});d.closedAt=new Date().toISOString(); }
+  });
+  try{syncSellerPipeline();}catch(e){}
+  closeAll();save();toast(by==='us'?'Marked sold by us':'Marked sold — other party');go('prop',id);
+}
+function mMarkSold(id){
+  const p=P(id);if(!p)return;
+  modal('<h2>Mark sold</h2><div class="mut" style="font-size:13px;margin:-4px 0 14px">'+esc(p.address||'')+' — who closed this deal?</div>'+
+    '<div class="mrow"><button class="btn" onclick="markSoldBy(\''+p.id+'\',\'us\')">Sold by us</button>'+
+    '<button class="btn ghost" onclick="markSoldBy(\''+p.id+'\',\'other\')">Sold — other party</button></div>'+
+    '<div class="mrow" style="margin-top:10px"><button class="btn ghost" onclick="closeAll()">Cancel</button></div>');
 }
 /* Two-way link: when a seller deal is moved to "Under contract / EMD" or "Closing", reflect it on
    the property (status → Under Contract, never archived) so the house and its deal stay in step.
@@ -3825,11 +3855,13 @@ function vProp(id){
   let h='<button class="back" onclick="go(\'props\')">← Inventory</button>';
   const live=/inventory — marketed|in inventory/i.test(p.status||'')&&/marketed/i.test(p.status||'');
   h+='<div class="prof-head"><div style="flex:1"><h1 style="font-size:28px">'+esc(p.address)+'</h1><div class="meta">'+p.beds+' bd / '+p.baths+' ba'+(p.sqft?' · '+p.sqft.toLocaleString()+' sqft':'')+' · <b>'+esc(p.status)+'</b>'+(p.category?' · <span class="tag">'+esc(p.category)+'</span>':'')+(live?' <span class="tag gr">LIVE on the websites</span>':'')+'</div></div>'+
-     (canSeeWholeBook()&&!propArchived(p)&&!/^\s*sold\s*$/i.test(p.status||'')?
+     (canSeeWholeBook()&&!propArchived(p)&&!/sold/i.test(p.status||'')?
         (/under contract/i.test(p.status||'')
           ? '<button class="btn ghost small" onclick="markBackToMarketed(\''+p.id+'\')">Back to marketed</button> '
           : '<button class="btn ghost small" style="border-color:var(--gold2);color:var(--gold2)" onclick="markUnderContract(\''+p.id+'\')">Mark under contract</button> ')
        :'')+
+     (canSeeWholeBook()&&!/sold/i.test(p.status||'')?'<button class="btn ghost small" onclick="mMarkSold(\''+p.id+'\')">Mark sold</button> ':'')+
+     (canSeeWholeBook()&&/sold/i.test(p.status||'')?'<button class="btn ghost small" onclick="markBackToMarketed(\''+p.id+'\')">Un-sell → back to inventory</button> ':'')+
      (canSeeWholeBook()?'<button class="btn ghost small" onclick="togglePropArchive(\''+p.id+'\')">'+(propArchived(p)?'Restore to inventory':'Archive')+'</button> ':'')+
      (canEditProps()?'<button class="btn ghost small" style="border-color:var(--red);color:var(--red)" onclick="rmProp(\''+p.id+'\')">Delete</button> '+
       '<button class="btn small" onclick="mEditProp(\''+p.id+'\')">Edit property</button>':'')+'</div>';
