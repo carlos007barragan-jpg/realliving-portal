@@ -5134,7 +5134,14 @@ function nextForwardStage(d){
   return -1;
 }
 /* Toggle a gate task and re-render whichever view is open (deal drawer or profile). */
-function gateToggle(tid,did){ toggleTask(tid); const dr=document.getElementById('drawer'); if(dr&&dr.classList.contains('on'))openDeal(did); }
+function gateToggle(tid,did){
+  /* Capture the drawer state BEFORE toggleTask — it calls refresh()→go()→closeAll(), which closes
+     the drawer. Without this, checking a task dropped you back to the board ("takes me out of the
+     lead"). Re-open the deal afterward so you stay right where you were. */
+  const dr=document.getElementById('drawer'); const wasOpen=!!(dr&&dr.classList.contains('on'));
+  toggleTask(tid);
+  if(wasOpen)openDeal(did);
+}
 /* ONE checklist, shared by the deal drawer and the full profile, so both show the same
    tasks. Advancing uses the next real stage; the off-ramps are deliberate side buttons. */
 function stageChecklistHTML(d,edit){
