@@ -3515,7 +3515,7 @@ function vProps(){
   let list=pick[propTab]||avail;
   const sub={avail:'live and marketable right now',uc:'under contract — off the website, still on the seller pipeline',pipe:'acquired / in rehab — not yet marketed',soldus:'we sold these — counts toward our closings',soldother:'sold, but not our deal — not counted as our sale',arch:'archived &amp; legacy sold files — kept for the record'}[propTab]||'';
   const lbl={avail:'available',uc:'under contract',pipe:'in the works',soldus:'sold by us',soldother:'sold — other party',arch:'archived'}[propTab]||'';
-  let h='<div class="sect-head"><h2>H2M Inventory</h2><span class="cnt">'+list.length+' '+lbl+' — '+sub+'  ·  <b>'+owned+'</b> owned total</span><span class="spacer"></span>'+
+  let h='<div class="sect-head"><h2>H2M Inventory</h2><span class="cnt">'+list.length+' '+lbl+' — '+sub+'  ·  <b>'+owned+'</b> owned = '+avail.length+' available + '+under.length+' under contract + '+pipeline.length+' in the works</span><span class="spacer"></span>'+
     (canEditProps()?'<button class="btn small" onclick="mAddProp()">+ New property</button>':'')+'</div>';
   if(canSeeWholeBook())h+='<div class="ttabs" style="margin:2px 0 14px">'+
     '<button class="ttab'+(propTab==='avail'?' on':'')+'" onclick="propTab=\'avail\';go(\'props\')">Available · '+avail.length+'</button>'+
