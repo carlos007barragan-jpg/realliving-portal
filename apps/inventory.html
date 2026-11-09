@@ -117,11 +117,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,
     <div class="bar">
       <input id="q" placeholder="Search address…" oninput="draw()">
       <span class="chip on" data-f="all" onclick="setF(this)">All</span>
-      <span class="chip" data-f="inv" onclick="setF(this)">In inventory</span>
+      <span class="chip" data-f="avail" onclick="setF(this)">Available</span>
       <span class="chip" data-f="uc" onclick="setF(this)">Under contract</span>
-      <span class="chip" data-f="acq" onclick="setF(this)">Acquisition</span>
-      <span class="chip" data-f="sold" onclick="setF(this)">Sold</span>
-      <span class="chip" data-f="arch" onclick="setF(this)">Archived</span>
     </div>
     <div class="bar" id="cats"></div>
     <div class="grid" id="grid"></div>
@@ -189,28 +186,29 @@ const tiMonthly=p=>Math.round(((+p.taxes||0)+(+p.insurance||0))/12);
 
 function visible(){
   const q=($('q').value||'').toLowerCase();
+  const isAvail=p=>/marketed/i.test(p.status||'');
+  const isUC=p=>/under contract/i.test(p.status||'');
   return PROPS.filter(p=>{
-    const sold=/sold/i.test(p.status||'');
-    if(F==='arch'){ if(p.archived!==true)return false; }
-    else if(F==='sold'){ if(p.archived===true||!sold)return false; }
-    else { if(p.archived===true||sold)return false; } /* all / inv / uc / acq = still-owned only */
-    const f=cls(p.status)[1];
-    if(F!=='all'&&F!=='arch'&&F!=='sold'&&f!==F)return false;
+    if(p.archived===true||/sold/i.test(p.status||''))return false; /* never sold or archived */
+    if(!(isAvail(p)||isUC(p)))return false;                        /* never "in the works" */
+    if(F==='avail'&&!isAvail(p))return false;
+    if(F==='uc'&&!isUC(p))return false;
     if(CAT&&p.category!==CAT)return false;
     return !q||(p.address||'').toLowerCase().indexOf(q)>-1;
   });
 }
 function draw(){
-  /* "Active/owned" = not archived AND not sold — same rule the CRM uses, so the two agree. */
-  const live=PROPS.filter(p=>p.archived!==true&&!/sold/i.test(p.status||''));
-  const n=f=>live.filter(p=>cls(p.status)[1]===f).length;
-  /* Only the three numbers that matter: everything we own, what's on the market, what's pending. */
-  const availN=live.filter(p=>/marketed/i.test(p.status||'')).length;
+  /* The inventory check only concerns houses in play: Available (on the market) + Under contract.
+     Sold, archived, and "in the works" (rehab / acquisition) are excluded everywhere on this page. */
+  const isAvail=p=>/marketed/i.test(p.status||'');
+  const isUC=p=>/under contract/i.test(p.status||'');
+  const active=PROPS.filter(p=>p.archived!==true&&!/sold/i.test(p.status||'')&&(isAvail(p)||isUC(p)));
+  const availN=active.filter(isAvail).length, ucN=active.filter(isUC).length;
   $('kpis').innerHTML=
-    '<div class="kpi"><div class="n">'+live.length+'</div><div class="l">Active properties</div></div>'+
+    '<div class="kpi"><div class="n">'+active.length+'</div><div class="l">Active properties</div></div>'+
     '<div class="kpi"><div class="n">'+availN+'</div><div class="l">Available in inventory</div></div>'+
-    '<div class="kpi"><div class="n">'+n('uc')+'</div><div class="l">Under contract</div></div>';
-  const pool=F==='arch'?PROPS.filter(p=>p.archived===true):live;
+    '<div class="kpi"><div class="n">'+ucN+'</div><div class="l">Under contract</div></div>';
+  const pool=active;
   const cats=[];pool.forEach(p=>{if(p.category&&cats.indexOf(p.category)<0)cats.push(p.category)});
   $('cats').innerHTML=cats.map(c=>'<span class="chip'+(CAT===c?' on':'')+'" onclick="setCat(\''+esc(c)+'\')">'+esc(c)+' \u00b7 '+pool.filter(p=>p.category===c).length+'</span>').join('');
   const list=visible();
