@@ -190,16 +190,20 @@ const tiMonthly=p=>Math.round(((+p.taxes||0)+(+p.insurance||0))/12);
 function visible(){
   const q=($('q').value||'').toLowerCase();
   return PROPS.filter(p=>{
+    const sold=/sold/i.test(p.status||'');
     if(F==='arch'){ if(p.archived!==true)return false; }
-    else if(p.archived===true)return false;
+    else if(F==='sold'){ if(p.archived===true||!sold)return false; }
+    else { if(p.archived===true||sold)return false; } /* all / inv / uc / acq = still-owned only */
     const f=cls(p.status)[1];
-    if(F!=='all'&&F!=='arch'&&f!==F)return false;
+    if(F!=='all'&&F!=='arch'&&F!=='sold'&&f!==F)return false;
     if(CAT&&p.category!==CAT)return false;
     return !q||(p.address||'').toLowerCase().indexOf(q)>-1;
   });
 }
 function draw(){
-  const live=PROPS.filter(p=>p.archived!==true);
+  /* "Active/owned" = not archived AND not sold — same rule the CRM uses, so the two agree. */
+  const live=PROPS.filter(p=>p.archived!==true&&!/sold/i.test(p.status||''));
+  const soldN=PROPS.filter(p=>p.archived!==true&&/sold/i.test(p.status||'')).length;
   const n=f=>live.filter(p=>cls(p.status)[1]===f).length;
   $('kpis').innerHTML=
     '<div class="kpi"><div class="n">'+live.length+'</div><div class="l">Active properties</div></div>'+
@@ -207,6 +211,7 @@ function draw(){
     '<div class="kpi"><div class="n">'+n('uc')+'</div><div class="l">Under contract</div></div>'+
     '<div class="kpi"><div class="n">'+live.filter(p=>photosOf(p).length).length+'</div><div class="l">With photos</div></div>'+
     '<div class="kpi"><div class="n">'+live.filter(p=>priceOf(p)).length+'</div><div class="l">Priced</div></div>'+
+    '<div class="kpi"><div class="n">'+soldN+'</div><div class="l">Sold</div></div>'+
     '<div class="kpi"><div class="n">'+PROPS.filter(p=>p.archived===true).length+'</div><div class="l">Archived</div></div>';
   const pool=F==='arch'?PROPS.filter(p=>p.archived===true):live;
   const cats=[];pool.forEach(p=>{if(p.category&&cats.indexOf(p.category)<0)cats.push(p.category)});
