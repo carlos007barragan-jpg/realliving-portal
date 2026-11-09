@@ -203,16 +203,13 @@ function visible(){
 function draw(){
   /* "Active/owned" = not archived AND not sold — same rule the CRM uses, so the two agree. */
   const live=PROPS.filter(p=>p.archived!==true&&!/sold/i.test(p.status||''));
-  const soldN=PROPS.filter(p=>p.archived!==true&&/sold/i.test(p.status||'')).length;
   const n=f=>live.filter(p=>cls(p.status)[1]===f).length;
+  /* Only the three numbers that matter: everything we own, what's on the market, what's pending. */
+  const availN=live.filter(p=>/marketed/i.test(p.status||'')).length;
   $('kpis').innerHTML=
     '<div class="kpi"><div class="n">'+live.length+'</div><div class="l">Active properties</div></div>'+
-    '<div class="kpi"><div class="n">'+n('inv')+'</div><div class="l">In inventory</div></div>'+
-    '<div class="kpi"><div class="n">'+n('uc')+'</div><div class="l">Under contract</div></div>'+
-    '<div class="kpi"><div class="n">'+live.filter(p=>photosOf(p).length).length+'</div><div class="l">With photos</div></div>'+
-    '<div class="kpi"><div class="n">'+live.filter(p=>priceOf(p)).length+'</div><div class="l">Priced</div></div>'+
-    '<div class="kpi"><div class="n">'+soldN+'</div><div class="l">Sold</div></div>'+
-    '<div class="kpi"><div class="n">'+PROPS.filter(p=>p.archived===true).length+'</div><div class="l">Archived</div></div>';
+    '<div class="kpi"><div class="n">'+availN+'</div><div class="l">Available in inventory</div></div>'+
+    '<div class="kpi"><div class="n">'+n('uc')+'</div><div class="l">Under contract</div></div>';
   const pool=F==='arch'?PROPS.filter(p=>p.archived===true):live;
   const cats=[];pool.forEach(p=>{if(p.category&&cats.indexOf(p.category)<0)cats.push(p.category)});
   $('cats').innerHTML=cats.map(c=>'<span class="chip'+(CAT===c?' on':'')+'" onclick="setCat(\''+esc(c)+'\')">'+esc(c)+' \u00b7 '+pool.filter(p=>p.category===c).length+'</span>').join('');
