@@ -1350,6 +1350,10 @@ const propAvailable=p=>!propArchived(p)&&/marketed/i.test(p.status||'');
 const canSetNumbers=()=>me.role==='owner'||me.id==='admin';
 /* what this user is allowed to see at all in inventory */
 const visibleProps=()=>S.properties.filter(p=>canSeeWholeBook()?true:propAvailable(p));
+/* houses we still OWN — not archived, not sold (any "sold…" status). Matches the Properties tab's
+   "owned total" (Available + Under contract + In the works). Used for the dashboard counts so they
+   stop counting archived/sold files. */
+const ownedProps=()=>S.properties.filter(p=>!propArchived(p)&&!/sold/i.test(p.status||''));
 /* dormant: parked leads — kept in full, but out of dashboards, alerts and follow-up until reheated */
 const isDormant=c=>!!c&&c.dormant===true;
 const workingClients=()=>S.clients.filter(c=>!isDormant(c));
@@ -1661,7 +1665,7 @@ function vDash(){
     const appts7=upcomingAppts(null,7).length;
     const closedMoN=S.deals.filter(d=>scopePipes.includes(d.pipe)&&!isCost(d.pipe)&&isFinal(d)&&closedDate(d)&&inThisMonth(closedDate(d))).length;
     const inMotion=actDeals.filter(d=>d.stage>=PIPES[d.pipe].stages.length-2).length;
-    const activeProps=S.properties.filter(p=>!S.deals.some(dd=>dd.propertyId===p.id&&dd.pipe==='h2m_dispo'&&isWon(dd))).length;
+    const activeProps=ownedProps().length;
     const yv=ytdByBiz();
     const vshort={ASAP:'ASAP',H2M:'H2M',RL:'RL Team',TC:'TC'};
     const delta=(v,suf)=>v>0?'<span class="delta up">↗ +'+v+(suf||'')+'</span>':(v<0?'<span class="delta dn">↘ '+v+(suf||'')+'</span>':'<span class="delta z">±0</span>');
@@ -1671,7 +1675,7 @@ function vDash(){
       kpi(ICO.cal,'',appts7,'Appointments · next 7 days')+
       kpi(ICO.chk,delta(inMotion),closedMoN,'Closings this month · '+inMotion+' at the table')+
       kpi(ICO.brf,delta(newDeals),actDeals.length,'Active deals · '+newDeals+' opened this month')+
-      kpi(ICO.bld,'',activeProps,'Active properties →',"go('props')")+
+      kpi(ICO.bld,'',activeProps,'Owned properties → (available + under contract + rehab)',"go('props')")+
       kpi(ICO.dol,delta(revD,'%'),money(revMTD),'Revenue generated (MTD) · pace '+money(Math.round(revMTD/Math.max(1,NOW().getDate())*new Date(NOW().getFullYear(),NOW().getMonth()+1,0).getDate())))+
       '<div class="card mini"><div class="kpi-top"><span class="icobox"><svg viewBox="0 0 24 24"><path d="'+ICO.grd+'"/></svg></span></div><div class="eyebrow" style="margin-bottom:5px">Deals closed by vertical · YTD</div>'+
         Object.keys(BIZ).map(b=>'<div class="sub" style="display:flex;justify-content:space-between;margin-top:3px"><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;background:'+BIZCOLOR[b]+'"></i>'+vshort[b]+'</span><b style="color:var(--ink);font-weight:500">'+yv[b].n+'</b></div>').join('')+'</div></div>';
@@ -2279,7 +2283,7 @@ function vBiz(b){
     '<div class="card"><div class="eyebrow">Closed revenue</div><div class="big">'+(hideMoney()?closedN:money(closed))+'</div><div class="sub"><b>'+closedN+'</b> deals closed</div></div>'+
     '<div class="card"><div class="eyebrow">Close rate</div><div class="big">'+rate+'%</div><div class="sub">of all deals in '+BIZ[b]+'</div></div>'+
     (b==='H2M'
-      ?'<div class="card click" onclick="go(\'props\')"><div class="eyebrow">Inventory</div><div class="big">'+visibleProps().length+'</div><div class="sub">'+(canSeeWholeBook()?'wholly owned properties →':'available now →')+'</div></div>'
+      ?'<div class="card click" onclick="go(\'props\')"><div class="eyebrow">Inventory</div><div class="big">'+(canSeeWholeBook()?ownedProps().length:visibleProps().length)+'</div><div class="sub">'+(canSeeWholeBook()?'owned properties →':'available now →')+'</div></div>'
       :'<div class="card"><div class="eyebrow">Avg deal value</div><div class="big">'+(hideMoney()?'—':money((openN+closedN)?Math.round((open+closed)/(openN+closedN)):0))+'</div><div class="sub">expected per deal</div></div>')+
     '</div>';
   if(pipes.length>1)h+='<div class="pipetabs" style="margin-top:20px">'+pipes.map(p=>'<button class="pipetab'+(p===pipeSel?' on':'')+'" onclick="pipeSel=\''+p+'\';go(\'biz\',\''+b+'\')">'+PIPES[p].name+'</button>').join('')+'</div>';
@@ -3466,6 +3470,33 @@ async function rmDoc(cid,i){
   C(cid).docs.splice(i,1);save();go('client',cid);
 }
 /* ================= PROPERTIES (H2M) ================= */
+/* Inventory Check: every owned residential house, flagged for what it's still missing so nothing
+   sits half-entered. Required: owner, photos, a status; plus OF terms and a pipeline deal for
+   houses that are actually being sold (marketed / under contract). */
+function invCheckList(){
+  return ownedProps().filter(p=>String(p.category||'').trim().toLowerCase()==='residential').map(p=>{
+    const miss=[];
+    if(!p.ownerId)miss.push('Owner');
+    if(!(p.photos&&p.photos.length>0))miss.push('Photos');
+    if(!(p.status&&p.status.trim()))miss.push('Status');
+    const selling=/marketed/i.test(p.status||'')||/under contract/i.test(p.status||'');
+    if(selling&&!((+p.down>0)||(+p.monthly>0)))miss.push('OF terms');
+    if(selling&&!S.deals.some(d=>d.pipe==='h2m_of_sell'&&d.propertyId===p.id&&!isLost(d)&&!d.boardHidden))miss.push('On pipeline');
+    return {p,miss};
+  }).filter(x=>x.miss.length>0);
+}
+function vInvCheck(h){
+  const rows=invCheckList();
+  const total=ownedProps().filter(p=>String(p.category||'').trim().toLowerCase()==='residential').length;
+  const done=total-rows.length;
+  h+='<div class="card" style="padding:14px 16px;margin-bottom:14px;font-size:14px"><b>'+done+' of '+total+'</b> complete · <b style="color:#c0392b">'+rows.length+'</b> need attention <span class="mut" style="font-size:12.5px">— every owned house should have an owner, photos, a status'+'; plus terms &amp; a pipeline deal once it’s being sold</span></div>';
+  if(!rows.length)return h+'<div class="empty">Everything checks out — nothing is missing.</div>';
+  h+='<div class="card" style="padding:0;overflow:auto"><table><tr><th>Property</th><th>Missing</th></tr>'+
+    rows.map(x=>'<tr class="click" style="cursor:pointer" onclick="go(\'prop\',\''+x.p.id+'\')"><td>'+esc(x.p.address||'(no address)')+'<br><small class="mut">'+esc(x.p.status||'')+'</small></td><td>'+
+      x.miss.map(m=>'<span class="tag rd" style="margin:2px 4px 2px 0;display:inline-block">'+esc(m)+'</span>').join('')+'</td></tr>').join('')+
+    '</table></div><div class="mut" style="font-size:12px;margin-top:10px">Tap a row to open the house and fill in what’s missing.</div>';
+  return h;
+}
 function vProps(){
   const all=S.properties;
   const isUC=p=>!propArchived(p)&&/under contract/i.test(p.status||'');
@@ -3478,6 +3509,7 @@ function vProps(){
      "sold by us" or "sold — other party" live in their own tabs, not here. */
   const arch=all.filter(p=>propArchived(p)&&p.soldBy!=='us'&&p.soldBy!=='other');
   const owned=avail.length+under.length+pipeline.length; /* what we still hold — not any single tab */
+  const needN=invCheckList().length;
   if(!canSeeWholeBook())propTab='avail';
   const pick={avail:avail,uc:under,pipe:pipeline,soldus:soldUs,soldother:soldOther,arch:arch};
   let list=pick[propTab]||avail;
@@ -3491,7 +3523,9 @@ function vProps(){
     '<button class="ttab'+(propTab==='pipe'?' on':'')+'" onclick="propTab=\'pipe\';go(\'props\')">In the works · '+pipeline.length+'</button>'+
     '<button class="ttab'+(propTab==='soldus'?' on':'')+'" onclick="propTab=\'soldus\';go(\'props\')">Sold by us · '+soldUs.length+'</button>'+
     '<button class="ttab'+(propTab==='soldother'?' on':'')+'" onclick="propTab=\'soldother\';go(\'props\')">Sold — other party · '+soldOther.length+'</button>'+
-    '<button class="ttab'+(propTab==='arch'?' on':'')+'" onclick="propTab=\'arch\';go(\'props\')">Archive · '+arch.length+'</button></div>';
+    '<button class="ttab'+(propTab==='arch'?' on':'')+'" onclick="propTab=\'arch\';go(\'props\')">Archive · '+arch.length+'</button>'+
+    '<button class="ttab'+(propTab==='check'?' on':'')+'" onclick="propTab=\'check\';go(\'props\')"'+(needN?' style="color:#c0392b;border-color:#c0392b"':'')+'>⚠ Inventory check'+(needN?' · '+needN:'')+'</button></div>';
+  if(propTab==='check')return vInvCheck(h);
   if(!list.length)return h+'<div class="empty">Nothing here'+(propTab==='avail'?' — mark a property “In Inventory — Marketed” to make it available.':'.')+'</div>';
   /* category chips — how Carlos groups the book of business */
   const catsPresent=[...new Set(list.map(p=>p.category).filter(Boolean))];
