@@ -3555,7 +3555,7 @@ function vProps(){
       const inv=isInvestProp(p), dash='<td class="mut">—</td>';
       const rowClick=shareMode?("toggleShareSel('"+p.id+"')"):("go('prop','"+p.id+"')");
       const cbCell=shareMode?('<td style="width:34px" onclick="event.stopPropagation();toggleShareSel(\''+p.id+'\')"><input type="checkbox" id="cbx_'+p.id+'"'+(shareSel[p.id]?' checked':'')+' onclick="event.stopPropagation();toggleShareSel(\''+p.id+'\')"></td>'):'';
-      return '<tr class="rowlink" onclick="'+rowClick+'">'+cbCell+'<td>'+esc(p.address)+(p.photos&&p.photos.length?' <span class="tag" style="font-size:10px">'+p.photos.length+' 📷</span>':'')+'</td><td>'+(p.category?'<span class="tag">'+esc(p.category)+'</span>':'<span class="mut">—</span>')+'</td><td class="mut">'+p.beds+'/'+p.baths+'</td>'+
+      return '<tr class="rowlink" onclick="'+rowClick+'" onmouseenter="propPeek(event,\''+p.id+'\')" onmousemove="propPeekMove(event)" onmouseleave="propPeekHide()">'+cbCell+'<td>'+esc(p.address)+(p.photos&&p.photos.length?' <span class="tag" style="font-size:10px">'+p.photos.length+' 📷</span>':'')+'</td><td>'+(p.category?'<span class="tag">'+esc(p.category)+'</span>':'<span class="mut">—</span>')+'</td><td class="mut">'+p.beds+'/'+p.baths+'</td>'+
       (anyInvest?(inv
         ?(showAcq?'<td class="money">'+money(p.acqPrice)+'</td>':'')+'<td class="money">'+money(p.rehab)+'</td><td class="money">'+money(p.arv)+'</td><td class="money">'+money(showAcq?ourSpread(p):buyerSpread(p))+'</td>'
         :(showAcq?dash:'')+dash+dash+dash):'')+
@@ -3566,6 +3566,47 @@ function vProps(){
     (anyInvest&&list.some(p=>!isInvestProp(p))?'<div class="mut" style="font-size:12px;margin-top:8px">Rehab, ARV and spread are investor numbers — they stay blank on owner-finance and on-market homes, which are sold on price and terms.</div>':'');
   return h;
 }
+/* ---------- property photo hover preview — see a home's photos without opening it, to post faster ---------- */
+function propPeekEl(){
+  let el=document.getElementById('propPeek');
+  if(!el){
+    el=document.createElement('div');
+    el.id='propPeek';
+    el.style.cssText='position:fixed;z-index:9999;display:none;pointer-events:none;max-width:352px;background:var(--panel);color:var(--ink);border:1px solid var(--line2);border-radius:12px;box-shadow:0 14px 38px rgba(0,0,0,.28);padding:11px';
+    document.body.appendChild(el);
+    /* any click (incl. opening the home) or scroll dismisses it so it never sticks */
+    document.addEventListener('click',propPeekHide,true);
+    document.addEventListener('scroll',propPeekHide,true);
+  }
+  return el;
+}
+function propPeek(ev,id){
+  const p=P(id); if(!p)return;
+  const ph=(p.photos&&p.photos.length)?p.photos:(p.photo?[p.photo]:[]);
+  const el=propPeekEl();
+  if(!ph.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--mut);padding:2px 1px">No photos yet — '+esc(p.address)+'</div>';
+  }else{
+    const shown=ph.slice(0,9);
+    el.innerHTML='<div style="font-size:12px;font-weight:600;margin-bottom:8px">'+esc(p.address)+' · '+ph.length+' photo'+(ph.length>1?'s':'')+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(3,104px);gap:6px">'+
+      shown.map(u=>'<img src="'+esc(u)+'" loading="lazy" style="width:104px;height:76px;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--panel2)" onerror="this.style.opacity=.25;this.title=\'image unavailable\'">').join('')+
+      '</div>'+(ph.length>shown.length?'<div style="font-size:11px;color:var(--mut);margin-top:6px">+'+(ph.length-shown.length)+' more — click the row to open</div>':'');
+  }
+  el.style.display='block';
+  propPeekMove(ev);
+}
+function propPeekMove(ev){
+  const el=document.getElementById('propPeek'); if(!el||el.style.display==='none')return;
+  const pad=16,w=el.offsetWidth||352,h=el.offsetHeight||220;
+  let x=ev.clientX+pad,y=ev.clientY+pad;
+  if(x+w>window.innerWidth-8)x=ev.clientX-w-pad;
+  if(x<8)x=8;
+  if(y+h>window.innerHeight-8)y=window.innerHeight-h-8;
+  if(y<8)y=8;
+  el.style.left=x+'px';el.style.top=y+'px';
+}
+function propPeekHide(){ const el=document.getElementById('propPeek'); if(el)el.style.display='none'; }
 /* ---------- inventory share links ---------- */
 function INV_URL(){ try{ return location.href.split('/apps/')[0]+'/inventory.html'; }catch(e){ return 'inventory.html'; } }
 function copyText(t){ try{ navigator.clipboard.writeText(t); toast('Copied'); }catch(e){ toast('Copy failed — select the text manually'); } }
