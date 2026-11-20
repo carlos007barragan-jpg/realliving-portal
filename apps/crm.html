@@ -3505,24 +3505,27 @@ function vProps(){
   const isSold=p=>/sold/i.test(p.status||'');
   const soldUs=all.filter(p=>isSold(p)&&p.soldBy==='us');
   const soldOther=all.filter(p=>isSold(p)&&p.soldBy==='other');
+  const isRehab=p=>/rehab/i.test(p.status||'');
+  const rehabList=all.filter(isRehab);
   const avail=all.filter(p=>propAvailable(p)&&!isUC(p)), under=all.filter(isUC);
-  const pipeline=all.filter(p=>!propArchived(p)&&!propAvailable(p)&&!isUC(p));
+  const pipeline=all.filter(p=>!propArchived(p)&&!propAvailable(p)&&!isUC(p)&&!isRehab(p));
   /* Archive = manually-archived + legacy sold files with no soldBy tag. Houses explicitly tagged
      "sold by us" or "sold — other party" live in their own tabs, not here. */
-  const arch=all.filter(p=>propArchived(p)&&p.soldBy!=='us'&&p.soldBy!=='other');
-  const owned=avail.length+under.length+pipeline.length; /* what we still hold — not any single tab */
+  const arch=all.filter(p=>propArchived(p)&&p.soldBy!=='us'&&p.soldBy!=='other'&&!isRehab(p));
+  const owned=avail.length+under.length+pipeline.length+rehabList.length; /* what we still hold — not any single tab */
   const needN=invCheckList().length;
   if(!canSeeWholeBook())propTab='avail';
-  const pick={avail:avail,uc:under,pipe:pipeline,soldus:soldUs,soldother:soldOther,arch:arch};
+  const pick={avail:avail,uc:under,pipe:pipeline,rehab:rehabList,soldus:soldUs,soldother:soldOther,arch:arch};
   let list=pick[propTab]||avail;
-  const sub={avail:'live and marketable right now',uc:'under contract — off the website, still on the seller pipeline',pipe:'acquired / in rehab — not yet marketed',soldus:'we sold these — counts toward our closings',soldother:'sold, but not our deal — not counted as our sale',arch:'archived &amp; legacy sold files — kept for the record'}[propTab]||'';
-  const lbl={avail:'available',uc:'under contract',pipe:'in the works',soldus:'sold by us',soldother:'sold — other party',arch:'archived'}[propTab]||'';
-  let h='<div class="sect-head"><h2>H2M Inventory</h2><span class="cnt">'+list.length+' '+lbl+' — '+sub+'  ·  <b>'+owned+'</b> owned = '+avail.length+' available + '+under.length+' under contract + '+pipeline.length+' in the works</span><span class="spacer"></span>'+
+  const sub={avail:'live and marketable right now',uc:'under contract — off the website, still on the seller pipeline',pipe:'acquired, in due diligence — not yet marketed',rehab:'acquired and under renovation — not yet marketed',soldus:'we sold these — counts toward our closings',soldother:'sold, but not our deal — not counted as our sale',arch:'archived &amp; legacy sold files — kept for the record'}[propTab]||'';
+  const lbl={avail:'available',uc:'under contract',pipe:'in the works',rehab:'in rehab',soldus:'sold by us',soldother:'sold — other party',arch:'archived'}[propTab]||'';
+  let h='<div class="sect-head"><h2>H2M Inventory</h2><span class="cnt">'+list.length+' '+lbl+' — '+sub+'  ·  <b>'+owned+'</b> owned = '+avail.length+' available + '+under.length+' under contract + '+pipeline.length+' in the works + '+rehabList.length+' in rehab</span><span class="spacer"></span>'+
     (canEditProps()?'<button class="btn small" onclick="mAddProp()">+ New property</button>':'')+'</div>';
   if(canSeeWholeBook())h+='<div class="ttabs" style="margin:2px 0 14px">'+
     '<button class="ttab'+(propTab==='avail'?' on':'')+'" onclick="propTab=\'avail\';go(\'props\')">Available · '+avail.length+'</button>'+
     '<button class="ttab'+(propTab==='uc'?' on':'')+'" onclick="propTab=\'uc\';go(\'props\')">Under contract · '+under.length+'</button>'+
     '<button class="ttab'+(propTab==='pipe'?' on':'')+'" onclick="propTab=\'pipe\';go(\'props\')">In the works · '+pipeline.length+'</button>'+
+    '<button class="ttab'+(propTab==='rehab'?' on':'')+'" onclick="propTab=\'rehab\';go(\'props\')">Rehab · '+rehabList.length+'</button>'+
     '<button class="ttab'+(propTab==='soldus'?' on':'')+'" onclick="propTab=\'soldus\';go(\'props\')">Sold by us · '+soldUs.length+'</button>'+
     '<button class="ttab'+(propTab==='soldother'?' on':'')+'" onclick="propTab=\'soldother\';go(\'props\')">Sold — other party · '+soldOther.length+'</button>'+
     '<button class="ttab'+(propTab==='arch'?' on':'')+'" onclick="propTab=\'arch\';go(\'props\')">Archive · '+arch.length+'</button>'+
