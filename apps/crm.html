@@ -606,7 +606,7 @@ const PIPES={
   asap:{biz:'ASAP',name:'ASAP Lending',stages:['New Lead','Application','Underwriting','Term Sheet','Approved','Funded'],types:['Fix & Flip Funding','Bridge Loan','Rental / DSCR','Other Funding']},
   h2m_acq:{biz:'H2M',name:'H2M · Acquisitions',stages:['Lead','Hot lead','Under contract / Find a buyer','Buyer found / Buyer\'s side under contract','Closed','Post close'],types:['Acquisition','Assignment','Double Close']},
   h2m_dispo:{biz:'H2M',name:'H2M · Dispositions',stages:['Investors','Showing scheduled','Negotiation / terms','Under contract','EMD submitted','Closed','Post close / Under rehab'],types:['Owner Finance (CFD)','Cash Sale','Retail Sale']},
-  h2m_of:{biz:'H2M',name:'H2M · Owner Finance — Buyers',stages:['New number (no contact)','Not Interested / Disqualified','Appointment scheduled','No show','Showing houses / Consult done','Found house / terms / negotiations','LOI / EMD / Under contract','Closed','Post close'],types:['Contract for Deed','Lease Option','Note Sale']},
+  h2m_of:{biz:'H2M',name:'H2M · Owner Finance — Buyers',stages:['New number (no contact)','Contacted / Following up','Not Interested / Disqualified','Appointment scheduled','No show','Showing houses / Consult done','Found house / terms / negotiations','LOI / EMD / Under contract','Closed','Post close'],types:['Contract for Deed','Lease Option','Note Sale']},
   h2m_of_sell:{biz:'H2M',name:'H2M · Owner Finance — Sellers',stages:['Inquiry / new leads','Didn\'t list / withdrew','Numbers / paperwork','Photos / access','Marketing','Showings','LOI / negotiations','Under contract / EMD','Closing','Post close'],types:['Contract for Deed','Lease Option','Note Sale']},
   rl_buy:{biz:'RL',name:'RL Team · Buy Side',stages:['Lead','Consult','Pre-Approved','Showing','Under Contract','Closed'],types:['Buyer Representation']},
   rl_list:{biz:'RL',name:'RL Team · List Side',stages:['Lead','Listing Appt','Listed','Under Contract','Closed'],types:['Listing']},
@@ -2679,11 +2679,12 @@ function fireStagePlay(d,prevIdx,idx){
    never gated. Owner/manager can override. */
 const OF_STAGE_TASKS={
   0:['Call the lead — text + voicemail if no answer','Qualify: down, monthly budget, income & proof, area, timeline, SSN/ITIN','Book the consultation (date + time)'],
-  2:['Send confirmation + reminders (24h and morning-of)','Hold the consult and confirm budget (down + monthly)','Complete the buyer intake on the profile','Match them to homes that fit'],
-  4:['Send 2–3 matching homes','Complete a showing','Confirm the home they want to move on'],
-  5:['Present the terms (down, monthly, rate, balloon, taxes/ins)','Finalize the numbers with the buyer','Collect updated proof of funds + income docs','Get agreement on the terms'],
-  6:['Get the LOI signed','Collect the earnest money deposit','Draft the agreement the buyer will sign','Confirm down-payment funds are ready','Schedule the notary to sign & close'],
-  7:['Notary signing complete + down payment collected','Record the close date on the profile','Set up monthly payment / servicing','Hand over keys / possession']
+  1:['Log what happened on the contact','Confirm they\'re interested + capture down, monthly budget, area and timeline','Set the next follow-up date'],
+  3:['Send confirmation + reminders (24h and morning-of)','Hold the consult and confirm budget (down + monthly)','Complete the buyer intake on the profile','Match them to homes that fit'],
+  5:['Send 2–3 matching homes','Complete a showing','Confirm the home they want to move on'],
+  6:['Present the terms (down, monthly, rate, balloon, taxes/ins)','Finalize the numbers with the buyer','Collect updated proof of funds + income docs','Get agreement on the terms'],
+  7:['Get the LOI signed','Collect the earnest money deposit','Draft the agreement the buyer will sign','Confirm down-payment funds are ready','Schedule the notary to sign & close'],
+  8:['Notary signing complete + down payment collected','Record the close date on the profile','Set up monthly payment / servicing','Hand over keys / possession']
 };
 /* Owner Finance SELLERS. Stage 1 "Didn't list / withdrew" is the off-ramp. */
 const SELL_STAGE_TASKS={
@@ -2732,7 +2733,7 @@ const TC_STAGE_TASKS={
   4:['Confirm the closing recorded','Send the TC invoice']
 };
 const GATE_CFG={
-  h2m_of:{tasks:OF_STAGE_TASKS,offramp:[1,3],intakeStage:2},
+  h2m_of:{tasks:OF_STAGE_TASKS,offramp:[2,4],intakeStage:3},
   h2m_of_sell:{tasks:SELL_STAGE_TASKS,offramp:[1],intakeStage:-1},
   asap:{tasks:ASAP_STAGE_TASKS,offramp:[],intakeStage:-1},
   h2m_acq:{tasks:ACQ_STAGE_TASKS,offramp:[],intakeStage:-1},
@@ -2740,7 +2741,7 @@ const GATE_CFG={
   tc:{tasks:TC_STAGE_TASKS,offramp:[],intakeStage:-1}
 };
 function gateCfg(pipe){return GATE_CFG[pipe]||null;}
-const OF_OFFRAMP=[1,3];
+const OF_OFFRAMP=[2,4];
 /* The single person responsible for a (possibly shared) lead. Automated tasks go to them,
    never duplicated across every agent on the profile. Falls back sensibly when unset. */
 function leadAgentOf(c,d){
@@ -2937,8 +2938,8 @@ function clientAutos(cid,horizonDays){
       const rev=addDays(cd,2);if(rev>=today&&rev<=horizon&&between(cd,today)<=14&&!sent('review-'+d.id))out.upcoming.push({date:rev,camp:'Review ask',channel:'Text + Email'});
       return;
     }
-    if(d.stage===3||d.stage===1){const idx=d.stage,ent=enteredOf(d,idx);if(ent){out.drip={type:idx===3?'No-show':'Disqualified',ent:ent,days:between(ent,today)};const cad=idx===3?NOSHOW:DISQ;cad.forEach(day=>{const dt=addDays(ent,day);if(dt>=today&&dt<=horizon){const key=(idx===3?'noshow-':'disq-')+ent+'-d'+day;if(!sent(key))out.upcoming.push({date:dt,camp:(idx===3?'No-show drip':'Disqualified drip')+' · day '+day,channel:'Text'});}});}return;}
-    const cd=closeOf(d,7);if(!cd)return;
+    if(d.stage===4||d.stage===2){const idx=d.stage,ent=enteredOf(d,idx);if(ent){out.drip={type:idx===4?'No-show':'Disqualified',ent:ent,days:between(ent,today)};const cad=idx===4?NOSHOW:DISQ;cad.forEach(day=>{const dt=addDays(ent,day);if(dt>=today&&dt<=horizon){const key=(idx===4?'noshow-':'disq-')+ent+'-d'+day;if(!sent(key))out.upcoming.push({date:dt,camp:(idx===4?'No-show drip':'Disqualified drip')+' · day '+day,channel:'Text'});}});}return;}
+    const cd=closeOf(d,8);if(!cd)return;
     const rev=addDays(cd,2);if(rev>=today&&rev<=horizon&&between(cd,today)<=14&&!sent('review-'+d.id))out.upcoming.push({date:rev,camp:'Review ask',channel:'Text + Email'});
     [30,60,90].forEach(n=>{const dt=addDays(cd,n);if(dt>=today&&dt<=horizon&&!sent('post'+n+'-'+d.id))out.upcoming.push({date:dt,camp:'Post-close '+n+'-day',channel:'Text'});});
     let adt=today.slice(0,4)+'-'+mmd(cd);if(adt<today)adt=(+today.slice(0,4)+1)+'-'+mmd(cd);const years=(+adt.slice(0,4))-(+cd.slice(0,4));if(years>=1&&adt<=horizon&&!sent('anniv-'+adt.slice(0,4)+'-'+d.id))out.upcoming.push({date:adt,camp:'Home anniversary ('+years+' yr)',channel:'Text + Email'});
@@ -2981,18 +2982,18 @@ function vAutomations(){
       if(d.stage===4||d.stage===5){ const ent=enteredOf(d,4); if(!ent)return; for(let w=1;w<=12;w++){ const dt=addDays(ent,7*w); if(dt>=today&&dt<=horizon){ const key='sellupd-'+ent+'-w'+w; if(!sent(c.id,key))push(dt,c.id,'Seller update · week '+w,'Text'); } } return; }
       const cds=closeOf(d,8); if(!cds)return; const revs=addDays(cds,2); if(revs>=today&&revs<=horizon&&between(cds,today)<=14&&!sent(c.id,'review-'+d.id))push(revs,c.id,'Review ask',reviewLink?'Text + Email':'Text'); return;
     }
-    if(d.stage===3||d.stage===1){ const idx=d.stage,ent=enteredOf(d,idx); if(!ent)return; const cad=idx===3?NOSHOW:DISQ;
-      cad.forEach(day=>{ const dt=addDays(ent,day); if(dt>=today&&dt<=horizon){ const key=(idx===3?'noshow-':'disq-')+ent+'-d'+day; if(!sent(c.id,key))push(dt,c.id,(idx===3?'No-show drip':'Disqualified drip')+' · day '+day,'Text'); } });
+    if(d.stage===4||d.stage===2){ const idx=d.stage,ent=enteredOf(d,idx); if(!ent)return; const cad=idx===4?NOSHOW:DISQ;
+      cad.forEach(day=>{ const dt=addDays(ent,day); if(dt>=today&&dt<=horizon){ const key=(idx===4?'noshow-':'disq-')+ent+'-d'+day; if(!sent(c.id,key))push(dt,c.id,(idx===4?'No-show drip':'Disqualified drip')+' · day '+day,'Text'); } });
       return; }
-    const cd=closeOf(d,7); if(!cd)return;
+    const cd=closeOf(d,8); if(!cd)return;
     const rev=addDays(cd,2); if(rev>=today&&rev<=horizon&&between(cd,today)<=14&&!sent(c.id,'review-'+d.id))push(rev,c.id,'Review ask',reviewLink?'Text + Email':'Text');
     [30,60,90].forEach(n=>{const dt=addDays(cd,n); if(dt>=today&&dt<=horizon&&!sent(c.id,'post'+n+'-'+d.id))push(dt,c.id,'Post-close '+n+'-day','Text');});
     const yr=today.slice(0,4); let adt=yr+'-'+mmd(cd); if(adt<today)adt=(+yr+1)+'-'+mmd(cd);
     const years=(+adt.slice(0,4))-(+cd.slice(0,4)); if(years>=1&&adt>=today&&adt<=horizon&&!sent(c.id,'anniv-'+adt.slice(0,4)+'-'+d.id))push(adt,c.id,'Home anniversary ('+years+' yr)','Text + Email');
   });
   items.sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
-  const drips=S.deals.filter(d=>((d.pipe==='h2m_of'&&(d.stage===1||d.stage===3))||(d.pipe==='h2m_of_sell'&&d.stage===1))&&!isLost(d)&&!isArchived(d))
-    .map(d=>{const c=C(d.clientId);const idx=d.stage;const ent=enteredOf(d,idx);const type=d.pipe==='h2m_of_sell'?'Withdrawn seller':(idx===3?'No-show':'Disqualified');return {c,type,ent,days:ent?between(ent,today):null};})
+  const drips=S.deals.filter(d=>((d.pipe==='h2m_of'&&(d.stage===2||d.stage===4))||(d.pipe==='h2m_of_sell'&&d.stage===1))&&!isLost(d)&&!isArchived(d))
+    .map(d=>{const c=C(d.clientId);const idx=d.stage;const ent=enteredOf(d,idx);const type=d.pipe==='h2m_of_sell'?'Withdrawn seller':(idx===4?'No-show':'Disqualified');return {c,type,ent,days:ent?between(ent,today):null};})
     .filter(x=>x.c&&x.ent).sort((a,b)=>b.days-a.days);
   let h='<div class="sect-head"><h2>Automations</h2><span class="cnt">what’s scheduled to go out · next '+horizonDays+' days</span><span class="spacer"></span><span class="tag" style="border-color:'+(armed?'#2e7d32':'var(--amber)')+';color:'+(armed?'#2e7d32':'var(--amber)')+'">'+(armed?'ON — sending live':'Preview — not sending yet')+'</span></div>';
   h+='<div class="card" style="margin-bottom:12px"><div class="mut" style="font-size:12.5px">Each morning the system sends these automatically (once automations are turned on): birthdays, home anniversaries, the review ask after a close, post-close 30/60/90-day check-ins, and the no-show / disqualified follow-up drips. Every message goes out in the contact’s language and skips anyone who replied STOP.</div></div>';
